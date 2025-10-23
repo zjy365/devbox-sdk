@@ -65,20 +65,20 @@ This document defines the requirements for building a comprehensive Sealos Devbo
 - Support for automatic SSH key distribution from Sealos user management
 - Fallback authentication support for development environments
 
-1.3. **Connection Management**:
+  1.3. **Connection Management**:
 
 - Configurable connection pool supporting concurrent operations
 - Intelligent connection reuse and automatic cleanup
 - Connection lifecycle management with health checks
 
-1.4. **Error Handling**: Comprehensive SSH error handling with specific exception types for:
+  1.4. **Error Handling**: Comprehensive SSH error handling with specific exception types for:
 
 - Connection failures and timeouts
 - Authentication issues
 - File operation errors
 - Network interruption recovery
 
-1.5. **Logging and Monitoring**: Built-in operation auditing and debugging logs with configurable verbosity
+  1.5. **Logging and Monitoring**: Built-in operation auditing and debugging logs with configurable verbosity
 
 ### 2. SSH Connection Management
 
@@ -88,19 +88,19 @@ This document defines the requirements for building a comprehensive Sealos Devbo
 - Configurable pool size based on expected workload
 - Connection rotation and load balancing
 
-2.2. **Connection Lifecycle**:
+  2.2. **Connection Lifecycle**:
 
 - Automatic connection establishment on first use
 - Idle connection timeout and cleanup
 - Graceful connection termination on SDK shutdown
 
-2.3. **Resilience Features**:
+  2.3. **Resilience Features**:
 
 - Automatic reconnection with exponential backoff
 - Connection health monitoring and proactive replacement
 - Circuit breaker pattern for cascade failure prevention
 
-2.4. **Configuration Management**:
+  2.4. **Configuration Management**:
 
 - Configurable connection timeouts (default: 30s connection, 10s operations)
 - Keep-alive settings for long-running connections
@@ -116,20 +116,20 @@ This document defines the requirements for building a comprehensive Sealos Devbo
 - `exists(path)`: Check file/directory existence
 - `listDir(path, options)`: List directory contents with metadata
 
-3.2. **Directory Operations**:
+  3.2. **Directory Operations**:
 
 - `makeDir(path, recursive)`: Create directories with parent creation
 - `removeDir(path, recursive)`: Remove directories safely
 - `copyPath(source, destination)`: Copy files/directories efficiently
 - `movePath(source, destination)`: Move/rename operations
 
-3.3. **Batch Operations**:
+  3.3. **Batch Operations**:
 
 - `uploadFiles(fileMap, options)`: Batch upload with adaptive strategy selection
 - `downloadFiles(paths, options)`: Batch download with compression
 - `syncDirectory(localPath, remotePath, options)`: Bidirectional synchronization
 
-3.4. **Large File Support**:
+  3.4. **Large File Support**:
 
 - `uploadLargeFile(path, options)`: Chunked upload with progress tracking
 - `downloadLargeFile(path, options)`: Chunked download with resume capability
@@ -144,19 +144,19 @@ This document defines the requirements for building a comprehensive Sealos Devbo
 - Large files (>1MB): Tar packaging + SSH command execution
 - Batch operations: Automatic grouping and optimal strategy selection
 
-4.2. **Compression Support**:
+  4.2. **Compression Support**:
 
 - Automatic compression for text files and compatible formats
 - Configurable compression levels and thresholds
 - Smart compression detection based on file type
 
-4.3. **Concurrent Operations**:
+  4.3. **Concurrent Operations**:
 
 - Parallel upload/download for multiple files
 - Configurable concurrency limits based on system resources
 - Operation queuing and prioritization
 
-4.4. **Performance Targets**:
+  4.4. **Performance Targets**:
 
 - Small file operations: Average latency < 100ms
 - Large file transfers: Throughput > 5MB/s
@@ -171,19 +171,19 @@ This document defines the requirements for building a comprehensive Sealos Devbo
 - Automatic SSH connection info retrieval after creation
 - Support for custom runtime configurations
 
-5.2. **Connection Establishment**:
+  5.2. **Connection Establishment**:
 
 - Automatic SSH endpoint discovery and connection
 - Connection validation and readiness checks
 - Fallback connection strategies for different network scenarios
 
-5.3. **State Management**:
+  5.3. **State Management**:
 
 - Real-time Devbox status monitoring via SSH commands
 - Resource usage tracking (CPU, memory, disk)
 - Process and service status monitoring
 
-5.4. **Resource Cleanup**:
+  5.4. **Resource Cleanup**:
 
 - Graceful SSH connection termination
 - Temporary file cleanup on Devbox

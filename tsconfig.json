@@ -3,12 +3,15 @@
     "lib": [
       "ES2022"
     ],
+    "types": [
+      "node"
+    ],
     "strict": true,
     "allowJs": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "moduleResolution": "NodeNext",
-    "module": "NodeNext",
+    "moduleResolution": "node",
+    "module": "ESNext",
     "target": "ES2022",
     "baseUrl": ".",
     "noEmit": true,
@@ -17,6 +20,18 @@
     "declarationMap": true,
     "sourceMap": true,
 		"allowImportingTsExtensions": true,
+    "paths": {
+      "@/*": ["src/*"],
+      "@/core/*": ["src/core/*"],
+      "@/api/*": ["src/api/*"],
+      "@/connection/*": ["src/connection/*"],
+      "@/devbox/*": ["src/devbox/*"],
+      "@/files/*": ["src/files/*"],
+      "@/websocket/*": ["src/websocket/*"],
+      "@/security/*": ["src/security/*"],
+      "@/utils/*": ["src/utils/*"],
+      "@/monitoring/*": ["src/monitoring/*"]
+    },
     "allowSyntheticDefaultImports": true,
 		"forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,

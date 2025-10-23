@@ -1,12 +1,3 @@
-#!/usr/bin/env node
-import { debuglog } from 'node:util'
-import { add } from '../main.ts'
-
-const debug = debuglog('devbox-sdk')
-
-async function init () {
-  const sum = await add(1, 2)
-  debug(sum.toString())
-}
-
-init()
+// Legacy CLI - replaced by Devbox SDK architecture
+// The devbox-sdk is now a pure TypeScript library, not a CLI tool
+// See src/index.ts for the main SDK exports

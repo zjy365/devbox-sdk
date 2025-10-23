@@ -1,3 +1,2 @@
-export async function add (arg1: number, arg2: number): Promise<number> {
-  return Promise.resolve(arg1 + arg2)
-}
+// Legacy main.ts - replaced by modular SDK architecture
+// See src/index.ts for the main SDK exports

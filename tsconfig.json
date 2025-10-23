@@ -15,25 +15,45 @@
     "target": "ES2022",
     "baseUrl": ".",
     "noEmit": true,
-    "rootDir": "./src",
+    "rootDir": ".",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-		"allowImportingTsExtensions": true,
+    "allowImportingTsExtensions": true,
     "paths": {
-      "@/*": ["src/*"],
-      "@/core/*": ["src/core/*"],
-      "@/api/*": ["src/api/*"],
-      "@/connection/*": ["src/connection/*"],
-      "@/devbox/*": ["src/devbox/*"],
-      "@/files/*": ["src/files/*"],
-      "@/websocket/*": ["src/websocket/*"],
-      "@/security/*": ["src/security/*"],
-      "@/utils/*": ["src/utils/*"],
-      "@/monitoring/*": ["src/monitoring/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@/core/*": [
+        "src/core/*"
+      ],
+      "@/api/*": [
+        "src/api/*"
+      ],
+      "@/connection/*": [
+        "src/connection/*"
+      ],
+      "@/devbox/*": [
+        "src/devbox/*"
+      ],
+      "@/files/*": [
+        "src/files/*"
+      ],
+      "@/websocket/*": [
+        "src/websocket/*"
+      ],
+      "@/security/*": [
+        "src/security/*"
+      ],
+      "@/utils/*": [
+        "src/utils/*"
+      ],
+      "@/monitoring/*": [
+        "src/monitoring/*"
+      ]
     },
     "allowSyntheticDefaultImports": true,
-		"forceConsistentCasingInFileNames": true,
+    "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "removeComments": true,
@@ -44,7 +64,8 @@
   },
   "include": [
     "src/**/*",
-    "src/bin/**/*"
+    "src/bin/**/*",
+    "server/**/*"
   ],
   "exclude": [
     "dist",

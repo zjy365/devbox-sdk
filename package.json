@@ -1,50 +1,43 @@
 {
-  "name": "devbox-sdk",
+  "name": "devbox-sdk-monorepo",
   "version": "1.0.0",
   "description": "Enterprise TypeScript SDK for Sealos Devbox management with HTTP API + Bun runtime architecture",
-  "types": "dist/index.d.ts",
-  "type": "module",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      },
-      "default": "./dist/index.mjs"
-    }
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "build:sdk": "turbo run build --filter=@sealos/devbox-sdk",
+    "build:server": "turbo run build --filter=@sealos/devbox-server",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "dev": "turbo run dev",
+    "version": "changeset version",
+    "release": "changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.7",
+    "@biomejs/biome": "^1.8.3",
+    "turbo": "^2.5.8",
+    "tsup": "^8.0.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.5.3",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=22.0.0"
   },
-  "packageManager": "npm@8.4.0",
-  "files": [
-    "dist",
-    "src",
-    "server"
-  ],
-  "scripts": {
-    "build": "tsc && tsup",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --fix",
-    "test": "node --import tsx --test __tests__/**/*.test.ts",
-    "test:watch": "node --import tsx --test --watch __tests__/**/*.test.ts",
-    "coverage:view": "open coverage/lcov-report/index.html",
-    "version": "changeset version",
-    "release": "changeset publish",
-    "dev": "tsx watch src/index.ts"
-  },
+  "packageManager": "npm@11.5.1",
   "author": {
     "name": "zjy365",
     "email": "3161362058@qq.com",
     "url": "https://github.com/zjy365"
-  },
-  "publishConfig": {
-    "provenance": true,
-    "access": "public"
   },
   "license": "Apache-2.0",
   "keywords": [
@@ -55,7 +48,8 @@
     "cloud-development",
     "container",
     "bun",
-    "http-api"
+    "http-api",
+    "monorepo"
   ],
   "homepage": "https://github.com/zjy365/devbox-sdk",
   "bugs": {
@@ -64,47 +58,5 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/zjy365/devbox-sdk.git"
-  },
-  "dependencies": {
-    "ws": "^8.18.3"
-  },
-  "devDependencies": {
-    "@changesets/changelog-github": "^0.5.0",
-    "@changesets/cli": "^2.27.7",
-    "@types/node": "^20.14.10",
-    "@types/ws": "^8.5.10",
-    "c8": "^10.1.2",
-    "eslint": "^9.6.0",
-    "eslint-plugin-security": "^3.0.1",
-    "husky": "^9.0.11",
-    "lint-staged": "^15.2.7",
-    "lockfile-lint": "^4.14.0",
-    "neostandard": "^0.11.0",
-    "tsup": "^8.1.0",
-    "tsx": "^4.19.4",
-    "typescript": "^5.5.3",
-    "validate-conventional-commit": "^1.0.4"
-  },
-  "lint-staged": {
-    "**/*.{js,json}": [
-      "npm run lint:fix"
-    ]
-  },
-  "c8": {
-    "exclude": [
-      "dist/**",
-      "coverage/**",
-      "__tests__/**",
-      "**/*.test.ts",
-      "**/*.test.js"
-    ],
-    "include": [
-      "src/**"
-    ],
-    "reporter": [
-      "text",
-      "lcov",
-      "html"
-    ]
   }
 }

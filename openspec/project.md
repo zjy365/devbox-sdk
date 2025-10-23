@@ -2,52 +2,57 @@
 
 ## Purpose
 
-The Sealos Devbox SDK provides a comprehensive TypeScript/Node.js library for programmatically managing Devbox instances and performing high-performance file operations through HTTP API + Bun Runtime architecture. It enables developers, AI Agents, and third-party tools to create, control, and interact with cloud development environments through a clean, intuitive API that leverages container-based HTTP servers for optimal performance.
+The Sealos Devbox SDK is an enterprise-grade monorepo providing a comprehensive TypeScript SDK and HTTP server for programmatically managing Sealos Devbox instances. It enables developers, AI Agents, and third-party tools to create, control, and interact with cloud development environments through a clean, intuitive API that leverages HTTP API + Bun runtime architecture for optimal performance.
 
 ## Tech Stack
 
-- **Primary Language**: TypeScript/Node.js (Python support planned for future releases)
-- **Container Runtime**: Bun (JavaScript runtime with native file I/O)
-- **Build System**: tsup for dual CJS/ESM bundling
-- **Container Server**: Bun HTTP Server (port 3000) in Devbox containers
-- **Testing**: Node.js native test runner with c8 coverage
-- **Linting**: neostandard with TypeScript support
-- **Authentication**: kubeconfig-based authentication
-- **File Operations**: HTTP API with Base64 encoding for small files, streaming for large files
+- **Architecture**: Monorepo with two main packages using Turbo for build orchestration
+- **Primary Language**: TypeScript with strict mode throughout
+- **Package Management**: npm workspaces with scoped packages (@sealos/*)
+- **Container Runtime**: Bun (JavaScript runtime with native file I/O) for server package
+- **Build System**: tsup for dual CJS/ESM bundling with unified configuration
+- **Code Quality**: Biome for unified formatting, linting, and type checking
+- **Testing**: Vitest for unit and integration testing with c8 coverage
+- **Process Management**: Turbo for efficient monorepo build pipelines
+- **Authentication**: kubeconfig-based authentication via Devbox API
+- **File Operations**: HTTP API with adaptive transfer strategies
 - **Real-time Communication**: WebSocket for file watching and monitoring
 
 ## Project Conventions
 
 ### Code Style
 
-- Use neostandard ESLint configuration
-- TypeScript strict mode enabled
+- Use Biome for unified formatting, linting, and type checking
+- TypeScript strict mode enabled across all packages
 - Async/await patterns for all API operations
-- Error-first callback patterns avoided in favor of promises
+- Promise-based error handling over callbacks
 - JSDoc comments for all public APIs
-- Bun-specific patterns for container server code
+- Bun-specific patterns for container server code (@sealos/devbox-server)
 - HTTP status codes and proper error responses
+- Consistent import paths and module organization
 
 ### Architecture Patterns
 
+- **Monorepo Architecture**: Two main packages (@sealos/devbox-sdk, @sealos/devbox-server)
+- **Package Separation**: SDK for external API, Server for container runtime
 - **Dual-layer Architecture**: TypeScript SDK + Bun HTTP Server
 - **Container-based Design**: HTTP Server runs inside Devbox containers
 - **Connection Pooling**: HTTP Keep-Alive connections for performance
-- **Streaming Architecture**: Large files use streaming, small files use Base64
+- **Adaptive Transfer**: Smart file transfer strategies based on size and type
 - **WebSocket Integration**: Real-time file watching and monitoring
-- **Plugin Architecture**: Extensible design for future capabilities
-- **Configuration via Environment**: kubeconfig environment variable
-- **HTTP Client Abstraction**: For API communication to container servers
+- **Unified Build Pipeline**: Turbo orchestrates build, test, and lint across packages
+- **Configuration via Environment**: kubeconfig and server environment variables
 
 ### Testing Strategy
 
-- Unit tests with Node.js native test runner
-- Integration tests against mock Bun HTTP servers
-- Container integration tests
-- Coverage target: >90%
+- Unit tests with Vitest across all packages
+- Integration tests between SDK and mock HTTP servers
+- Package-level testing with focused test suites
+- Coverage target: >90% for all packages
 - Performance benchmarks for file operations
 - WebSocket connection testing
 - Connection pool behavior testing
+- Cross-package integration testing
 
 ### Git Workflow
 
@@ -77,6 +82,8 @@ The Sealos Devbox SDK provides a comprehensive TypeScript/Node.js library for pr
 - **WebSocket API**: `/ws` for real-time file watching
 - **Health Check**: `/health` for server health monitoring
 - **Streaming Support**: Large file streaming with chunked transfer
+- **Security Features**: Path validation and input sanitization
+- **Environment Configuration**: Configurable via environment variables
 
 ### Target Users
 
@@ -134,12 +141,21 @@ The Sealos Devbox SDK provides a comprehensive TypeScript/Node.js library for pr
 - **Bun Runtime**: Container server execution environment
 - **kubeconfig**: Authentication mechanism for API access
 
-### Container Server Dependencies
+### Container Server Dependencies (@sealos/devbox-server)
 
 - **Bun**: JavaScript runtime with native file I/O performance
 - **chokidar**: File watching for real-time change detection
 - **ws**: WebSocket server implementation
+- **zod**: Runtime type validation for API requests
 - **mime-types**: Content type detection for file transfers
+
+### SDK Dependencies (@sealos/devbox-sdk)
+
+- **node-fetch**: HTTP client for API communication
+- **ws**: WebSocket client for real-time connections
+- **p-queue**: Queue management for concurrent operations
+- **p-retry**: Retry logic for resilient operations
+- **form-data**: Form data handling for multipart requests
 
 ### Optional Dependencies
 
@@ -161,10 +177,11 @@ The Sealos Devbox SDK provides a comprehensive TypeScript/Node.js library for pr
 
 ### Transfer Strategies
 
-- **Small Files (<1MB)**: Base64 encoding via HTTP POST for minimal overhead
-- **Large Files (1MB-100MB)**: Streaming transfers via HTTP chunked encoding
-- **Batch Operations**: HTTP connection pooling and request batching
+- **Small Files (<1MB)**: Direct HTTP transfer for minimal overhead
+- **Large Files (1MB-100MB)**: Adaptive strategies with streaming when needed
+- **Batch Operations**: HTTP connection pooling and optimized batching
 - **Real-time Operations**: WebSocket-based file watching and notifications
+- **Security**: Path validation and content sanitization for all transfers
 
 ### Container Server Operations
 

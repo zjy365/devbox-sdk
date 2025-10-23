@@ -3,9 +3,10 @@
  */
 
 import { lookup } from 'mime-types'
+import { resolve } from 'path'
 
 export function validatePath(path: string, allowedBase: string): void {
-  const normalizedPath = Bun.path.resolve(allowedBase, path)
+  const normalizedPath = resolve(allowedBase, path)
 
   if (!normalizedPath.startsWith(allowedBase)) {
     throw new Error('Path traversal detected')

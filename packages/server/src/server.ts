@@ -3,7 +3,7 @@
  * Main HTTP server implementation using Bun
  */
 
-import type { ServerConfig, HealthResponse } from './types/server'
+import type { ServerConfig, HealthResponse, WriteFileRequest, ReadFileRequest, BatchUploadRequest, ProcessExecRequest } from './types/server'
 import { FileHandler } from './handlers/files'
 import { ProcessHandler } from './handlers/process'
 import { WebSocketHandler } from './handlers/websocket'
@@ -18,7 +18,21 @@ export class DevboxHTTPServer {
 
   constructor(config: ServerConfig) {
     this.config = config
-    // Simplified constructor - just store config for now
+
+    // Initialize components
+    this.fileWatcher = new FileWatcher()
+    this.fileHandler = new FileHandler(config.workspacePath, this.fileWatcher)
+    this.processHandler = new ProcessHandler(config.workspacePath)
+    this.webSocketHandler = new WebSocketHandler(this.fileWatcher)
+  }
+
+  // Public method to access handlers if needed
+  getFileHandler(): FileHandler {
+    return this.fileHandler
+  }
+
+  getProcessHandler(): ProcessHandler {
+    return this.processHandler
   }
 
   async start(): Promise<void> {
@@ -26,21 +40,20 @@ export class DevboxHTTPServer {
       port: this.config.port,
       hostname: this.config.host,
       fetch: this.handleRequest.bind(this),
-      // Temporarily disable websocket until handler is properly implemented
-      // websocket: {
-      //   open: (ws) => {
-      //     this.webSocketHandler.handleConnection(ws)
-      //   },
-      //   message: (ws, message) => {
-      //     // Handle websocket message if needed
-      //   },
-      //   close: (ws) => {
-      //     // Handle websocket close if needed
-      //   },
-      //   error: (ws, error) => {
-      //     console.error('WebSocket error:', error)
-      //   }
-      // },
+      websocket: {
+        open: (ws) => {
+          this.webSocketHandler.handleConnection(ws)
+        },
+        message: (ws, message) => {
+          // WebSocket messages are handled by the handler
+        },
+        close: (ws) => {
+          // Cleanup is handled by the handler
+        },
+        error: (ws, error) => {
+          console.error('WebSocket error:', error)
+        }
+      },
       error(error) {
         console.error('Server error:', error)
         return new Response('Internal Server Error', { status: 500 })
@@ -76,11 +89,62 @@ export class DevboxHTTPServer {
 
     try {
       switch (url.pathname) {
+        // Health check
         case '/health':
           return this.handleHealth()
 
+        // File operations
+        case '/files/read':
+          if (request.method === 'POST') {
+            const body = await request.json() as ReadFileRequest
+            return await this.fileHandler.handleReadFile(body)
+          }
+          return new Response('Method not allowed', { status: 405 })
+
+        case '/files/write':
+          if (request.method === 'POST') {
+            const body = await request.json() as WriteFileRequest
+            return await this.fileHandler.handleWriteFile(body)
+          }
+          return new Response('Method not allowed', { status: 405 })
+
+        case '/files/delete':
+          if (request.method === 'POST') {
+            const body = await request.json() as { path: string }
+            return await this.fileHandler.handleDeleteFile(body.path)
+          }
+          return new Response('Method not allowed', { status: 405 })
+
+        case '/files/batch-upload':
+          if (request.method === 'POST') {
+            const body = await request.json() as BatchUploadRequest
+            return await this.fileHandler.handleBatchUpload(body)
+          }
+          return new Response('Method not allowed', { status: 405 })
+
+        // Process operations
+        case '/process/exec':
+          if (request.method === 'POST') {
+            const body = await request.json() as ProcessExecRequest
+            return await this.processHandler.handleExec(body)
+          }
+          return new Response('Method not allowed', { status: 405 })
+
+        case '/process/status':
+          if (request.method === 'GET') {
+            const pid = parseInt(url.searchParams.get('pid') || '0')
+            return await this.processHandler.handleStatus(pid)
+          }
+          return new Response('Method not allowed', { status: 405 })
+
+        // WebSocket endpoint
+        case '/ws':
+          // WebSocket upgrade is handled by Bun's websocket handler
+          // This route is for HTTP fallback only
+          return new Response('WebSocket endpoint - please use WebSocket connection', { status: 426 })
+
         default:
-          return new Response('Devbox Server - Use /health for status check', { status: 200 })
+          return new Response('Devbox Server - Available endpoints: /health, /files/*, /process/*, /ws (WebSocket)', { status: 404 })
       }
     } catch (error) {
       console.error('Request handling error:', error)

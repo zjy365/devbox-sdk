@@ -50,36 +50,31 @@ export class ProcessHandler {
 
       this.runningProcesses.set(subprocess.pid || 0, runningProcess)
 
-      // Read output
-      const reader = subprocess.stdout.getReader()
-      const decoder = new TextDecoder()
-
+      // Read output with timeout handling
       try {
-        const { done, value } = await Promise.race([
-          reader.read(),
-          new Promise((_, reject) =>
+        // Wait for process to complete with timeout
+        const result = await Promise.race([
+          subprocess.exited,
+          new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('Process timeout')), timeout)
           )
         ])
 
-        if (!done && value) {
-          runningProcess.stdout += decoder.decode(value)
-        }
+        // Get all output when done
+        runningProcess.stdout = await new Response(subprocess.stdout).text()
+        runningProcess.stderr = await new Response(subprocess.stderr).text()
       } catch (error) {
         subprocess.kill()
         throw error
       }
 
-      // Wait for process to complete
       const exitCode = await subprocess.exited
 
-      runningProcess.stdout += await new Response(subprocess.stdout).text()
-      runningProcess.stderr += await new Response(subprocess.stderr).text()
-
+      const exitCodeValue = await exitCode
       const response: ProcessStatusResponse = {
         pid: subprocess.pid || 0,
-        status: exitCode === 0 ? 'completed' : 'failed',
-        exitCode,
+        status: exitCodeValue === 0 ? 'completed' : 'failed',
+        exitCode: exitCodeValue,
         stdout: runningProcess.stdout,
         stderr: runningProcess.stderr
       }
@@ -106,7 +101,7 @@ export class ProcessHandler {
     }
 
     try {
-      const exitCode = runningProcess.process.exited
+      const exitCode = await runningProcess.process.exited
 
       const response: ProcessStatusResponse = {
         pid,

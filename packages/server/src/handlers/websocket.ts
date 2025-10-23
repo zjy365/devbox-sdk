@@ -7,7 +7,7 @@ import type { FileChangeEvent } from '../types/server'
 import { FileWatcher } from '../utils/file-watcher'
 
 export class WebSocketHandler {
-  private connections = new Set<WebSocket>()
+  private connections = new Set<any>() // Use any for Bun WebSocket type
   private fileWatcher: FileWatcher
 
   constructor(fileWatcher: FileWatcher) {
@@ -15,7 +15,7 @@ export class WebSocketHandler {
     this.setupFileWatcher()
   }
 
-  handleConnection(ws: WebSocket): void {
+  handleConnection(ws: any): void {
     this.connections.add(ws)
 
     ws.onopen = () => {
@@ -32,7 +32,7 @@ export class WebSocketHandler {
       this.connections.delete(ws)
     }
 
-    ws.onmessage = (event) => {
+    ws.onmessage = (event: any) => {
       try {
         const message = JSON.parse(event.data.toString())
         this.handleMessage(ws, message)
@@ -43,7 +43,7 @@ export class WebSocketHandler {
     }
   }
 
-  private handleMessage(ws: WebSocket, message: any): void {
+  private handleMessage(ws: any, message: any): void {
     switch (message.type) {
       case 'watch':
         this.handleWatchRequest(ws, message.path)
@@ -56,7 +56,7 @@ export class WebSocketHandler {
     }
   }
 
-  private handleWatchRequest(ws: WebSocket, path: string): void {
+  private handleWatchRequest(ws: any, path: string): void {
     try {
       this.fileWatcher.startWatching(path, ws)
       this.sendSuccess(ws, { type: 'watch', path, status: 'started' })
@@ -65,7 +65,7 @@ export class WebSocketHandler {
     }
   }
 
-  private handleUnwatchRequest(ws: WebSocket, path: string): void {
+  private handleUnwatchRequest(ws: any, path: string): void {
     try {
       this.fileWatcher.stopWatching(path, ws)
       this.sendSuccess(ws, { type: 'unwatch', path, status: 'stopped' })
@@ -87,32 +87,43 @@ export class WebSocketHandler {
     const message = JSON.stringify(data)
 
     this.connections.forEach(ws => {
-      if (ws.readyState === WebSocket.OPEN) {
-        try {
+      try {
+        // Bun WebSocket readyState is numeric (1 = OPEN)
+        if (ws.readyState === 1) {
           ws.send(message)
-        } catch (error) {
-          console.error('Failed to send WebSocket message:', error)
+        } else {
           this.connections.delete(ws)
         }
+      } catch (error) {
+        console.error('Failed to send WebSocket message:', error)
+        this.connections.delete(ws)
       }
     })
   }
 
-  private sendSuccess(ws: WebSocket, data: any): void {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        success: true,
-        ...data
-      }))
+  private sendSuccess(ws: any, data: any): void {
+    try {
+      if (ws.readyState === 1) { // OPEN
+        ws.send(JSON.stringify({
+          success: true,
+          ...data
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to send WebSocket message:', error)
     }
   }
 
-  private sendError(ws: WebSocket, message: string): void {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        success: false,
-        error: message
-      }))
+  private sendError(ws: any, message: string): void {
+    try {
+      if (ws.readyState === 1) { // OPEN
+        ws.send(JSON.stringify({
+          success: false,
+          error: message
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to send WebSocket message:', error)
     }
   }
 }

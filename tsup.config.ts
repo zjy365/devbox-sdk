@@ -11,10 +11,10 @@ export default defineConfig([
     sourcemap: false,
     bundle: true,
     splitting: false,
-    outExtension (ctx) {
+    outExtension(ctx) {
       return {
         dts: '.d.ts',
-        js: ctx.format === 'cjs' ? '.cjs' : '.mjs',
+        js: ctx.format === 'cjs' ? '.cjs' : '.mjs'
       }
     },
     treeshake: false,
@@ -23,7 +23,6 @@ export default defineConfig([
     tsconfig: './tsconfig.json',
     cjsInterop: true,
     keepNames: true,
-    skipNodeModulesBundle: false,
-  },
-
+    skipNodeModulesBundle: false
+  }
 ])

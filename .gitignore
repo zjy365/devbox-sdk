@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+
+# Testing coverage
+coverage/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# AI Assistant
+.claude/
+
+# ESLint cache
+.eslintcache

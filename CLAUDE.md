@@ -1,3 +1,22 @@
+<!-- OPENSPEC:START -->
+# OpenSpec Instructions
+
+These instructions are for AI assistants working in this project.
+
+Always open `@/openspec/AGENTS.md` when the request:
+- Mentions planning or proposals (words like proposal, spec, change, plan)
+- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
+- Sounds ambiguous and you need the authoritative spec before coding
+
+Use `@/openspec/AGENTS.md` to learn:
+- How to create and apply change proposals
+- Spec format and conventions
+- Project structure and guidelines
+
+Keep this managed block so 'openspec update' can refresh the instructions.
+
+<!-- OPENSPEC:END -->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -20,6 +39,7 @@ The build system uses `tsup` to bundle both CJS and ESM formats with TypeScript 
 ## Development Commands
 
 ### Essential Commands
+
 ```bash
 # Install dependencies
 npm install
@@ -44,7 +64,9 @@ npm run lint:fix
 ```
 
 ### Single Test Execution
+
 The project uses Node.js native test runner. Run specific test files:
+
 ```bash
 node --import tsx --test __tests__/app.test.ts
 ```
@@ -52,6 +74,7 @@ node --import tsx --test __tests__/app.test.ts
 ## Build System
 
 The project uses `tsup` for bundling with the following configuration:
+
 - Dual format output (CJS and ESM)
 - TypeScript declaration generation
 - Node.js platform targeting ES2022
@@ -75,6 +98,7 @@ Tests use Node.js native test runner with `tsx` for TypeScript support. Coverage
 ## Publishing
 
 The project uses `changesets` for version management and publishing:
+
 ```bash
 npm run version    # Bump version based on changesets
 npm run release    # Publish to npm

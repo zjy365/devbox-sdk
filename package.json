@@ -16,7 +16,7 @@
     "lint:fix": "turbo run lint:fix",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=@sealos/devbox-server",
     "version": "changeset version",
     "release": "changeset publish"
   },

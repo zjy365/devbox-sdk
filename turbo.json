@@ -1,43 +1,59 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [
-    "**/.env.*local"
+    "**/.env.*local",
+    "tsconfig.json",
+    "biome.json"
   ],
   "tasks": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "outputs": [
         "dist/**",
-        "*.js"
+        "devbox-server",
+        "devbox-server-*",
+        "*.tsbuildinfo"
+      ],
+      "inputs": [
+        "src/**/*.ts",
+        "tsconfig.json",
+        "tsup.config.ts",
+        "package.json"
       ]
     },
     "test": {
-      "dependsOn": [
-        "build"
+      "outputs": ["coverage/**"],
+      "inputs": [
+        "src/**/*.ts",
+        "**/__tests__/**/*.test.ts"
       ],
-      "outputs": [
-        "coverage/**"
-      ]
+      "env": ["NODE_ENV"]
     },
     "test:e2e": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
+      "cache": false,
       "outputs": []
     },
     "lint": {
-      "outputs": []
+      "cache": true,
+      "outputs": [],
+      "inputs": [
+        "src/**/*.ts",
+        "biome.json"
+      ]
     },
     "lint:fix": {
+      "cache": false,
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": []
+      "dependsOn": ["^build"],
+      "cache": true,
+      "outputs": ["*.tsbuildinfo"],
+      "inputs": [
+        "src/**/*.ts",
+        "tsconfig.json"
+      ]
     },
     "clean": {
       "cache": false

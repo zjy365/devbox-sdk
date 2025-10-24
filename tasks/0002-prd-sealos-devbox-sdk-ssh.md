@@ -1,4 +1,15 @@
-# 0002-PRD-Sealos Devbox SDK with SSH/SFTP Implementation
+# 0002-PRD-Sealos Devbox SDK with SSH/SFTP Implementation [DEPRECATED]
+
+> ⚠️ **此文档已废弃** - This document has been deprecated
+> 
+> **废弃原因**: 经过架构分析，决定采用 HTTP REST API 方案替代 SSH/SFTP 实现
+> **Reason**: After architectural analysis, decided to adopt HTTP REST API approach instead of SSH/SFTP implementation
+> 
+> **替代方案**: 请参考 `0003-task-bun-server-phase1-architecture.md` 及相关任务文件
+> **Alternative**: Please refer to `0003-task-bun-server-phase1-architecture.md` and related task files
+> 
+> **废弃日期**: 2025-10-23
+> **Deprecated Date**: 2025-10-23
 
 ## Introduction/Overview
 

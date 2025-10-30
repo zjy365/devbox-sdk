@@ -19,7 +19,7 @@ export class MetricsCollector {
     bytesTransferred: 0,
     errors: 0,
     avgLatency: 0,
-    operationsCount: 0
+    operationsCount: 0,
   }
 
   recordTransfer(size: number, latency: number): void {
@@ -48,7 +48,7 @@ export class MetricsCollector {
       bytesTransferred: 0,
       errors: 0,
       avgLatency: 0,
-      operationsCount: 0
+      operationsCount: 0,
     }
   }
 }

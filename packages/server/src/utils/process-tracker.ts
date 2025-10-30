@@ -3,7 +3,7 @@
  * Tracks running processes and their status
  */
 
-import { createLogger, type Logger } from '@sealos/devbox-shared/logger'
+import { type Logger, createLogger } from '@sealos/devbox-shared/logger'
 
 export interface ProcessInfo {
   id: string
@@ -42,14 +42,17 @@ export class ProcessTracker {
   /**
    * Add a new process to tracking
    */
-  addProcess(process: Bun.Subprocess, info: {
-    id: string
-    command: string
-    args: string[]
-    cwd: string
-    env: Record<string, string>
-    timeout?: number
-  }): ProcessInfo {
+  addProcess(
+    process: Bun.Subprocess,
+    info: {
+      id: string
+      command: string
+      args: string[]
+      cwd: string
+      env: Record<string, string>
+      timeout?: number
+    }
+  ): ProcessInfo {
     const processInfo: ProcessInfo = {
       id: info.id,
       pid: process.pid || 0,
@@ -61,7 +64,7 @@ export class ProcessTracker {
       startTime: Date.now(),
       stdout: '',
       stderr: '',
-      timeout: info.timeout
+      timeout: info.timeout,
     }
 
     this.processes.set(info.id, processInfo)
@@ -97,7 +100,7 @@ export class ProcessTracker {
   /**
    * Kill a process
    */
-  async killProcess(id: string, signal: string = 'SIGTERM'): Promise<boolean> {
+  async killProcess(id: string, signal = 'SIGTERM'): Promise<boolean> {
     const processInfo = this.processes.get(id)
     if (!processInfo) {
       return false
@@ -112,7 +115,7 @@ export class ProcessTracker {
 
       processInfo.status = 'killed'
       processInfo.endTime = Date.now()
-      
+
       this.logger.info(`Killed process ${id} (PID: ${processInfo.pid})`)
       return true
     } catch (error) {
@@ -140,13 +143,13 @@ export class ProcessTracker {
    */
   getStats(): ProcessStats {
     const processes = Array.from(this.processes.values())
-    
+
     return {
       total: processes.length,
       running: processes.filter(p => p.status === 'running').length,
       completed: processes.filter(p => p.status === 'completed').length,
       failed: processes.filter(p => p.status === 'failed').length,
-      killed: processes.filter(p => p.status === 'killed').length
+      killed: processes.filter(p => p.status === 'killed').length,
     }
   }
 
@@ -166,21 +169,21 @@ export class ProcessTracker {
         }, processInfo.timeout)
       }
 
-    // Read stdout
-    if (process.stdout && typeof process.stdout === 'object' && 'getReader' in process.stdout) {
-      const reader = (process.stdout as ReadableStream<Uint8Array>).getReader()
-      this.readStream(reader, 'stdout', processInfo)
-    }
+      // Read stdout
+      if (process.stdout && typeof process.stdout === 'object' && 'getReader' in process.stdout) {
+        const reader = (process.stdout as ReadableStream<Uint8Array>).getReader()
+        this.readStream(reader, 'stdout', processInfo)
+      }
 
-    // Read stderr
-    if (process.stderr && typeof process.stderr === 'object' && 'getReader' in process.stderr) {
-      const reader = (process.stderr as ReadableStream<Uint8Array>).getReader()
-      this.readStream(reader, 'stderr', processInfo)
-    }
+      // Read stderr
+      if (process.stderr && typeof process.stderr === 'object' && 'getReader' in process.stderr) {
+        const reader = (process.stderr as ReadableStream<Uint8Array>).getReader()
+        this.readStream(reader, 'stderr', processInfo)
+      }
 
       // Wait for process to complete
       const exitCode = await process.exited
-      
+
       if (timeoutId) {
         clearTimeout(timeoutId)
       }
@@ -240,7 +243,7 @@ export class ProcessTracker {
     const maxAge = 60 * 60 * 1000 // 1 hour
 
     for (const [id, process] of this.processes) {
-      if (process.status !== 'running' && process.endTime && (now - process.endTime) > maxAge) {
+      if (process.status !== 'running' && process.endTime && now - process.endTime > maxAge) {
         this.logger.info(`Cleaning up old process ${id}`)
         this.processes.delete(id)
       }
@@ -262,7 +265,7 @@ export class ProcessTracker {
     if (tail && tail > 0) {
       const stdoutLines = stdout.split('\n')
       const stderrLines = stderr.split('\n')
-      
+
       stdout = stdoutLines.slice(-tail).join('\n')
       stderr = stderrLines.slice(-tail).join('\n')
     }
@@ -275,14 +278,14 @@ export class ProcessTracker {
    */
   async cleanup(): Promise<void> {
     clearInterval(this.cleanupInterval)
-    
+
     // Kill all running processes
     for (const [id, process] of this.processes) {
       if (process.status === 'running') {
         await this.killProcess(id)
       }
     }
-    
+
     this.processes.clear()
     this.logger.info('Cleaned up all processes')
   }

@@ -2,24 +2,19 @@
  * Devbox REST API client with kubeconfig authentication
  */
 
+import type { DevboxCreateConfig, DevboxInfo, MonitorData, TimeRange } from '../core/types'
+import { DevboxSDKError, ERROR_CODES } from '../utils/error'
 import { KubeconfigAuthenticator } from './auth'
 import { APIEndpoints } from './endpoints'
-import { DevboxSDKError, ERROR_CODES } from '../utils/error'
 import type {
   APIClientConfig,
+  APIResponse,
   DevboxCreateRequest,
-  DevboxSSHInfoResponse,
   DevboxListResponse,
-  MonitorRequest,
+  DevboxSSHInfoResponse,
   MonitorDataPoint,
-  APIResponse
+  MonitorRequest,
 } from './types'
-import type {
-  DevboxCreateConfig,
-  DevboxInfo,
-  TimeRange,
-  MonitorData
-} from '../core/types'
 
 /**
  * Simple HTTP client implementation
@@ -29,13 +24,13 @@ class SimpleHTTPClient {
   private timeout: number
   private retries: number
 
-  constructor (config: { baseUrl?: string; timeout?: number; retries?: number }) {
+  constructor(config: { baseUrl?: string; timeout?: number; retries?: number }) {
     this.baseUrl = config.baseUrl || 'https://api.sealos.io'
     this.timeout = config.timeout || 30000
     this.retries = config.retries || 3
   }
 
-  async request (
+  async request(
     method: string,
     path: string,
     options: {
@@ -59,8 +54,8 @@ class SimpleHTTPClient {
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers
-      }
+        ...options.headers,
+      },
     }
 
     if (options.data) {
@@ -75,7 +70,7 @@ class SimpleHTTPClient {
 
         const response = await fetch(url.toString(), {
           ...fetchOptions,
-          signal: controller.signal
+          signal: controller.signal,
         })
 
         clearTimeout(timeoutId)
@@ -96,7 +91,7 @@ class SimpleHTTPClient {
           data,
           status: response.status,
           statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
+          headers: Object.fromEntries(response.headers.entries()),
         }
       } catch (error) {
         lastError = error as Error
@@ -113,46 +108,56 @@ class SimpleHTTPClient {
     throw lastError
   }
 
-  private shouldRetry (error: Error): boolean {
+  private shouldRetry(error: Error): boolean {
     if (error instanceof DevboxSDKError) {
       return [
         ERROR_CODES.CONNECTION_TIMEOUT,
         ERROR_CODES.CONNECTION_FAILED,
         ERROR_CODES.SERVER_UNAVAILABLE,
-        'SERVICE_UNAVAILABLE' as any
+        'SERVICE_UNAVAILABLE' as any,
       ].includes(error.code)
     }
     return error.name === 'AbortError' || error.message.includes('fetch')
   }
 
-  private getErrorCodeFromStatus (status: number): string {
+  private getErrorCodeFromStatus(status: number): string {
     switch (status) {
-      case 401: return ERROR_CODES.AUTHENTICATION_FAILED
-      case 403: return ERROR_CODES.AUTHENTICATION_FAILED
-      case 404: return ERROR_CODES.DEVBOX_NOT_FOUND
-      case 408: return ERROR_CODES.CONNECTION_TIMEOUT
-      case 429: return 'TOO_MANY_REQUESTS'
-      case 500: return ERROR_CODES.INTERNAL_ERROR
-      case 502: return ERROR_CODES.SERVER_UNAVAILABLE
-      case 503: return 'SERVICE_UNAVAILABLE' as any
-      case 504: return ERROR_CODES.CONNECTION_TIMEOUT
-      default: return ERROR_CODES.INTERNAL_ERROR
+      case 401:
+        return ERROR_CODES.AUTHENTICATION_FAILED
+      case 403:
+        return ERROR_CODES.AUTHENTICATION_FAILED
+      case 404:
+        return ERROR_CODES.DEVBOX_NOT_FOUND
+      case 408:
+        return ERROR_CODES.CONNECTION_TIMEOUT
+      case 429:
+        return 'TOO_MANY_REQUESTS'
+      case 500:
+        return ERROR_CODES.INTERNAL_ERROR
+      case 502:
+        return ERROR_CODES.SERVER_UNAVAILABLE
+      case 503:
+        return 'SERVICE_UNAVAILABLE' as any
+      case 504:
+        return ERROR_CODES.CONNECTION_TIMEOUT
+      default:
+        return ERROR_CODES.INTERNAL_ERROR
     }
   }
 
-  get (url: string, options?: any): Promise<APIResponse> {
+  get(url: string, options?: any): Promise<APIResponse> {
     return this.request('GET', url, options)
   }
 
-  post (url: string, options?: any): Promise<APIResponse> {
+  post(url: string, options?: any): Promise<APIResponse> {
     return this.request('POST', url, options)
   }
 
-  put (url: string, options?: any): Promise<APIResponse> {
+  put(url: string, options?: any): Promise<APIResponse> {
     return this.request('PUT', url, options)
   }
 
-  delete (url: string, options?: any): Promise<APIResponse> {
+  delete(url: string, options?: any): Promise<APIResponse> {
     return this.request('DELETE', url, options)
   }
 }
@@ -162,11 +167,11 @@ export class DevboxAPI {
   private authenticator: KubeconfigAuthenticator
   private endpoints: APIEndpoints
 
-  constructor (config: APIClientConfig) {
+  constructor(config: APIClientConfig) {
     this.httpClient = new SimpleHTTPClient({
       baseUrl: config.baseUrl,
       timeout: config.timeout,
-      retries: config.retries
+      retries: config.retries,
     })
     this.authenticator = new KubeconfigAuthenticator(config.kubeconfig)
     this.endpoints = new APIEndpoints(config.baseUrl)
@@ -175,23 +180,20 @@ export class DevboxAPI {
   /**
    * Create a new Devbox instance
    */
-  async createDevbox (config: DevboxCreateConfig): Promise<DevboxInfo> {
+  async createDevbox(config: DevboxCreateConfig): Promise<DevboxInfo> {
     const request: DevboxCreateRequest = {
       name: config.name,
       runtime: config.runtime,
       resource: config.resource,
       ports: config.ports?.map(p => ({ number: p.number, protocol: p.protocol })),
-      env: config.env
+      env: config.env,
     }
 
     try {
-      const response = await this.httpClient.post(
-        this.endpoints.devboxCreate(),
-        {
-          headers: this.authenticator.getAuthHeaders(),
-          data: request
-        }
-      )
+      const response = await this.httpClient.post(this.endpoints.devboxCreate(), {
+        headers: this.authenticator.getAuthHeaders(),
+        data: request,
+      })
 
       return this.transformSSHInfoToDevboxInfo(response.data as DevboxSSHInfoResponse)
     } catch (error) {
@@ -202,14 +204,11 @@ export class DevboxAPI {
   /**
    * Get an existing Devbox instance
    */
-  async getDevbox (name: string): Promise<DevboxInfo> {
+  async getDevbox(name: string): Promise<DevboxInfo> {
     try {
-      const response = await this.httpClient.get(
-        this.endpoints.devboxGet(name),
-        {
-          headers: this.authenticator.getAuthHeaders()
-        }
-      )
+      const response = await this.httpClient.get(this.endpoints.devboxGet(name), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
 
       return this.transformSSHInfoToDevboxInfo(response.data as DevboxSSHInfoResponse)
     } catch (error) {
@@ -220,14 +219,11 @@ export class DevboxAPI {
   /**
    * List all Devbox instances
    */
-  async listDevboxes (): Promise<DevboxInfo[]> {
+  async listDevboxes(): Promise<DevboxInfo[]> {
     try {
-      const response = await this.httpClient.get(
-        this.endpoints.devboxList(),
-        {
-          headers: this.authenticator.getAuthHeaders()
-        }
-      )
+      const response = await this.httpClient.get(this.endpoints.devboxList(), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
 
       const listResponse = response.data as DevboxListResponse
       return listResponse.devboxes.map(this.transformSSHInfoToDevboxInfo)
@@ -239,14 +235,11 @@ export class DevboxAPI {
   /**
    * Start a Devbox instance
    */
-  async startDevbox (name: string): Promise<void> {
+  async startDevbox(name: string): Promise<void> {
     try {
-      await this.httpClient.post(
-        this.endpoints.devboxStart(name),
-        {
-          headers: this.authenticator.getAuthHeaders()
-        }
-      )
+      await this.httpClient.post(this.endpoints.devboxStart(name), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
     } catch (error) {
       throw this.handleAPIError(error, `Failed to start Devbox '${name}'`)
     }
@@ -255,14 +248,11 @@ export class DevboxAPI {
   /**
    * Pause a Devbox instance
    */
-  async pauseDevbox (name: string): Promise<void> {
+  async pauseDevbox(name: string): Promise<void> {
     try {
-      await this.httpClient.post(
-        this.endpoints.devboxPause(name),
-        {
-          headers: this.authenticator.getAuthHeaders()
-        }
-      )
+      await this.httpClient.post(this.endpoints.devboxPause(name), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
     } catch (error) {
       throw this.handleAPIError(error, `Failed to pause Devbox '${name}'`)
     }
@@ -271,14 +261,11 @@ export class DevboxAPI {
   /**
    * Restart a Devbox instance
    */
-  async restartDevbox (name: string): Promise<void> {
+  async restartDevbox(name: string): Promise<void> {
     try {
-      await this.httpClient.post(
-        this.endpoints.devboxRestart(name),
-        {
-          headers: this.authenticator.getAuthHeaders()
-        }
-      )
+      await this.httpClient.post(this.endpoints.devboxRestart(name), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
     } catch (error) {
       throw this.handleAPIError(error, `Failed to restart Devbox '${name}'`)
     }
@@ -287,14 +274,11 @@ export class DevboxAPI {
   /**
    * Delete a Devbox instance
    */
-  async deleteDevbox (name: string): Promise<void> {
+  async deleteDevbox(name: string): Promise<void> {
     try {
-      await this.httpClient.delete(
-        this.endpoints.devboxDelete(name),
-        {
-          headers: this.authenticator.getAuthHeaders()
-        }
-      )
+      await this.httpClient.delete(this.endpoints.devboxDelete(name), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
     } catch (error) {
       throw this.handleAPIError(error, `Failed to delete Devbox '${name}'`)
     }
@@ -303,21 +287,18 @@ export class DevboxAPI {
   /**
    * Get monitoring data for a Devbox instance
    */
-  async getMonitorData (name: string, timeRange?: TimeRange): Promise<MonitorData[]> {
+  async getMonitorData(name: string, timeRange?: TimeRange): Promise<MonitorData[]> {
     try {
       const params: MonitorRequest = {
         start: timeRange?.start || Date.now() - 3600000, // Default 1 hour ago
         end: timeRange?.end || Date.now(),
-        step: timeRange?.step
+        step: timeRange?.step,
       }
 
-      const response = await this.httpClient.get(
-        this.endpoints.devboxMonitor(name),
-        {
-          headers: this.authenticator.getAuthHeaders(),
-          params
-        }
-      )
+      const response = await this.httpClient.get(this.endpoints.devboxMonitor(name), {
+        headers: this.authenticator.getAuthHeaders(),
+        params,
+      })
 
       const dataPoints = response.data as MonitorDataPoint[]
       return dataPoints.map(this.transformMonitorData)
@@ -329,21 +310,18 @@ export class DevboxAPI {
   /**
    * Test authentication
    */
-  async testAuth (): Promise<boolean> {
+  async testAuth(): Promise<boolean> {
     try {
-      await this.httpClient.get(
-        this.endpoints.devboxList(),
-        {
-          headers: this.authenticator.getAuthHeaders()
-        }
-      )
+      await this.httpClient.get(this.endpoints.devboxList(), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
       return true
     } catch (error) {
       return false
     }
   }
 
-  private transformSSHInfoToDevboxInfo (sshInfo: DevboxSSHInfoResponse): DevboxInfo {
+  private transformSSHInfoToDevboxInfo(sshInfo: DevboxSSHInfoResponse): DevboxInfo {
     return {
       name: sshInfo.name,
       status: sshInfo.status,
@@ -355,31 +333,29 @@ export class DevboxAPI {
             host: sshInfo.ssh.host,
             port: sshInfo.ssh.port,
             user: sshInfo.ssh.user,
-            privateKey: sshInfo.ssh.privateKey
+            privateKey: sshInfo.ssh.privateKey,
           }
-        : undefined
+        : undefined,
     }
   }
 
-  private transformMonitorData (dataPoint: MonitorDataPoint): MonitorData {
+  private transformMonitorData(dataPoint: MonitorDataPoint): MonitorData {
     return {
       cpu: dataPoint.cpu,
       memory: dataPoint.memory,
       network: dataPoint.network,
       disk: dataPoint.disk,
-      timestamp: dataPoint.timestamp
+      timestamp: dataPoint.timestamp,
     }
   }
 
-  private handleAPIError (error: any, context: string): DevboxSDKError {
+  private handleAPIError(error: any, context: string): DevboxSDKError {
     if (error instanceof DevboxSDKError) {
       return error
     }
 
-    return new DevboxSDKError(
-      `${context}: ${error.message}`,
-      ERROR_CODES.INTERNAL_ERROR,
-      { originalError: error }
-    )
+    return new DevboxSDKError(`${context}: ${error.message}`, ERROR_CODES.INTERNAL_ERROR, {
+      originalError: error,
+    })
   }
 }

@@ -49,7 +49,7 @@ export function corsMiddleware(options?: {
     origin = '*',
     methods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     headers = ['Content-Type', 'Authorization', 'X-Trace-ID'],
-    credentials = true
+    credentials = true,
   } = options || {}
 
   return async (_req: Request, next: NextFunction): Promise<Response> => {
@@ -62,8 +62,8 @@ export function corsMiddleware(options?: {
           'Access-Control-Allow-Methods': methods.join(', '),
           'Access-Control-Allow-Headers': headers.join(', '),
           'Access-Control-Allow-Credentials': credentials.toString(),
-          'Access-Control-Max-Age': '86400'
-        }
+          'Access-Control-Max-Age': '86400',
+        },
       })
     }
 
@@ -80,7 +80,7 @@ export function corsMiddleware(options?: {
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
-      headers: newHeaders
+      headers: newHeaders,
     })
   }
 }
@@ -105,7 +105,7 @@ export function loggerMiddleware(logger?: Logger): Middleware {
       logger.info(`${method} ${path}`, {
         method,
         path,
-        query: Object.fromEntries(url.searchParams)
+        query: Object.fromEntries(url.searchParams),
       })
     }
 
@@ -118,7 +118,7 @@ export function loggerMiddleware(logger?: Logger): Middleware {
           method,
           path,
           status: response.status,
-          duration
+          duration,
         })
       }
 
@@ -129,7 +129,7 @@ export function loggerMiddleware(logger?: Logger): Middleware {
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
-        headers: newHeaders
+        headers: newHeaders,
       })
     } catch (error) {
       const duration = Date.now() - startTime
@@ -138,7 +138,7 @@ export function loggerMiddleware(logger?: Logger): Middleware {
         logger.error(`${method} ${path} ERROR`, error as Error, {
           method,
           path,
-          duration
+          duration,
         })
       }
 
@@ -165,14 +165,14 @@ export function errorHandlerMiddleware(): Middleware {
               message: error.message,
               details: error.details,
               suggestion: error.suggestion,
-              traceId: error.traceId
-            }
+              traceId: error.traceId,
+            },
           }),
           {
             status: error.httpStatus,
             headers: {
-              'Content-Type': 'application/json'
-            }
+              'Content-Type': 'application/json',
+            },
           }
         )
       }
@@ -185,15 +185,15 @@ export function errorHandlerMiddleware(): Middleware {
             code: ErrorCode.INTERNAL_ERROR,
             message,
             details: {
-              errorType: error?.constructor?.name || 'Error'
-            }
-          }
+              errorType: error?.constructor?.name || 'Error',
+            },
+          },
         }),
         {
           status: 500,
           headers: {
-            'Content-Type': 'application/json'
-          }
+            'Content-Type': 'application/json',
+          },
         }
       )
     }
@@ -204,16 +204,11 @@ export function errorHandlerMiddleware(): Middleware {
  * Request Timeout Middleware
  * Ensures requests complete within a specified time
  */
-export function timeoutMiddleware(timeoutMs: number = 30000): Middleware {
+export function timeoutMiddleware(timeoutMs = 30000): Middleware {
   return async (_req: Request, next: NextFunction): Promise<Response> => {
     const timeoutPromise = new Promise<Response>((_, reject) => {
       setTimeout(() => {
-        reject(
-          new DevboxError(
-            `Request timeout after ${timeoutMs}ms`,
-            ErrorCode.PROCESS_TIMEOUT
-          )
-        )
+        reject(new DevboxError(`Request timeout after ${timeoutMs}ms`, ErrorCode.PROCESS_TIMEOUT))
       }, timeoutMs)
     })
 

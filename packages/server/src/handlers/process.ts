@@ -3,11 +3,11 @@
  * Handles command execution and process management
  */
 
+import { DevboxError, ErrorCode } from '@sealos/devbox-shared/errors'
+import { type Logger, createLogger } from '@sealos/devbox-shared/logger'
+import { errorResponse, notFoundResponse, successResponse } from '../core/response-builder'
 import type { ProcessExecRequest, ProcessStatusResponse } from '../types/server'
 import { ProcessTracker } from '../utils/process-tracker'
-import { successResponse, errorResponse, notFoundResponse } from '../core/response-builder'
-import { DevboxError, ErrorCode } from '@sealos/devbox-shared/errors'
-import { createLogger, type Logger } from '@sealos/devbox-shared/logger'
 
 export class ProcessHandler {
   private processTracker: ProcessTracker
@@ -37,7 +37,7 @@ export class ProcessHandler {
         env,
         stdin: 'inherit',
         stdout: 'pipe',
-        stderr: 'pipe'
+        stderr: 'pipe',
       })
 
       // Add to process tracker
@@ -47,7 +47,7 @@ export class ProcessHandler {
         args,
         cwd,
         env,
-        timeout
+        timeout,
       })
 
       // Wait for process to complete
@@ -58,7 +58,7 @@ export class ProcessHandler {
           status: exitCode === 0 ? 'completed' : 'failed',
           exitCode,
           stdout: processInfo.stdout,
-          stderr: processInfo.stderr
+          stderr: processInfo.stderr,
         }
 
         return successResponse(response)
@@ -69,11 +69,9 @@ export class ProcessHandler {
     } catch (error) {
       this.logger.error('Process execution failed:', error as Error)
       return errorResponse(
-        new DevboxError(
-          'Process execution failed',
-          ErrorCode.INTERNAL_ERROR,
-          { cause: error as Error }
-        )
+        new DevboxError('Process execution failed', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
@@ -87,27 +85,29 @@ export class ProcessHandler {
 
       const response: ProcessStatusResponse = {
         pid: processInfo.pid,
-        status: processInfo.status === 'running' ? 'running' : 
-                processInfo.status === 'completed' ? 'completed' : 'failed',
+        status:
+          processInfo.status === 'running'
+            ? 'running'
+            : processInfo.status === 'completed'
+              ? 'completed'
+              : 'failed',
         exitCode: processInfo.exitCode,
         stdout: processInfo.stdout,
-        stderr: processInfo.stderr
+        stderr: processInfo.stderr,
       }
 
       return successResponse(response)
     } catch (error) {
       this.logger.error('Failed to get process status:', error as Error)
       return errorResponse(
-        new DevboxError(
-          'Failed to get process status',
-          ErrorCode.INTERNAL_ERROR,
-          { cause: error as Error }
-        )
+        new DevboxError('Failed to get process status', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
 
-  async handleKillProcess(processId: string, signal: string = 'SIGTERM'): Promise<Response> {
+  async handleKillProcess(processId: string, signal = 'SIGTERM'): Promise<Response> {
     try {
       const success = await this.processTracker.killProcess(processId, signal)
       if (!success) {
@@ -118,11 +118,9 @@ export class ProcessHandler {
     } catch (error) {
       this.logger.error('Failed to kill process:', error as Error)
       return errorResponse(
-        new DevboxError(
-          'Failed to kill process',
-          ErrorCode.INTERNAL_ERROR,
-          { cause: error as Error }
-        )
+        new DevboxError('Failed to kill process', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
@@ -131,7 +129,7 @@ export class ProcessHandler {
     try {
       const processes = this.processTracker.getAllProcesses()
       const stats = this.processTracker.getStats()
-      
+
       return successResponse({
         processes: processes.map(p => ({
           id: p.id,
@@ -140,18 +138,16 @@ export class ProcessHandler {
           status: p.status,
           startTime: p.startTime,
           endTime: p.endTime,
-          exitCode: p.exitCode
+          exitCode: p.exitCode,
         })),
-        stats
+        stats,
       })
     } catch (error) {
       this.logger.error('Failed to list processes:', error as Error)
       return errorResponse(
-        new DevboxError(
-          'Failed to list processes',
-          ErrorCode.INTERNAL_ERROR,
-          { cause: error as Error }
-        )
+        new DevboxError('Failed to list processes', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
@@ -167,11 +163,9 @@ export class ProcessHandler {
     } catch (error) {
       this.logger.error('Failed to get process logs:', error as Error)
       return errorResponse(
-        new DevboxError(
-          'Failed to get process logs',
-          ErrorCode.INTERNAL_ERROR,
-          { cause: error as Error }
-        )
+        new DevboxError('Failed to get process logs', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }

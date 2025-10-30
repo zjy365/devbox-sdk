@@ -3,8 +3,8 @@
  * Manages multiple persistent shell sessions
  */
 
+import { type Logger, createLogger } from '@sealos/devbox-shared/logger'
 import { Session } from './session'
-import { createLogger, type Logger } from '@sealos/devbox-shared/logger'
 
 export interface SessionConfig {
   workingDir?: string
@@ -39,20 +39,20 @@ export class SessionManager {
     const session = new Session(id, {
       workingDir: config.workingDir || '/workspace',
       env: config.env || {},
-      shell: config.shell || 'bash'
+      shell: config.shell || 'bash',
     })
 
     this.sessions.set(id, session)
-    
+
     this.logger.info(`Created session ${id}`)
-    
+
     return {
       id,
       status: 'active',
       workingDir: session.workingDir,
       env: session.env,
       createdAt: Date.now(),
-      lastActivity: Date.now()
+      lastActivity: Date.now(),
     }
   }
 
@@ -73,7 +73,7 @@ export class SessionManager {
       workingDir: session.workingDir,
       env: session.env,
       createdAt: session.createdAt,
-      lastActivity: session.lastActivity
+      lastActivity: session.lastActivity,
     }))
   }
 
@@ -88,7 +88,7 @@ export class SessionManager {
 
     await session.terminate()
     this.sessions.delete(id)
-    
+
     this.logger.info(`Terminated session ${id}`)
     return true
   }
@@ -115,7 +115,7 @@ export class SessionManager {
     const maxIdleTime = 30 * 60 * 1000 // 30 minutes
 
     for (const [id, session] of this.sessions) {
-      if (!session.isActive || (now - session.lastActivity) > maxIdleTime) {
+      if (!session.isActive || now - session.lastActivity > maxIdleTime) {
         this.logger.info(`Cleaning up inactive session ${id}`)
         session.terminate()
         this.sessions.delete(id)
@@ -142,13 +142,12 @@ export class SessionManager {
    */
   async cleanup(): Promise<void> {
     clearInterval(this.cleanupInterval)
-    
+
     for (const [id, session] of this.sessions) {
       await session.terminate()
     }
-    
+
     this.sessions.clear()
     this.logger.info('Cleaned up all sessions')
   }
 }
-

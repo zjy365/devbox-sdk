@@ -3,12 +3,15 @@
  * Handles file transfer strategies and optimizations
  */
 
-import type { FileMap, TransferResult, TransferProgress } from '../core/types'
+import type { FileMap, TransferProgress, TransferResult } from '../core/types'
 
 export interface TransferStrategy {
   name: string
   canHandle(files: FileMap): boolean
-  transfer(files: FileMap, onProgress?: (progress: TransferProgress) => void): Promise<TransferResult>
+  transfer(
+    files: FileMap,
+    onProgress?: (progress: TransferProgress) => void
+  ): Promise<TransferResult>
 }
 
 export class TransferEngine {

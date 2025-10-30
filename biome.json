@@ -34,7 +34,6 @@
     "rules": {
       "recommended": true,
       "a11y": {
-        "noAltText": "off",
         "noBlankTarget": "error",
         "noDistractingElements": "error",
         "noSvgWithoutTitle": "off",
@@ -64,10 +63,7 @@
       },
       "security": {
         "noDangerouslySetInnerHtml": "error",
-        "noEval": "error",
-        "noGlobalEval": "error",
-        "noNewFunction": "error",
-        "noUnsafeNegation": "error"
+        "noGlobalEval": "error"
       },
       "style": {
         "noArguments": "error",
@@ -92,14 +88,13 @@
         "noFallthroughSwitchClause": "error",
         "noFunctionAssign": "error",
         "noGlobalIsFinite": "error",
-        "noGlobalIsNaN": "error",
+        "noGlobalIsNan": "error",
         "noImplicitAnyLet": "error",
         "noImportAssign": "error",
         "noMisleadingCharacterClass": "error",
         "noPrototypeBuiltins": "error",
         "noRedeclare": "error",
-        "noShadowRestrictedNames": "error",
-        "noUnsafeNegation": "error"
+        "noShadowRestrictedNames": "error"
       }
     }
   },
@@ -114,12 +109,9 @@
       "bracketSameLine": false,
       "quoteStyle": "single",
       "attributePosition": "auto"
-    }
-  },
-  "typescript": {
-    "formatter": {
-      "quoteStyle": "single",
-      "semicolons": "asNeeded"
-    }
+    },
+    "globals": [
+      "Bun"
+    ]
   }
 }

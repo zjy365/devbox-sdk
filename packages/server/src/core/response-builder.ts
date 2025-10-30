@@ -13,12 +13,12 @@ import type { ZodError } from 'zod'
  * @param status - HTTP status code (default: 200)
  * @returns Response object
  */
-export function successResponse<T>(data: T, status: number = 200): Response {
+export function successResponse<T>(data: T, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      'Content-Type': 'application/json'
-    }
+      'Content-Type': 'application/json',
+    },
   })
 }
 
@@ -35,14 +35,14 @@ export function errorResponse(error: DevboxError): Response {
         message: error.message,
         details: error.details,
         suggestion: error.suggestion,
-        traceId: error.traceId
-      }
+        traceId: error.traceId,
+      },
     }),
     {
       status: error.httpStatus,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     }
   )
 }
@@ -64,14 +64,14 @@ export function notFoundResponse(
     JSON.stringify({
       error: {
         code,
-        message
-      }
+        message,
+      },
     }),
     {
       status: error.httpStatus,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     }
   )
 }
@@ -91,16 +91,16 @@ export function validationErrorResponse(errors: ZodError): Response {
           errors: errors.errors.map(err => ({
             path: err.path.join('.'),
             message: err.message,
-            code: err.code
-          }))
-        }
-      }
+            code: err.code,
+          })),
+        },
+      },
     }),
     {
       status: 400,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     }
   )
 }
@@ -110,19 +110,19 @@ export function validationErrorResponse(errors: ZodError): Response {
  * @param message - Error message
  * @returns Response object
  */
-export function unauthorizedResponse(message: string = 'Unauthorized'): Response {
+export function unauthorizedResponse(message = 'Unauthorized'): Response {
   return new Response(
     JSON.stringify({
       error: {
         code: ErrorCode.INVALID_TOKEN,
-        message
-      }
+        message,
+      },
     }),
     {
       status: 401,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     }
   )
 }
@@ -132,19 +132,19 @@ export function unauthorizedResponse(message: string = 'Unauthorized'): Response
  * @param message - Error message
  * @returns Response object
  */
-export function forbiddenResponse(message: string = 'Forbidden'): Response {
+export function forbiddenResponse(message = 'Forbidden'): Response {
   return new Response(
     JSON.stringify({
       error: {
         code: ErrorCode.PERMISSION_DENIED,
-        message
-      }
+        message,
+      },
     }),
     {
       status: 403,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     }
   )
 }
@@ -156,7 +156,7 @@ export function forbiddenResponse(message: string = 'Forbidden'): Response {
  * @returns Response object
  */
 export function internalErrorResponse(
-  message: string = 'Internal server error',
+  message = 'Internal server error',
   details?: unknown
 ): Response {
   return new Response(
@@ -164,14 +164,14 @@ export function internalErrorResponse(
       error: {
         code: ErrorCode.INTERNAL_ERROR,
         message,
-        ...(details ? { details } : {})
-      }
+        ...(details ? { details } : {}),
+      },
     }),
     {
       status: 500,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     }
   )
 }
@@ -191,7 +191,7 @@ export function streamResponse(
   }
 ): Response {
   const headers: Record<string, string> = {
-    'Content-Type': options?.contentType || 'application/octet-stream'
+    'Content-Type': options?.contentType || 'application/octet-stream',
   }
 
   if (options?.contentLength) {

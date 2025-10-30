@@ -22,7 +22,7 @@ export type {
   BatchUploadResponse,
   FileWatchEventType,
   FileWatchEvent,
-  FileTransferOptions
+  FileTransferOptions,
 } from './file'
 
 // Process execution types
@@ -39,7 +39,7 @@ export type {
   KillProcessRequest,
   KillProcessResponse,
   ProcessLogsRequest,
-  ProcessLogsResponse
+  ProcessLogsResponse,
 } from './process'
 
 // Session management types
@@ -54,7 +54,7 @@ export type {
   UpdateSessionEnvResponse,
   TerminateSessionRequest,
   TerminateSessionResponse,
-  ListSessionsResponse
+  ListSessionsResponse,
 } from './session'
 
 // Devbox lifecycle types
@@ -77,7 +77,7 @@ export type {
   StopDevboxRequest,
   StopDevboxResponse,
   RestartDevboxRequest,
-  RestartDevboxResponse
+  RestartDevboxResponse,
 } from './devbox'
 
 // Server types

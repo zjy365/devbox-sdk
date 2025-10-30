@@ -3,54 +3,54 @@
  * Main HTTP server implementation using Bun with Router + DI Container architecture
  */
 
-import type { 
-  ServerConfig, 
-  ReadFileRequest, 
-  WriteFileRequest, 
-  BatchUploadRequest, 
-  ProcessExecRequest,
-  CreateSessionRequest,
-  UpdateSessionEnvRequest,
-  SessionExecRequest,
-  SessionChangeDirRequest
-} from './types/server'
-import { ServiceContainer } from './core/container'
-import { Router } from './core/router'
-import { 
-  corsMiddleware, 
-  loggerMiddleware, 
-  errorHandlerMiddleware,
-  executeMiddlewares 
-} from './core/middleware'
-import { 
-  validateRequestBody, 
-  validateQueryParams, 
-  validatePathParams 
-} from './core/validation-middleware'
+import { type Logger, createLogger } from '@sealos/devbox-shared/logger'
 import { z } from 'zod'
+import { ServiceContainer } from './core/container'
 import {
-  WriteFileRequestSchema,
-  ReadFileRequestSchema,
+  corsMiddleware,
+  errorHandlerMiddleware,
+  executeMiddlewares,
+  loggerMiddleware,
+} from './core/middleware'
+import { Router } from './core/router'
+import {
+  validatePathParams,
+  validateQueryParams,
+  validateRequestBody,
+} from './core/validation-middleware'
+import { FileHandler } from './handlers/files'
+import { HealthHandler } from './handlers/health'
+import { ProcessHandler } from './handlers/process'
+import { SessionHandler } from './handlers/session'
+import { WebSocketHandler } from './handlers/websocket'
+import { SessionManager } from './session/manager'
+import type {
+  BatchUploadRequest,
+  CreateSessionRequest,
+  ProcessExecRequest,
+  ReadFileRequest,
+  ServerConfig,
+  SessionChangeDirRequest,
+  SessionExecRequest,
+  UpdateSessionEnvRequest,
+  WriteFileRequest,
+} from './types/server'
+import { FileWatcher } from './utils/file-watcher'
+import { ProcessTracker } from './utils/process-tracker'
+import {
   BatchUploadRequestSchema,
+  CreateSessionRequestSchema,
   ProcessExecRequestSchema,
   ProcessKillRequestSchema,
   ProcessLogsQuerySchema,
-  CreateSessionRequestSchema,
-  UpdateSessionEnvRequestSchema,
-  TerminateSessionRequestSchema,
-  SessionExecRequestSchema,
+  ReadFileRequestSchema,
   SessionChangeDirRequestSchema,
-  SessionQuerySchema
+  SessionExecRequestSchema,
+  SessionQuerySchema,
+  TerminateSessionRequestSchema,
+  UpdateSessionEnvRequestSchema,
+  WriteFileRequestSchema,
 } from './validators/schemas'
-import { FileHandler } from './handlers/files'
-import { ProcessHandler } from './handlers/process'
-import { SessionHandler } from './handlers/session'
-import { HealthHandler } from './handlers/health'
-import { WebSocketHandler } from './handlers/websocket'
-import { FileWatcher } from './utils/file-watcher'
-import { ProcessTracker } from './utils/process-tracker'
-import { SessionManager } from './session/manager'
-import { createLogger, type Logger } from '@sealos/devbox-shared/logger'
 
 export class DevboxHTTPServer {
   private config: ServerConfig
@@ -63,7 +63,7 @@ export class DevboxHTTPServer {
     this.container = new ServiceContainer()
     this.router = new Router(this.container)
     this.middlewares = []
-    
+
     this.setupServices()
     this.setupMiddlewares()
     this.setupRoutes()
@@ -75,7 +75,7 @@ export class DevboxHTTPServer {
     this.container.register('fileWatcher', () => new FileWatcher())
     this.container.register('processTracker', () => new ProcessTracker())
     this.container.register('sessionManager', () => new SessionManager())
-    
+
     // Handlers
     this.container.register('fileHandler', () => {
       const fileWatcher = this.container.get<FileWatcher>('fileWatcher')
@@ -107,7 +107,7 @@ export class DevboxHTTPServer {
     this.middlewares = [
       loggerMiddleware(this.container.get<Logger>('logger')),
       this.config.enableCors ? corsMiddleware() : null,
-      errorHandlerMiddleware()
+      errorHandlerMiddleware(),
     ].filter(Boolean)
   }
 
@@ -118,20 +118,20 @@ export class DevboxHTTPServer {
     const healthHandler = this.container.get<HealthHandler>('healthHandler')
 
     // Health
-    this.router.register('GET', '/health', async (req) => {
+    this.router.register('GET', '/health', async req => {
       return await healthHandler.handleHealth()
     })
 
-    this.router.register('GET', '/metrics', async (req) => {
+    this.router.register('GET', '/metrics', async req => {
       return await healthHandler.handleMetrics()
     })
 
-    this.router.register('GET', '/health/detailed', async (req) => {
+    this.router.register('GET', '/health/detailed', async req => {
       return await healthHandler.getDetailedHealth()
     })
 
     // Files
-    this.router.register('POST', '/files/read', async (req) => {
+    this.router.register('POST', '/files/read', async req => {
       const validation = await validateRequestBody(req, ReadFileRequestSchema)
       if (!validation.success) {
         return validation.response
@@ -139,7 +139,7 @@ export class DevboxHTTPServer {
       return await fileHandler.handleReadFile(validation.data)
     })
 
-    this.router.register('POST', '/files/write', async (req) => {
+    this.router.register('POST', '/files/write', async req => {
       const validation = await validateRequestBody(req, WriteFileRequestSchema)
       if (!validation.success) {
         return validation.response
@@ -147,7 +147,7 @@ export class DevboxHTTPServer {
       return await fileHandler.handleWriteFile(validation.data)
     })
 
-    this.router.register('POST', '/files/delete', async (req) => {
+    this.router.register('POST', '/files/delete', async req => {
       const validation = await validateRequestBody(req, z.object({ path: z.string().min(1) }))
       if (!validation.success) {
         return validation.response
@@ -155,7 +155,7 @@ export class DevboxHTTPServer {
       return await fileHandler.handleDeleteFile(validation.data.path)
     })
 
-    this.router.register('POST', '/files/batch-upload', async (req) => {
+    this.router.register('POST', '/files/batch-upload', async req => {
       const validation = await validateRequestBody(req, BatchUploadRequestSchema)
       if (!validation.success) {
         return validation.response
@@ -164,7 +164,7 @@ export class DevboxHTTPServer {
     })
 
     // Processes
-    this.router.register('POST', '/process/exec', async (req) => {
+    this.router.register('POST', '/process/exec', async req => {
       const validation = await validateRequestBody(req, ProcessExecRequestSchema)
       if (!validation.success) {
         return validation.response
@@ -180,7 +180,7 @@ export class DevboxHTTPServer {
       return await processHandler.handleStatus(validation.data.id)
     })
 
-    this.router.register('POST', '/process/kill', async (req) => {
+    this.router.register('POST', '/process/kill', async req => {
       const validation = await validateRequestBody(req, ProcessKillRequestSchema)
       if (!validation.success) {
         return validation.response
@@ -188,7 +188,7 @@ export class DevboxHTTPServer {
       return await processHandler.handleKillProcess(validation.data.id, validation.data.signal)
     })
 
-    this.router.register('GET', '/process/list', async (req) => {
+    this.router.register('GET', '/process/list', async req => {
       return await processHandler.handleListProcesses()
     })
 
@@ -197,17 +197,20 @@ export class DevboxHTTPServer {
       if (!pathValidation.success) {
         return pathValidation.response
       }
-      
+
       const queryValidation = validateQueryParams(req, ProcessLogsQuerySchema)
       if (!queryValidation.success) {
         return queryValidation.response
       }
-      
-      return await processHandler.handleGetProcessLogs(pathValidation.data.id, queryValidation.data.tail)
+
+      return await processHandler.handleGetProcessLogs(
+        pathValidation.data.id,
+        queryValidation.data.tail
+      )
     })
 
     // Sessions
-    this.router.register('POST', '/sessions/create', async (req) => {
+    this.router.register('POST', '/sessions/create', async req => {
       const validation = await validateRequestBody(req, CreateSessionRequestSchema)
       if (!validation.success) {
         return validation.response
@@ -228,15 +231,15 @@ export class DevboxHTTPServer {
       if (!pathValidation.success) {
         return pathValidation.response
       }
-      
+
       const bodyValidation = await validateRequestBody(req, z.object({ env: z.record(z.string()) }))
       if (!bodyValidation.success) {
         return bodyValidation.response
       }
-      
+
       const request: UpdateSessionEnvRequest = {
         id: pathValidation.data.id,
-        env: bodyValidation.data.env
+        env: bodyValidation.data.env,
       }
       return await sessionHandler.handleUpdateSessionEnv(request)
     })
@@ -249,7 +252,7 @@ export class DevboxHTTPServer {
       return await sessionHandler.handleTerminateSession({ id: validation.data.id })
     })
 
-    this.router.register('GET', '/sessions', async (req) => {
+    this.router.register('GET', '/sessions', async req => {
       return await sessionHandler.handleListSessions()
     })
 
@@ -258,13 +261,19 @@ export class DevboxHTTPServer {
       if (!pathValidation.success) {
         return pathValidation.response
       }
-      
-      const bodyValidation = await validateRequestBody(req, z.object({ command: z.string().min(1) }))
+
+      const bodyValidation = await validateRequestBody(
+        req,
+        z.object({ command: z.string().min(1) })
+      )
       if (!bodyValidation.success) {
         return bodyValidation.response
       }
-      
-      return await sessionHandler.handleExecuteCommand(pathValidation.data.id, bodyValidation.data.command)
+
+      return await sessionHandler.handleExecuteCommand(
+        pathValidation.data.id,
+        bodyValidation.data.command
+      )
     })
 
     this.router.register('POST', '/sessions/:id/cd', async (req, params) => {
@@ -272,17 +281,20 @@ export class DevboxHTTPServer {
       if (!pathValidation.success) {
         return pathValidation.response
       }
-      
+
       const bodyValidation = await validateRequestBody(req, z.object({ path: z.string().min(1) }))
       if (!bodyValidation.success) {
         return bodyValidation.response
       }
-      
-      return await sessionHandler.handleChangeDirectory(pathValidation.data.id, bodyValidation.data.path)
+
+      return await sessionHandler.handleChangeDirectory(
+        pathValidation.data.id,
+        bodyValidation.data.path
+      )
     })
 
     // WebSocket endpoint
-    this.router.register('GET', '/ws', async (req) => {
+    this.router.register('GET', '/ws', async req => {
       return new Response('WebSocket endpoint - please use WebSocket connection', { status: 426 })
     })
   }
@@ -298,26 +310,26 @@ export class DevboxHTTPServer {
 
   async start(): Promise<void> {
     const webSocketHandler = this.container.get<WebSocketHandler>('webSocketHandler')
-    
+
     const server = Bun.serve({
       port: this.config.port,
       hostname: this.config.host,
       fetch: this.handleRequest.bind(this),
       websocket: {
-        open: (ws) => {
+        open: ws => {
           webSocketHandler.handleConnection(ws)
         },
         message: (ws, message) => {
           // WebSocket messages are handled by the handler
         },
-        close: (ws) => {
+        close: ws => {
           // Cleanup is handled by the handler
-        }
+        },
       },
       error(error) {
         console.error('Server error:', error)
         return new Response('Internal Server Error', { status: 500 })
-      }
+      },
     })
 
     const logger = this.container.get<Logger>('logger')
@@ -334,11 +346,14 @@ export class DevboxHTTPServer {
 
   private async handleRequest(request: Request): Promise<Response> {
     const url = new URL(request.url)
-    
+
     // Match route
     const match = this.router.match(request.method, url.pathname)
     if (!match) {
-      return new Response('Devbox Server - Available endpoints: /health, /files/*, /process/*, /ws (WebSocket)', { status: 404 })
+      return new Response(
+        'Devbox Server - Available endpoints: /health, /files/*, /process/*, /ws (WebSocket)',
+        { status: 404 }
+      )
     }
 
     // Execute middlewares + handler

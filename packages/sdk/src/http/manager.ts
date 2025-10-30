@@ -2,22 +2,22 @@
  * Connection manager for handling HTTP connections to Devbox containers
  */
 
-import { ConnectionPool } from './pool'
-import { DevboxSDKError, ERROR_CODES } from '../utils/error'
 import type { DevboxSDKConfig } from '../core/types'
+import { DevboxSDKError, ERROR_CODES } from '../utils/error'
+import { ConnectionPool } from './pool'
 
 export class ConnectionManager {
   private pool: ConnectionPool
   private apiClient: any // This would be injected from the SDK
 
-  constructor (config: DevboxSDKConfig) {
+  constructor(config: DevboxSDKConfig) {
     this.pool = new ConnectionPool(config.connectionPool)
   }
 
   /**
    * Set the API client for resolving server URLs
    */
-  setAPIClient (apiClient: any): void {
+  setAPIClient(apiClient: any): void {
     this.apiClient = apiClient
   }
 
@@ -46,7 +46,7 @@ export class ConnectionManager {
   /**
    * Get the server URL for a Devbox instance
    */
-  async getServerUrl (devboxName: string): Promise<string> {
+  async getServerUrl(devboxName: string): Promise<string> {
     if (!this.apiClient) {
       throw new DevboxSDKError(
         'API client not set. Call setAPIClient() first.',
@@ -79,12 +79,14 @@ export class ConnectionManager {
   /**
    * Handle connection errors and cleanup
    */
-  private async handleConnectionError (client: any, error: any): Promise<void> {
+  private async handleConnectionError(client: any, error: any): Promise<void> {
     // If it's a connection-related error, we might need to clean up the connection
-    if (error instanceof DevboxSDKError &&
-        (error.code === ERROR_CODES.CONNECTION_FAILED ||
-         error.code === ERROR_CODES.CONNECTION_TIMEOUT ||
-         error.code === ERROR_CODES.SERVER_UNAVAILABLE)) {
+    if (
+      error instanceof DevboxSDKError &&
+      (error.code === ERROR_CODES.CONNECTION_FAILED ||
+        error.code === ERROR_CODES.CONNECTION_TIMEOUT ||
+        error.code === ERROR_CODES.SERVER_UNAVAILABLE)
+    ) {
       // The connection pool will handle cleanup automatically
       // through health checks and connection lifecycle management
     }
@@ -93,21 +95,21 @@ export class ConnectionManager {
   /**
    * Close all connections and cleanup resources
    */
-  async closeAllConnections (): Promise<void> {
+  async closeAllConnections(): Promise<void> {
     await this.pool.closeAllConnections()
   }
 
   /**
    * Get connection pool statistics
    */
-  getConnectionStats (): any {
+  getConnectionStats(): any {
     return this.pool.getStats()
   }
 
   /**
    * Perform health check on a specific Devbox
    */
-  async checkDevboxHealth (devboxName: string): Promise<boolean> {
+  async checkDevboxHealth(devboxName: string): Promise<boolean> {
     try {
       const serverUrl = await this.getServerUrl(devboxName)
       const client = await this.pool.getConnection(devboxName, serverUrl)

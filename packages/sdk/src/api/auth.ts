@@ -8,7 +8,7 @@ import type { KubeconfigAuth } from './types'
 export class KubeconfigAuthenticator {
   private auth: KubeconfigAuth
 
-  constructor (kubeconfig: string) {
+  constructor(kubeconfig: string) {
     this.auth = { kubeconfig }
     this.validateKubeconfig()
   }
@@ -16,17 +16,17 @@ export class KubeconfigAuthenticator {
   /**
    * Get authorization headers for API requests
    */
-  getAuthHeaders (): Record<string, string> {
+  getAuthHeaders(): Record<string, string> {
     return {
       Authorization: `Bearer ${this.auth.kubeconfig}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     }
   }
 
   /**
    * Validate the kubeconfig format and content
    */
-  private validateKubeconfig (): void {
+  private validateKubeconfig(): void {
     if (!this.auth.kubeconfig || typeof this.auth.kubeconfig !== 'string') {
       throw new DevboxSDKError(
         'kubeconfig is required and must be a string',
@@ -54,17 +54,18 @@ export class KubeconfigAuthenticator {
   /**
    * Test the authentication with a simple API call
    */
-  async testAuthentication (apiClient: any): Promise<boolean> {
+  async testAuthentication(apiClient: any): Promise<boolean> {
     try {
       // Try to list devboxes as a test
       await apiClient.get('/api/v1/devbox', {
-        headers: this.getAuthHeaders()
+        headers: this.getAuthHeaders(),
       })
       return true
     } catch (error) {
-      if (error instanceof DevboxSDKError &&
-          (error.code === ERROR_CODES.AUTHENTICATION_FAILED ||
-           error.code === 'UNAUTHORIZED')) {
+      if (
+        error instanceof DevboxSDKError &&
+        (error.code === ERROR_CODES.AUTHENTICATION_FAILED || error.code === 'UNAUTHORIZED')
+      ) {
         throw new DevboxSDKError(
           'Authentication failed: Invalid or expired kubeconfig',
           ERROR_CODES.AUTHENTICATION_FAILED,
@@ -79,14 +80,14 @@ export class KubeconfigAuthenticator {
   /**
    * Get the raw kubeconfig content
    */
-  getKubeconfig (): string {
+  getKubeconfig(): string {
     return this.auth.kubeconfig
   }
 
   /**
    * Update the kubeconfig
    */
-  updateKubeconfig (kubeconfig: string): void {
+  updateKubeconfig(kubeconfig: string): void {
     this.auth.kubeconfig = kubeconfig
     this.validateKubeconfig()
   }

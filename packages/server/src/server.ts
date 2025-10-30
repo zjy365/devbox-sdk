@@ -49,9 +49,6 @@ export class DevboxHTTPServer {
         },
         close: (ws) => {
           // Cleanup is handled by the handler
-        },
-        error: (ws, error) => {
-          console.error('WebSocket error:', error)
         }
       },
       error(error) {

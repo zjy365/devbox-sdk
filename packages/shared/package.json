@@ -5,34 +5,16 @@
   "type": "module",
   "exports": {
     "./errors": {
-      "import": {
-        "types": "./dist/errors/index.d.ts",
-        "default": "./dist/errors/index.js"
-      },
-      "require": {
-        "types": "./dist/errors/index.d.cts",
-        "default": "./dist/errors/index.cjs"
-      }
+      "import": "./src/errors/index.ts",
+      "types": "./src/errors/index.ts"
     },
     "./types": {
-      "import": {
-        "types": "./dist/types/index.d.ts",
-        "default": "./dist/types/index.js"
-      },
-      "require": {
-        "types": "./dist/types/index.d.cts",
-        "default": "./dist/types/index.cjs"
-      }
+      "import": "./src/types/index.ts",
+      "types": "./src/types/index.ts"
     },
     "./logger": {
-      "import": {
-        "types": "./dist/logger/index.d.ts",
-        "default": "./dist/logger/index.js"
-      },
-      "require": {
-        "types": "./dist/logger/index.d.cts",
-        "default": "./dist/logger/index.cjs"
-      }
+      "import": "./src/logger/index.ts",
+      "types": "./src/logger/index.ts"
     }
   },
   "engines": {

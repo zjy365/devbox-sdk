@@ -49,7 +49,7 @@ export interface GetSessionRequest {
 /**
  * Get session response
  */
-export interface GetSessionResponse extends SessionInfo {
+export interface GetSessionResponse extends Omit<SessionInfo, 'createdAt' | 'lastActivityAt'> {
   createdAt: string
   lastActivityAt: string
 }

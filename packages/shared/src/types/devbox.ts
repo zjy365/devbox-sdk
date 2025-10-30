@@ -103,7 +103,7 @@ export interface GetDevboxRequest {
 /**
  * Get devbox response
  */
-export interface GetDevboxResponse extends DevboxInfo {
+export interface GetDevboxResponse extends Omit<DevboxInfo, 'createdAt' | 'updatedAt'> {
   createdAt: string
   updatedAt: string
 }

@@ -73,7 +73,7 @@ export enum ErrorCode {
   // ============================================
   INTERNAL_ERROR = 'INTERNAL_ERROR',
   UNKNOWN_ERROR = 'UNKNOWN_ERROR',
-  NOT_IMPLEMENTED = 'NOT_IMPLEMENTED'
+  NOT_IMPLEMENTED = 'NOT_IMPLEMENTED',
 }
 
 /**
@@ -134,5 +134,5 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   // General Errors
   [ErrorCode.INTERNAL_ERROR]: 500,
   [ErrorCode.UNKNOWN_ERROR]: 500,
-  [ErrorCode.NOT_IMPLEMENTED]: 501
+  [ErrorCode.NOT_IMPLEMENTED]: 501,
 }

@@ -4,7 +4,7 @@
  */
 
 import type { FileChangeEvent } from '../types/server'
-import { FileWatcher } from '../utils/file-watcher'
+import type { FileWatcher } from '../utils/file-watcher'
 
 export class WebSocketHandler {
   private connections = new Set<any>() // Use any for Bun WebSocket type
@@ -27,7 +27,7 @@ export class WebSocketHandler {
       console.log('WebSocket connection closed')
     }
 
-    ws.onerror = (error) => {
+    ws.onerror = (error: ErrorEvent) => {
       console.error('WebSocket error:', error)
       this.connections.delete(ws)
     }
@@ -78,7 +78,7 @@ export class WebSocketHandler {
     this.fileWatcher.on('change', (event: FileChangeEvent) => {
       this.broadcastToAll({
         type: 'file-change',
-        event
+        event,
       })
     })
   }
@@ -103,11 +103,14 @@ export class WebSocketHandler {
 
   private sendSuccess(ws: any, data: any): void {
     try {
-      if (ws.readyState === 1) { // OPEN
-        ws.send(JSON.stringify({
-          success: true,
-          ...data
-        }))
+      if (ws.readyState === 1) {
+        // OPEN
+        ws.send(
+          JSON.stringify({
+            success: true,
+            ...data,
+          })
+        )
       }
     } catch (error) {
       console.error('Failed to send WebSocket message:', error)
@@ -116,11 +119,14 @@ export class WebSocketHandler {
 
   private sendError(ws: any, message: string): void {
     try {
-      if (ws.readyState === 1) { // OPEN
-        ws.send(JSON.stringify({
-          success: false,
-          error: message
-        }))
+      if (ws.readyState === 1) {
+        // OPEN
+        ws.send(
+          JSON.stringify({
+            success: false,
+            error: message,
+          })
+        )
       }
     } catch (error) {
       console.error('Failed to send WebSocket message:', error)

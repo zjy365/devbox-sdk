@@ -4,9 +4,14 @@
  */
 
 import { resolve } from 'path'
-import type { WriteFileRequest, ReadFileRequest, BatchUploadRequest, FileOperationResult } from '../types/server'
-import { validatePath, getContentType } from '../utils/path-validator'
-import { FileWatcher } from '../utils/file-watcher'
+import type {
+  BatchUploadRequest,
+  FileOperationResult,
+  ReadFileRequest,
+  WriteFileRequest,
+} from '../types/server'
+import type { FileWatcher } from '../utils/file-watcher'
+import { getContentType, validatePath } from '../utils/path-validator'
 
 export class FileHandler {
   private workspacePath: string
@@ -41,14 +46,14 @@ export class FileHandler {
       this.fileWatcher.emit('change', {
         type: 'change',
         path: request.path,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       })
 
       return Response.json({
         success: true,
         path: request.path,
         size: content.length,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
     } catch (error) {
       return this.createErrorResponse(error instanceof Error ? error.message : 'Unknown error', 500)
@@ -72,16 +77,16 @@ export class FileHandler {
         return new Response(content, {
           headers: {
             'Content-Type': getContentType(fullPath),
-            'Content-Length': content.byteLength.toString()
-          }
+            'Content-Length': content.byteLength.toString(),
+          },
         })
       } else {
         const content = await file.text()
         return new Response(content, {
           headers: {
             'Content-Type': getContentType(fullPath),
-            'Content-Length': content.length.toString()
-          }
+            'Content-Length': content.length.toString(),
+          },
         })
       }
     } catch (error) {
@@ -107,20 +112,20 @@ export class FileHandler {
         results.push({
           path: file.path,
           success: true,
-          size: content.length
+          size: content.length,
         })
 
         // Trigger file watcher event
         this.fileWatcher.emit('change', {
           type: 'change',
           path: file.path,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         })
       } catch (error) {
         results.push({
           path: file.path,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         })
       }
     }
@@ -129,7 +134,7 @@ export class FileHandler {
       success: true,
       results,
       totalFiles: request.files.length,
-      successCount: results.filter(r => r.success).length
+      successCount: results.filter(r => r.success).length,
     })
   }
 
@@ -144,13 +149,13 @@ export class FileHandler {
       this.fileWatcher.emit('change', {
         type: 'unlink',
         path,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       })
 
       return Response.json({
         success: true,
         path,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
     } catch (error) {
       return this.createErrorResponse(error instanceof Error ? error.message : 'Unknown error', 500)
@@ -164,10 +169,13 @@ export class FileHandler {
   }
 
   private createErrorResponse(message: string, status: number): Response {
-    return Response.json({
-      success: false,
-      error: message,
-      timestamp: new Date().toISOString()
-    }, { status })
+    return Response.json(
+      {
+        success: false,
+        error: message,
+        timestamp: new Date().toISOString(),
+      },
+      { status }
+    )
   }
 }

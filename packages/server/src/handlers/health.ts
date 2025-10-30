@@ -3,10 +3,10 @@
  * Handles health checks and server metrics
  */
 
-import { successResponse, errorResponse } from '../core/response-builder'
 import { DevboxError, ErrorCode } from '@sealos/devbox-shared/errors'
-import { SessionManager } from '../session/manager'
-import { createLogger, type Logger } from '@sealos/devbox-shared/logger'
+import { type Logger, createLogger } from '@sealos/devbox-shared/logger'
+import { errorResponse, successResponse } from '../core/response-builder'
+import type { SessionManager } from '../session/manager'
 
 export interface ServerMetrics {
   uptime: number
@@ -62,18 +62,14 @@ export class HealthHandler {
         timestamp: new Date().toISOString(),
         version: '1.0.0',
         uptime: process.uptime(),
-        checks
+        checks,
       }
 
       return successResponse(healthStatus)
     } catch (error) {
       this.logger.error('Health check failed:', error as Error)
       return errorResponse(
-        new DevboxError(
-          'Health check failed',
-          ErrorCode.INTERNAL_ERROR,
-          { cause: error as Error }
-        )
+        new DevboxError('Health check failed', ErrorCode.INTERNAL_ERROR, { cause: error as Error })
       )
     }
   }
@@ -88,11 +84,9 @@ export class HealthHandler {
     } catch (error) {
       this.logger.error('Failed to collect metrics:', error as Error)
       return errorResponse(
-        new DevboxError(
-          'Failed to collect metrics',
-          ErrorCode.INTERNAL_ERROR,
-          { cause: error as Error }
-        )
+        new DevboxError('Failed to collect metrics', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
@@ -108,7 +102,7 @@ export class HealthHandler {
     const checks = {
       filesystem: false,
       sessions: false,
-      memory: false
+      memory: false,
     }
 
     try {
@@ -153,17 +147,17 @@ export class HealthHandler {
       memory: {
         used: memUsage.heapUsed,
         total: memUsage.heapTotal,
-        percentage: (memUsage.heapUsed / memUsage.heapTotal) * 100
+        percentage: (memUsage.heapUsed / memUsage.heapTotal) * 100,
       },
       sessions: {
         total: sessions.length,
-        active: activeSessions.length
+        active: activeSessions.length,
       },
       processes: {
         total: 0, // TODO: Implement process tracking
-        running: 0
+        running: 0,
       },
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }
   }
 
@@ -187,19 +181,17 @@ export class HealthHandler {
           id: s.id,
           status: s.status,
           workingDir: s.workingDir,
-          lastActivity: s.lastActivity
-        }))
+          lastActivity: s.lastActivity,
+        })),
       }
 
       return successResponse(detailedHealth)
     } catch (error) {
       this.logger.error('Failed to get detailed health:', error as Error)
       return errorResponse(
-        new DevboxError(
-          'Failed to get detailed health',
-          ErrorCode.INTERNAL_ERROR,
-          { cause: error as Error }
-        )
+        new DevboxError('Failed to get detailed health', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }

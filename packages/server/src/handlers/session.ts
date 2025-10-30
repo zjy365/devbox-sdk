@@ -3,14 +3,14 @@
  * Handles persistent shell session operations
  */
 
-import { SessionManager } from '../session/manager'
-import { successResponse, errorResponse, notFoundResponse } from '../core/response-builder'
 import { DevboxError, ErrorCode } from '@sealos/devbox-shared/errors'
-import type { 
-  CreateSessionRequest, 
-  UpdateSessionEnvRequest, 
+import { errorResponse, notFoundResponse, successResponse } from '../core/response-builder'
+import type { SessionManager } from '../session/manager'
+import type {
+  CreateSessionRequest,
+  SessionInfo,
   TerminateSessionRequest,
-  SessionInfo 
+  UpdateSessionEnvRequest,
 } from '../types/server'
 
 export class SessionHandler {
@@ -28,17 +28,15 @@ export class SessionHandler {
       const sessionInfo = await this.sessionManager.createSession({
         workingDir: request.workingDir,
         env: request.env,
-        shell: request.shell
+        shell: request.shell,
       })
 
       return successResponse(sessionInfo, 201)
     } catch (error) {
       return errorResponse(
-        new DevboxError(
-          'Failed to create session',
-          ErrorCode.INTERNAL_ERROR,
-          { originalError: error }
-        )
+        new DevboxError('Failed to create session', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
@@ -57,11 +55,9 @@ export class SessionHandler {
       return successResponse(sessionInfo)
     } catch (error) {
       return errorResponse(
-        new DevboxError(
-          'Failed to get session',
-          ErrorCode.INTERNAL_ERROR,
-          { originalError: error }
-        )
+        new DevboxError('Failed to get session', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
@@ -79,11 +75,9 @@ export class SessionHandler {
       return successResponse({ success: true })
     } catch (error) {
       return errorResponse(
-        new DevboxError(
-          'Failed to update session environment',
-          ErrorCode.INTERNAL_ERROR,
-          { originalError: error }
-        )
+        new DevboxError('Failed to update session environment', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
@@ -101,11 +95,9 @@ export class SessionHandler {
       return successResponse({ success: true })
     } catch (error) {
       return errorResponse(
-        new DevboxError(
-          'Failed to terminate session',
-          ErrorCode.INTERNAL_ERROR,
-          { originalError: error }
-        )
+        new DevboxError('Failed to terminate session', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
@@ -119,11 +111,9 @@ export class SessionHandler {
       return successResponse({ sessions })
     } catch (error) {
       return errorResponse(
-        new DevboxError(
-          'Failed to list sessions',
-          ErrorCode.INTERNAL_ERROR,
-          { originalError: error }
-        )
+        new DevboxError('Failed to list sessions', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
@@ -142,11 +132,9 @@ export class SessionHandler {
       return successResponse(result)
     } catch (error) {
       return errorResponse(
-        new DevboxError(
-          'Failed to execute command in session',
-          ErrorCode.INTERNAL_ERROR,
-          { originalError: error }
-        )
+        new DevboxError('Failed to execute command in session', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
@@ -165,13 +153,10 @@ export class SessionHandler {
       return successResponse({ success: true, workingDir: path })
     } catch (error) {
       return errorResponse(
-        new DevboxError(
-          'Failed to change directory in session',
-          ErrorCode.INTERNAL_ERROR,
-          { originalError: error }
-        )
+        new DevboxError('Failed to change directory in session', ErrorCode.INTERNAL_ERROR, {
+          cause: error as Error,
+        })
       )
     }
   }
 }
-

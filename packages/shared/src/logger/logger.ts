@@ -11,7 +11,7 @@ export enum LogLevel {
   DEBUG = 'debug',
   INFO = 'info',
   WARN = 'warn',
-  ERROR = 'error'
+  ERROR = 'error',
 }
 
 /**
@@ -21,7 +21,7 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
   [LogLevel.DEBUG]: 0,
   [LogLevel.INFO]: 1,
   [LogLevel.WARN]: 2,
-  [LogLevel.ERROR]: 3
+  [LogLevel.ERROR]: 3,
 }
 
 /**
@@ -61,7 +61,7 @@ export class Logger {
     this.config = {
       level: config.level ?? LogLevel.INFO,
       enableConsole: config.enableConsole ?? true,
-      enableJson: config.enableJson ?? false
+      enableJson: config.enableJson ?? false,
     }
   }
 
@@ -87,7 +87,7 @@ export class Logger {
     if (this.traceContext) {
       childLogger.setTraceContext({
         ...this.traceContext,
-        ...context
+        ...context,
       })
     }
     return childLogger
@@ -124,9 +124,9 @@ export class Logger {
         ? {
             name: error.name,
             message: error.message,
-            stack: error.stack
+            stack: error.stack,
           }
-        : undefined
+        : undefined,
     })
   }
 
@@ -145,7 +145,7 @@ export class Logger {
       timestamp: new Date().toISOString(),
       traceId: this.traceContext?.traceId,
       spanId: this.traceContext?.spanId,
-      context
+      context,
     }
 
     if (this.config.enableConsole) {
@@ -166,7 +166,10 @@ export class Logger {
     const contextStr = context ? ` ${JSON.stringify(context)}` : ''
     const traceStr = traceId ? ` [trace:${traceId}]` : ''
 
-    const coloredMessage = this.colorizeLog(level, `[${timestamp}] ${level.toUpperCase()}:${traceStr} ${message}${contextStr}`)
+    const coloredMessage = this.colorizeLog(
+      level,
+      `[${timestamp}] ${level.toUpperCase()}:${traceStr} ${message}${contextStr}`
+    )
 
     console.log(coloredMessage)
   }
@@ -179,7 +182,7 @@ export class Logger {
       [LogLevel.DEBUG]: '\x1b[36m', // Cyan
       [LogLevel.INFO]: '\x1b[32m', // Green
       [LogLevel.WARN]: '\x1b[33m', // Yellow
-      [LogLevel.ERROR]: '\x1b[31m' // Red
+      [LogLevel.ERROR]: '\x1b[31m', // Red
     }
     const reset = '\x1b[0m'
     return `${colors[level]}${message}${reset}`

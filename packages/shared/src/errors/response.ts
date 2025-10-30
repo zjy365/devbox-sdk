@@ -1,4 +1,4 @@
-import { ErrorCode, ERROR_HTTP_STATUS } from './codes'
+import { ERROR_HTTP_STATUS, ErrorCode } from './codes'
 import type { ErrorContext } from './context'
 
 /**
@@ -28,7 +28,7 @@ const ERROR_SUGGESTIONS: Partial<Record<ErrorCode, string>> = {
   [ErrorCode.DEVBOX_NOT_FOUND]: 'Ensure the Devbox exists and is in the correct namespace',
   [ErrorCode.INVALID_TOKEN]: 'Refresh your authentication token',
   [ErrorCode.SESSION_NOT_FOUND]: 'Create a new session or use an existing session ID',
-  [ErrorCode.PROCESS_TIMEOUT]: 'Increase the timeout value or optimize the command execution'
+  [ErrorCode.PROCESS_TIMEOUT]: 'Increase the timeout value or optimize the command execution',
 }
 
 /**
@@ -51,8 +51,8 @@ export function createErrorResponse(
       details: options?.details,
       suggestion: options?.suggestion ?? ERROR_SUGGESTIONS[code],
       traceId: options?.traceId,
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    },
   }
 }
 
@@ -102,7 +102,7 @@ export class DevboxError extends Error {
     return createErrorResponse(this.message, this.code, {
       details: this.details,
       suggestion: this.suggestion,
-      traceId: this.traceId
+      traceId: this.traceId,
     })
   }
 
@@ -118,7 +118,7 @@ export class DevboxError extends Error {
       details: this.details,
       suggestion: this.suggestion,
       traceId: this.traceId,
-      stack: this.stack
+      stack: this.stack,
     }
   }
 }
@@ -141,11 +141,11 @@ export function toDevboxError(error: unknown, traceId?: string): DevboxError {
   if (error instanceof Error) {
     return new DevboxError(error.message, ErrorCode.INTERNAL_ERROR, {
       traceId,
-      cause: error
+      cause: error,
     })
   }
 
   return new DevboxError(String(error), ErrorCode.UNKNOWN_ERROR, {
-    traceId
+    traceId,
   })
 }

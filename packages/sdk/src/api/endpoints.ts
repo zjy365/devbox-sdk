@@ -10,21 +10,21 @@ import { API_ENDPOINTS } from '../core/constants'
 export class APIEndpoints {
   private baseUrl: string
 
-  constructor (baseUrl: string = 'https://api.sealos.io') {
+  constructor(baseUrl = 'https://api.sealos.io') {
     this.baseUrl = baseUrl
   }
 
   /**
    * Get the base URL
    */
-  getBaseUrl (): string {
+  getBaseUrl(): string {
     return this.baseUrl
   }
 
   /**
    * Construct URL with parameters
    */
-  private constructUrl (template: string, params: Record<string, string> = {}): string {
+  private constructUrl(template: string, params: Record<string, string> = {}): string {
     let url = template
     for (const [key, value] of Object.entries(params)) {
       url = url.replace(`{${key}}`, encodeURIComponent(value))
@@ -33,76 +33,76 @@ export class APIEndpoints {
   }
 
   // Devbox management endpoints
-  devboxList (): string {
+  devboxList(): string {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.LIST)
   }
 
-  devboxCreate (): string {
+  devboxCreate(): string {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.CREATE)
   }
 
-  devboxGet (name: string): string {
+  devboxGet(name: string): string {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.GET, { name })
   }
 
-  devboxStart (name: string): string {
+  devboxStart(name: string): string {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.START, { name })
   }
 
-  devboxPause (name: string): string {
+  devboxPause(name: string): string {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.PAUSE, { name })
   }
 
-  devboxRestart (name: string): string {
+  devboxRestart(name: string): string {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.RESTART, { name })
   }
 
-  devboxDelete (name: string): string {
+  devboxDelete(name: string): string {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.DELETE, { name })
   }
 
-  devboxMonitor (name: string): string {
+  devboxMonitor(name: string): string {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.MONITOR, { name })
   }
 
   // Container HTTP server endpoints
-  containerHealth (baseUrl: string): string {
+  containerHealth(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.HEALTH}`
   }
 
-  filesWrite (baseUrl: string): string {
+  filesWrite(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.FILES.WRITE}`
   }
 
-  filesRead (baseUrl: string): string {
+  filesRead(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.FILES.READ}`
   }
 
-  filesList (baseUrl: string): string {
+  filesList(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.FILES.LIST}`
   }
 
-  filesDelete (baseUrl: string): string {
+  filesDelete(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.FILES.DELETE}`
   }
 
-  filesBatchUpload (baseUrl: string): string {
+  filesBatchUpload(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.FILES.BATCH_UPLOAD}`
   }
 
-  filesBatchDownload (baseUrl: string): string {
+  filesBatchDownload(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.FILES.BATCH_DOWNLOAD}`
   }
 
-  processExec (baseUrl: string): string {
+  processExec(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.PROCESS.EXEC}`
   }
 
-  processStatus (baseUrl: string, pid: number): string {
+  processStatus(baseUrl: string, pid: number): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.PROCESS.STATUS.replace('{pid}', pid.toString())}`
   }
 
-  websocket (baseUrl: string): string {
+  websocket(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.WEBSOCKET}`
   }
 }

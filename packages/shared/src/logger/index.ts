@@ -13,5 +13,5 @@ export {
   generateTraceId,
   createTraceContext,
   createChildSpan,
-  type TraceContext
+  type TraceContext,
 } from './trace'

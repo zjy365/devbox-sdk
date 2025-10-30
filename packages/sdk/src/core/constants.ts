@@ -14,20 +14,20 @@ export const DEFAULT_CONFIG = {
     MAX_SIZE: 15,
     CONNECTION_TIMEOUT: 30000, // 30 seconds
     KEEP_ALIVE_INTERVAL: 60000, // 1 minute
-    HEALTH_CHECK_INTERVAL: 60000 // 1 minute
+    HEALTH_CHECK_INTERVAL: 60000, // 1 minute
   },
 
   /** Default HTTP client settings */
   HTTP_CLIENT: {
     TIMEOUT: 30000, // 30 seconds
-    RETRIES: 3
+    RETRIES: 3,
   },
 
   /** File operation limits */
   FILE_LIMITS: {
     MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
     MAX_BATCH_SIZE: 50, // maximum files per batch
-    CHUNK_SIZE: 1024 * 1024 // 1MB chunks for streaming
+    CHUNK_SIZE: 1024 * 1024, // 1MB chunks for streaming
   },
 
   /** Performance targets */
@@ -35,8 +35,8 @@ export const DEFAULT_CONFIG = {
     SMALL_FILE_LATENCY_MS: 50, // <50ms for files <1MB
     LARGE_FILE_THROUGHPUT_MBPS: 15, // >15MB/s for large files
     CONNECTION_REUSE_RATE: 0.98, // >98% connection reuse
-    STARTUP_TIME_MS: 100 // <100ms Bun server startup
-  }
+    STARTUP_TIME_MS: 100, // <100ms Bun server startup
+  },
 } as const
 
 export const API_ENDPOINTS = {
@@ -49,7 +49,7 @@ export const API_ENDPOINTS = {
     PAUSE: '/api/v1/devbox/{name}/pause',
     RESTART: '/api/v1/devbox/{name}/restart',
     DELETE: '/api/v1/devbox/{name}',
-    MONITOR: '/api/v1/devbox/{name}/monitor'
+    MONITOR: '/api/v1/devbox/{name}/monitor',
   },
 
   /** Container HTTP server endpoints */
@@ -61,14 +61,14 @@ export const API_ENDPOINTS = {
       LIST: '/files/list',
       DELETE: '/files/delete',
       BATCH_UPLOAD: '/files/batch-upload',
-      BATCH_DOWNLOAD: '/files/batch-download'
+      BATCH_DOWNLOAD: '/files/batch-download',
     },
     PROCESS: {
       EXEC: '/process/exec',
-      STATUS: '/process/status/{pid}'
+      STATUS: '/process/status/{pid}',
     },
-    WEBSOCKET: '/ws'
-  }
+    WEBSOCKET: '/ws',
+  },
 } as const
 
 export const ERROR_CODES = {
@@ -99,7 +99,7 @@ export const ERROR_CODES = {
   /** General errors */
   OPERATION_TIMEOUT: 'OPERATION_TIMEOUT',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
-  INTERNAL_ERROR: 'INTERNAL_ERROR'
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const
 
 export const SUPPORTED_RUNTIMES = [
@@ -111,7 +111,7 @@ export const SUPPORTED_RUNTIMES = [
   'vue',
   'angular',
   'docker',
-  'bash'
+  'bash',
 ] as const
 
 export const HTTP_STATUS = {
@@ -131,5 +131,5 @@ export const HTTP_STATUS = {
   INTERNAL_SERVER_ERROR: 500,
   BAD_GATEWAY: 502,
   SERVICE_UNAVAILABLE: 503,
-  GATEWAY_TIMEOUT: 504
+  GATEWAY_TIMEOUT: 504,
 } as const

@@ -3,8 +3,8 @@
  * Chokidar-based file watching implementation
  */
 
-import type { FileChangeEvent } from '../types/server'
 import { watch } from 'chokidar'
+import type { FileChangeEvent } from '../types/server'
 
 export class FileWatcher extends EventTarget {
   private watchers = new Map<string, Set<any>>()
@@ -18,30 +18,30 @@ export class FileWatcher extends EventTarget {
       const watcher = watch(path, {
         ignored: /(^|[\/\\])\../, // ignore dotfiles
         persistent: true,
-        ignoreInitial: false
+        ignoreInitial: false,
       })
 
-      watcher.on('change', (filePath) => {
+      watcher.on('change', filePath => {
         this.broadcastFileChange({
           type: 'change',
           path: filePath,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         })
       })
 
-      watcher.on('add', (filePath) => {
+      watcher.on('add', filePath => {
         this.broadcastFileChange({
           type: 'add',
           path: filePath,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         })
       })
 
-      watcher.on('unlink', (filePath) => {
+      watcher.on('unlink', filePath => {
         this.broadcastFileChange({
           type: 'unlink',
           path: filePath,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         })
       })
 

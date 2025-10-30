@@ -27,7 +27,7 @@ export interface TraceContext {
 export function createTraceContext(traceId?: string): TraceContext {
   return {
     traceId: traceId || generateTraceId(),
-    timestamp: Date.now()
+    timestamp: Date.now(),
   }
 }
 
@@ -39,6 +39,6 @@ export function createChildSpan(parent: TraceContext): TraceContext {
     traceId: parent.traceId,
     spanId: generateTraceId(),
     parentSpanId: parent.spanId,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   }
 }

@@ -10,33 +10,36 @@ export const WriteFileRequestSchema = z.object({
   path: z.string().min(1, 'Path cannot be empty'),
   content: z.string(),
   encoding: z.enum(['utf8', 'base64', 'binary', 'hex']).optional(),
-  permissions: z.string().optional()
+  permissions: z.string().optional(),
 })
 
 export const ReadFileRequestSchema = z.object({
   path: z.string().min(1, 'Path cannot be empty'),
-  encoding: z.enum(['utf8', 'base64', 'binary', 'hex']).optional()
+  encoding: z.enum(['utf8', 'base64', 'binary', 'hex']).optional(),
 })
 
 export const ListFilesRequestSchema = z.object({
   path: z.string().min(1, 'Path cannot be empty'),
   recursive: z.boolean().optional(),
-  includeHidden: z.boolean().optional()
+  includeHidden: z.boolean().optional(),
 })
 
 export const DeleteFileRequestSchema = z.object({
   path: z.string().min(1, 'Path cannot be empty'),
-  recursive: z.boolean().optional()
+  recursive: z.boolean().optional(),
 })
 
 export const BatchUploadRequestSchema = z.object({
-  files: z.array(
-    z.object({
-      path: z.string().min(1, 'File path cannot be empty'),
-      content: z.string(),
-      encoding: z.enum(['utf8', 'base64', 'binary', 'hex']).optional()
-    })
-  ).min(1, 'At least one file is required').max(100, 'Maximum 100 files per batch')
+  files: z
+    .array(
+      z.object({
+        path: z.string().min(1, 'File path cannot be empty'),
+        content: z.string(),
+        encoding: z.enum(['utf8', 'base64', 'binary', 'hex']).optional(),
+      })
+    )
+    .min(1, 'At least one file is required')
+    .max(100, 'Maximum 100 files per batch'),
 })
 
 // Process Operation Schemas
@@ -46,62 +49,68 @@ export const ProcessExecRequestSchema = z.object({
   cwd: z.string().optional(),
   env: z.record(z.string()).optional(),
   shell: z.string().optional(),
-  timeout: z.number().int().min(1000).max(600000).optional() // 1 second to 10 minutes
+  timeout: z.number().int().min(1000).max(600000).optional(), // 1 second to 10 minutes
 })
 
 export const ProcessKillRequestSchema = z.object({
   id: z.string().min(1, 'Process ID cannot be empty'),
-  signal: z.string().optional()
+  signal: z.string().optional(),
 })
 
 export const ProcessLogsRequestSchema = z.object({
   id: z.string().min(1, 'Process ID cannot be empty'),
-  tail: z.number().int().min(1).max(10000).optional()
+  tail: z.number().int().min(1).max(10000).optional(),
 })
 
 // Session Operation Schemas
 export const CreateSessionRequestSchema = z.object({
   workingDir: z.string().optional(),
   env: z.record(z.string()).optional(),
-  shell: z.string().optional()
+  shell: z.string().optional(),
 })
 
 export const UpdateSessionEnvRequestSchema = z.object({
   id: z.string().min(1, 'Session ID cannot be empty'),
-  env: z.record(z.string())
+  env: z.record(z.string()),
 })
 
 export const TerminateSessionRequestSchema = z.object({
-  id: z.string().min(1, 'Session ID cannot be empty')
+  id: z.string().min(1, 'Session ID cannot be empty'),
 })
 
 export const SessionExecRequestSchema = z.object({
   sessionId: z.string().min(1, 'Session ID cannot be empty'),
-  command: z.string().min(1, 'Command cannot be empty').max(10000, 'Command too long')
+  command: z.string().min(1, 'Command cannot be empty').max(10000, 'Command too long'),
 })
 
 export const SessionChangeDirRequestSchema = z.object({
   sessionId: z.string().min(1, 'Session ID cannot be empty'),
-  path: z.string().min(1, 'Path cannot be empty')
+  path: z.string().min(1, 'Path cannot be empty'),
 })
 
 // Query Parameter Schemas
 export const ProcessStatusQuerySchema = z.object({
-  id: z.string().min(1, 'Process ID cannot be empty')
+  id: z.string().min(1, 'Process ID cannot be empty'),
 })
 
 export const ProcessLogsQuerySchema = z.object({
   id: z.string().min(1, 'Process ID cannot be empty'),
-  tail: z.string().optional().transform(val => val ? parseInt(val) : undefined)
+  tail: z
+    .string()
+    .optional()
+    .transform(val => (val ? Number.parseInt(val) : undefined)),
 })
 
 export const SessionQuerySchema = z.object({
-  id: z.string().min(1, 'Session ID cannot be empty')
+  id: z.string().min(1, 'Session ID cannot be empty'),
 })
 
 // Health Check Schemas
 export const HealthQuerySchema = z.object({
-  detailed: z.string().optional().transform(val => val === 'true')
+  detailed: z
+    .string()
+    .optional()
+    .transform(val => val === 'true'),
 })
 
 // Common validation helpers
@@ -125,7 +134,7 @@ export const validateQueryParams = <T extends z.ZodType>(
   for (const [key, value] of searchParams.entries()) {
     params[key] = value
   }
-  
+
   return validateRequest(schema, params)
 }
 

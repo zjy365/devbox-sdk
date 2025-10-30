@@ -3,7 +3,7 @@
  * Represents a persistent shell session
  */
 
-import { createLogger, type Logger } from '@sealos/devbox-shared/logger'
+import { type Logger, createLogger } from '@sealos/devbox-shared/logger'
 
 export interface SessionConfig {
   workingDir: string
@@ -28,8 +28,8 @@ export class Session {
 
   private shell: Bun.Subprocess | null = null
   private logger: Logger
-  private outputBuffer: string = ''
-  private stderrBuffer: string = ''
+  private outputBuffer = ''
+  private stderrBuffer = ''
 
   constructor(id: string, config: SessionConfig) {
     this.id = id
@@ -39,7 +39,7 @@ export class Session {
     this.lastActivity = Date.now()
     this.isActive = false
     this.logger = createLogger()
-    
+
     this.initializeShell(config.shell)
   }
 
@@ -53,7 +53,7 @@ export class Session {
         env: { ...process.env, ...this.env },
         stdin: 'pipe',
         stdout: 'pipe',
-        stderr: 'pipe'
+        stderr: 'pipe',
       })
 
       this.isActive = true
@@ -62,7 +62,7 @@ export class Session {
       // Set up output reading
       this.setupOutputReading()
     } catch (error) {
-      this.logger.error(`Failed to initialize shell for session ${this.id}:`, error)
+      this.logger.error(`Failed to initialize shell for session ${this.id}:`, error as Error)
       throw error
     }
   }
@@ -74,14 +74,14 @@ export class Session {
     if (!this.shell) return
 
     // Read stdout
-    const reader = this.shell.stdout?.getReader()
-    if (reader) {
+    if (this.shell.stdout && typeof this.shell.stdout !== 'number') {
+      const reader = this.shell.stdout.getReader()
       this.readOutput(reader, 'stdout')
     }
 
     // Read stderr
-    const stderrReader = this.shell.stderr?.getReader()
-    if (stderrReader) {
+    if (this.shell.stderr && typeof this.shell.stderr !== 'number') {
+      const stderrReader = this.shell.stderr.getReader()
       this.readOutput(stderrReader, 'stderr')
     }
   }
@@ -89,7 +89,10 @@ export class Session {
   /**
    * Read output from shell streams
    */
-  private async readOutput(reader: ReadableStreamDefaultReader<Uint8Array>, type: 'stdout' | 'stderr'): Promise<void> {
+  private async readOutput(
+    reader: ReadableStreamDefaultReader<Uint8Array> | any,
+    type: 'stdout' | 'stderr'
+  ): Promise<void> {
     try {
       while (true) {
         const { done, value } = await reader.read()
@@ -103,7 +106,7 @@ export class Session {
         }
       }
     } catch (error) {
-      this.logger.error(`Error reading ${type} for session ${this.id}:`, error)
+      this.logger.error(`Error reading ${type} for session ${this.id}:`, error as Error)
     }
   }
 
@@ -125,7 +128,9 @@ export class Session {
 
       // Send command to shell
       const commandWithMarker = `${command}\necho "___COMMAND_COMPLETE___"\n`
-      this.shell.stdin?.write(commandWithMarker)
+      if (this.shell.stdin && typeof this.shell.stdin !== 'number') {
+        this.shell.stdin.write(commandWithMarker)
+      }
 
       // Wait for command completion marker
       await this.waitForCommandCompletion()
@@ -136,20 +141,23 @@ export class Session {
       const lines = this.outputBuffer.split('\n')
       const commandEchoIndex = lines.findIndex(line => line.trim() === command)
       const markerIndex = lines.findIndex(line => line.includes('___COMMAND_COMPLETE___'))
-      
+
       let stdout = ''
       if (commandEchoIndex >= 0 && markerIndex > commandEchoIndex) {
-        stdout = lines.slice(commandEchoIndex + 1, markerIndex).join('\n').trim()
+        stdout = lines
+          .slice(commandEchoIndex + 1, markerIndex)
+          .join('\n')
+          .trim()
       }
 
       return {
         exitCode: 0, // We can't easily get exit code from interactive shell
         stdout,
         stderr: this.stderrBuffer.trim(),
-        duration
+        duration,
       }
     } catch (error) {
-      this.logger.error(`Error executing command in session ${this.id}:`, error)
+      this.logger.error(`Error executing command in session ${this.id}:`, error as Error)
       throw error
     }
   }
@@ -157,16 +165,16 @@ export class Session {
   /**
    * Wait for command completion marker
    */
-  private async waitForCommandCompletion(timeout: number = 30000): Promise<void> {
+  private async waitForCommandCompletion(timeout = 30000): Promise<void> {
     const startTime = Date.now()
-    
+
     while (Date.now() - startTime < timeout) {
       if (this.outputBuffer.includes('___COMMAND_COMPLETE___')) {
         return
       }
       await new Promise(resolve => setTimeout(resolve, 100))
     }
-    
+
     throw new Error(`Command timeout in session ${this.id}`)
   }
 
@@ -175,15 +183,15 @@ export class Session {
    */
   async updateEnv(newEnv: Record<string, string>): Promise<void> {
     this.env = { ...this.env, ...newEnv }
-    
-    if (this.shell && this.isActive) {
+
+    if (this.shell && this.isActive && this.shell.stdin && typeof this.shell.stdin !== 'number') {
       // Send export commands to shell
       for (const [key, value] of Object.entries(newEnv)) {
         const exportCommand = `export ${key}="${value}"\n`
-        this.shell.stdin?.write(exportCommand)
+        this.shell.stdin.write(exportCommand)
       }
     }
-    
+
     this.lastActivity = Date.now()
   }
 
@@ -192,12 +200,12 @@ export class Session {
    */
   async changeDirectory(path: string): Promise<void> {
     this.workingDir = path
-    
-    if (this.shell && this.isActive) {
+
+    if (this.shell && this.isActive && this.shell.stdin && typeof this.shell.stdin !== 'number') {
       const cdCommand = `cd "${path}"\n`
-      this.shell.stdin?.write(cdCommand)
+      this.shell.stdin.write(cdCommand)
     }
-    
+
     this.lastActivity = Date.now()
   }
 
@@ -208,20 +216,22 @@ export class Session {
     if (this.shell && this.isActive) {
       try {
         // Send exit command
-        this.shell.stdin?.write('exit\n')
-        
+        if (this.shell.stdin && typeof this.shell.stdin !== 'number') {
+          this.shell.stdin.write('exit\n')
+        }
+
         // Wait a bit for graceful shutdown
         await new Promise(resolve => setTimeout(resolve, 1000))
-        
+
         // Force kill if still running
         if (this.shell.killed === false) {
           this.shell.kill()
         }
       } catch (error) {
-        this.logger.error(`Error terminating session ${this.id}:`, error)
+        this.logger.error(`Error terminating session ${this.id}:`, error as Error)
       }
     }
-    
+
     this.isActive = false
     this.shell = null
     this.logger.info(`Terminated session ${this.id}`)
@@ -244,8 +254,7 @@ export class Session {
       workingDir: this.workingDir,
       env: this.env,
       createdAt: this.createdAt,
-      lastActivity: this.lastActivity
+      lastActivity: this.lastActivity,
     }
   }
 }
-

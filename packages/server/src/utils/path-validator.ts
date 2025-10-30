@@ -2,8 +2,8 @@
  * Path Validation Utilities
  */
 
+import { isAbsolute, relative, resolve, sep } from 'path'
 import { lookup } from 'mime-types'
-import { resolve, relative, isAbsolute, sep } from 'path'
 
 /**
  * Normalize and validate a user-provided path
@@ -14,14 +14,14 @@ import { resolve, relative, isAbsolute, sep } from 'path'
 export function validatePath(path: string, allowedBase: string): void {
   // Strip leading slashes to treat as relative path
   const cleanPath = path.replace(/^\/+/, '')
-  
+
   // Resolve against the allowed base
   const normalizedBase = resolve(allowedBase)
   const normalizedPath = resolve(normalizedBase, cleanPath)
-  
+
   // Check if the resolved path is within the allowed base
   const relativePath = relative(normalizedBase, normalizedPath)
-  
+
   // Path is invalid if:
   // 1. It starts with '..' (trying to go outside base)
   // 2. It's an absolute path after resolution (shouldn't happen but defense in depth)

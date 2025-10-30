@@ -2,14 +2,14 @@
  * HTTP connection pool implementation for Devbox containers
  */
 
-import { DevboxSDKError, ERROR_CODES } from '../utils/error'
 import { DEFAULT_CONFIG } from '../core/constants'
+import { DevboxSDKError, ERROR_CODES } from '../utils/error'
 import type {
-  HTTPConnection,
   ConnectionPoolConfig,
-  PoolStats,
+  ConnectionStrategy,
+  HTTPConnection,
   HealthCheckResult,
-  ConnectionStrategy
+  PoolStats,
 } from './types'
 
 /**
@@ -19,36 +19,36 @@ class ContainerHTTPClient {
   private baseUrl: string
   private timeout: number
 
-  constructor (baseUrl: string, timeout: number = 30000) {
+  constructor(baseUrl: string, timeout = 30000) {
     this.baseUrl = baseUrl
     this.timeout = timeout
   }
 
-  async get (path: string, options?: any): Promise<any> {
+  async get(path: string, options?: any): Promise<any> {
     return this.request('GET', path, options)
   }
 
-  async post (path: string, options?: any): Promise<any> {
+  async post(path: string, options?: any): Promise<any> {
     return this.request('POST', path, options)
   }
 
-  async put (path: string, options?: any): Promise<any> {
+  async put(path: string, options?: any): Promise<any> {
     return this.request('PUT', path, options)
   }
 
-  async delete (path: string, options?: any): Promise<any> {
+  async delete(path: string, options?: any): Promise<any> {
     return this.request('DELETE', path, options)
   }
 
-  private async request (method: string, path: string, options?: any): Promise<any> {
+  private async request(method: string, path: string, options?: any): Promise<any> {
     const url = new URL(path, this.baseUrl)
 
     const fetchOptions: RequestInit = {
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...options?.headers
-      }
+        ...options?.headers,
+      },
     }
 
     if (options?.data) {
@@ -69,7 +69,7 @@ class ContainerHTTPClient {
     try {
       const response = await fetch(url.toString(), {
         ...fetchOptions,
-        signal: controller.signal
+        signal: controller.signal,
       })
 
       clearTimeout(timeoutId)
@@ -87,7 +87,7 @@ class ContainerHTTPClient {
         return {
           data: await response.json(),
           arrayBuffer: () => response.arrayBuffer(),
-          headers: Object.fromEntries(response.headers.entries())
+          headers: Object.fromEntries(response.headers.entries()),
         }
       } else {
         return response.arrayBuffer()
@@ -98,7 +98,7 @@ class ContainerHTTPClient {
     }
   }
 
-  async close (): Promise<void> {
+  async close(): Promise<void> {
     // No explicit cleanup needed for fetch-based client
   }
 }
@@ -110,13 +110,16 @@ export class ConnectionPool {
   private stats: PoolStats
   private strategy: ConnectionStrategy
 
-  constructor (config: ConnectionPoolConfig = {}) {
+  constructor(config: ConnectionPoolConfig = {}) {
     this.config = {
       maxSize: config.maxSize || DEFAULT_CONFIG.CONNECTION_POOL.MAX_SIZE,
-      connectionTimeout: config.connectionTimeout || DEFAULT_CONFIG.CONNECTION_POOL.CONNECTION_TIMEOUT,
-      keepAliveInterval: config.keepAliveInterval || DEFAULT_CONFIG.CONNECTION_POOL.KEEP_ALIVE_INTERVAL,
-      healthCheckInterval: config.healthCheckInterval || DEFAULT_CONFIG.CONNECTION_POOL.HEALTH_CHECK_INTERVAL,
-      maxIdleTime: config.maxIdleTime || 300000 // 5 minutes
+      connectionTimeout:
+        config.connectionTimeout || DEFAULT_CONFIG.CONNECTION_POOL.CONNECTION_TIMEOUT,
+      keepAliveInterval:
+        config.keepAliveInterval || DEFAULT_CONFIG.CONNECTION_POOL.KEEP_ALIVE_INTERVAL,
+      healthCheckInterval:
+        config.healthCheckInterval || DEFAULT_CONFIG.CONNECTION_POOL.HEALTH_CHECK_INTERVAL,
+      maxIdleTime: config.maxIdleTime || 300000, // 5 minutes
     }
 
     this.strategy = 'least-used'
@@ -128,7 +131,7 @@ export class ConnectionPool {
       reuseRate: 0,
       averageLifetime: 0,
       bytesTransferred: 0,
-      totalOperations: 0
+      totalOperations: 0,
     }
 
     this.startHealthMonitoring()
@@ -137,7 +140,7 @@ export class ConnectionPool {
   /**
    * Get a connection from the pool or create a new one
    */
-  async getConnection (devboxName: string, serverUrl: string): Promise<ContainerHTTPClient> {
+  async getConnection(devboxName: string, serverUrl: string): Promise<ContainerHTTPClient> {
     const poolKey = this.getPoolKey(devboxName, serverUrl)
     let pool = this.connections.get(poolKey)
 
@@ -163,7 +166,7 @@ export class ConnectionPool {
     }
 
     // Perform health check before using
-    if (!await this.isConnectionHealthy(connection)) {
+    if (!(await this.isConnectionHealthy(connection))) {
       await this.removeConnection(connection)
       // Retry with a new connection
       return this.getConnection(devboxName, serverUrl)
@@ -180,7 +183,7 @@ export class ConnectionPool {
   /**
    * Release a connection back to the pool
    */
-  releaseConnection (connectionId: string): void {
+  releaseConnection(connectionId: string): void {
     const connection = this.findConnectionById(connectionId)
     if (connection) {
       connection.isActive = false
@@ -191,7 +194,7 @@ export class ConnectionPool {
   /**
    * Remove a connection from the pool
    */
-  async removeConnection (connection: HTTPConnection): Promise<void> {
+  async removeConnection(connection: HTTPConnection): Promise<void> {
     const poolKey = this.getPoolKey(connection.devboxName, connection.serverUrl)
     const pool = this.connections.get(poolKey)
 
@@ -208,7 +211,7 @@ export class ConnectionPool {
   /**
    * Close all connections in the pool
    */
-  async closeAllConnections (): Promise<void> {
+  async closeAllConnections(): Promise<void> {
     const closePromises: Promise<void>[] = []
 
     for (const pool of this.connections.values()) {
@@ -230,13 +233,13 @@ export class ConnectionPool {
   /**
    * Get pool statistics
    */
-  getStats (): PoolStats {
+  getStats(): PoolStats {
     return { ...this.stats }
   }
 
-  private findAvailableConnection (pool: HTTPConnection[]): HTTPConnection | null {
-    const healthyConnections = pool.filter(conn =>
-      !conn.isActive && conn.healthStatus === 'healthy'
+  private findAvailableConnection(pool: HTTPConnection[]): HTTPConnection | null {
+    const healthyConnections = pool.filter(
+      conn => !conn.isActive && conn.healthStatus === 'healthy'
     )
 
     if (healthyConnections.length === 0) {
@@ -245,9 +248,7 @@ export class ConnectionPool {
 
     switch (this.strategy) {
       case 'least-used':
-        return healthyConnections.reduce((min, conn) =>
-          conn.useCount < min.useCount ? conn : min
-        )
+        return healthyConnections.reduce((min, conn) => (conn.useCount < min.useCount ? conn : min))
       case 'random':
         return healthyConnections[Math.floor(Math.random() * healthyConnections.length)] || null
       case 'round-robin':
@@ -256,7 +257,7 @@ export class ConnectionPool {
     }
   }
 
-  private async createConnection (devboxName: string, serverUrl: string): Promise<HTTPConnection> {
+  private async createConnection(devboxName: string, serverUrl: string): Promise<HTTPConnection> {
     const client = new ContainerHTTPClient(serverUrl, this.config.connectionTimeout)
 
     const connection: HTTPConnection = {
@@ -268,7 +269,7 @@ export class ConnectionPool {
       isActive: false,
       healthStatus: 'unknown',
       createdAt: Date.now(),
-      useCount: 0
+      useCount: 0,
     }
 
     // Perform initial health check
@@ -278,7 +279,7 @@ export class ConnectionPool {
     return connection
   }
 
-  private async performHealthCheck (client: ContainerHTTPClient): Promise<HealthCheckResult> {
+  private async performHealthCheck(client: ContainerHTTPClient): Promise<HealthCheckResult> {
     const startTime = Date.now()
 
     try {
@@ -286,22 +287,25 @@ export class ConnectionPool {
       return {
         isHealthy: true,
         responseTime: Date.now() - startTime,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       }
     } catch (error) {
       return {
         isHealthy: false,
         responseTime: Date.now() - startTime,
         error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       }
     }
   }
 
-  private async isConnectionHealthy (connection: HTTPConnection): Promise<boolean> {
+  private async isConnectionHealthy(connection: HTTPConnection): Promise<boolean> {
     // Quick check based on last known status and time
     const timeSinceLastCheck = Date.now() - connection.lastUsed
-    if (connection.healthStatus === 'healthy' && timeSinceLastCheck < this.config.keepAliveInterval) {
+    if (
+      connection.healthStatus === 'healthy' &&
+      timeSinceLastCheck < this.config.keepAliveInterval
+    ) {
       return true
     }
 
@@ -313,7 +317,7 @@ export class ConnectionPool {
     return result.isHealthy
   }
 
-  private startHealthMonitoring (): void {
+  private startHealthMonitoring(): void {
     if (!this.config.healthCheckInterval) {
       return
     }
@@ -325,7 +329,7 @@ export class ConnectionPool {
     }, this.config.healthCheckInterval)
   }
 
-  private async performRoutineHealthChecks (): Promise<void> {
+  private async performRoutineHealthChecks(): Promise<void> {
     const healthCheckPromises: Promise<void>[] = []
 
     for (const pool of this.connections.values()) {
@@ -343,13 +347,13 @@ export class ConnectionPool {
     await Promise.all(healthCheckPromises)
   }
 
-  private async cleanupIdleConnections (): Promise<void> {
+  private async cleanupIdleConnections(): Promise<void> {
     const now = Date.now()
     const connectionsToRemove: HTTPConnection[] = []
 
     for (const pool of this.connections.values()) {
       for (const connection of pool) {
-        if (!connection.isActive && (now - connection.lastUsed) > this.config.maxIdleTime) {
+        if (!connection.isActive && now - connection.lastUsed > this.config.maxIdleTime) {
           connectionsToRemove.push(connection)
         }
       }
@@ -360,7 +364,7 @@ export class ConnectionPool {
     }
   }
 
-  private updateStats (): void {
+  private updateStats(): void {
     let totalConnections = 0
     let activeConnections = 0
     let healthyConnections = 0
@@ -387,11 +391,11 @@ export class ConnectionPool {
       reuseRate: totalUseCount > 0 ? (totalUseCount - totalConnections) / totalUseCount : 0,
       averageLifetime: totalConnections > 0 ? totalLifetime / totalConnections : 0,
       bytesTransferred: this.stats.bytesTransferred, // Updated elsewhere
-      totalOperations: this.stats.totalOperations
+      totalOperations: this.stats.totalOperations,
     }
   }
 
-  private findConnectionById (connectionId: string): HTTPConnection | undefined {
+  private findConnectionById(connectionId: string): HTTPConnection | undefined {
     for (const pool of this.connections.values()) {
       const connection = pool.find(conn => conn.id === connectionId)
       if (connection) return connection
@@ -399,11 +403,11 @@ export class ConnectionPool {
     return undefined
   }
 
-  private getPoolKey (devboxName: string, serverUrl: string): string {
+  private getPoolKey(devboxName: string, serverUrl: string): string {
     return `${devboxName}:${serverUrl}`
   }
 
-  private generateConnectionId (): string {
+  private generateConnectionId(): string {
     return `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 }

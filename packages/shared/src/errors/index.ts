@@ -18,12 +18,12 @@ export type {
   SessionErrorContext,
   DevboxErrorContext,
   ValidationErrorContext,
-  ErrorContext
+  ErrorContext,
 } from './context'
 export {
   type ErrorResponse,
   DevboxError,
   createErrorResponse,
   isDevboxError,
-  toDevboxError
+  toDevboxError,
 } from './response'

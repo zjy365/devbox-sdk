@@ -4,26 +4,26 @@
 
 import { DevboxAPI } from '../api/client'
 import { ConnectionManager } from '../connection/manager'
+import { DevboxInstance } from '../devbox/DevboxInstance'
 import type {
-  DevboxSDKConfig,
+  BatchUploadOptions,
   DevboxCreateConfig,
   DevboxInfo,
-  FileMap,
-  WriteOptions,
-  ReadOptions,
-  BatchUploadOptions,
-  TransferResult,
+  DevboxSDKConfig,
   FileChangeEvent,
+  FileMap,
+  MonitorData,
+  ReadOptions,
   TimeRange,
-  MonitorData
+  TransferResult,
+  WriteOptions,
 } from './types'
-import { DevboxInstance } from '../devbox/DevboxInstance'
 
 export class DevboxSDK {
   private apiClient: DevboxAPI
   private connectionManager: ConnectionManager
 
-  constructor (config: DevboxSDKConfig) {
+  constructor(config: DevboxSDKConfig) {
     this.apiClient = new DevboxAPI(config)
     this.connectionManager = new ConnectionManager(config)
   }
@@ -31,7 +31,7 @@ export class DevboxSDK {
   /**
    * Create a new Devbox instance
    */
-  async createDevbox (config: DevboxCreateConfig): Promise<DevboxInstance> {
+  async createDevbox(config: DevboxCreateConfig): Promise<DevboxInstance> {
     const devboxInfo = await this.apiClient.createDevbox(config)
     return new DevboxInstance(devboxInfo, this)
   }
@@ -39,7 +39,7 @@ export class DevboxSDK {
   /**
    * Get an existing Devbox instance
    */
-  async getDevbox (name: string): Promise<DevboxInstance> {
+  async getDevbox(name: string): Promise<DevboxInstance> {
     const devboxInfo = await this.apiClient.getDevbox(name)
     return new DevboxInstance(devboxInfo, this)
   }
@@ -47,7 +47,7 @@ export class DevboxSDK {
   /**
    * List all Devbox instances
    */
-  async listDevboxes (): Promise<DevboxInstance[]> {
+  async listDevboxes(): Promise<DevboxInstance[]> {
     const devboxes = await this.apiClient.listDevboxes()
     return devboxes.map((info: DevboxInfo) => new DevboxInstance(info, this))
   }
@@ -55,72 +55,59 @@ export class DevboxSDK {
   /**
    * Write a file to a Devbox instance
    */
-  async writeFile (
+  async writeFile(
     devboxName: string,
     path: string,
     content: string | Buffer,
     options?: WriteOptions
   ): Promise<void> {
-    return await this.connectionManager.executeWithConnection(
-      devboxName,
-      async (client) => {
-        const response = await client.post('/files/write', {
-          path,
-          content: content.toString('base64'),
-          encoding: 'base64',
-          ...options
-        })
-        return response.data
-      }
-    )
+    return await this.connectionManager.executeWithConnection(devboxName, async client => {
+      const response = await client.post('/files/write', {
+        path,
+        content: content.toString('base64'),
+        encoding: 'base64',
+        ...options,
+      })
+      return response.data
+    })
   }
 
   /**
    * Read a file from a Devbox instance
    */
-  async readFile (
-    devboxName: string,
-    path: string,
-    options?: ReadOptions
-  ): Promise<Buffer> {
-    return await this.connectionManager.executeWithConnection(
-      devboxName,
-      async (client) => {
-        const response = await client.get('/files/read', {
-          params: { path, ...options }
-        })
-        return Buffer.from(await response.arrayBuffer())
-      }
-    )
+  async readFile(devboxName: string, path: string, options?: ReadOptions): Promise<Buffer> {
+    return await this.connectionManager.executeWithConnection(devboxName, async client => {
+      const response = await client.get('/files/read', {
+        params: { path, ...options },
+      })
+      return Buffer.from(await response.arrayBuffer())
+    })
   }
 
   /**
    * Upload multiple files to a Devbox instance
    */
-  async uploadFiles (
+  async uploadFiles(
     devboxName: string,
     files: FileMap,
     options?: BatchUploadOptions
   ): Promise<TransferResult> {
-    return await this.connectionManager.executeWithConnection(
-      devboxName,
-      async (client) => {
-        const response = await client.post('/files/batch-upload', {
-          files: Object.entries(files).map(([path, content]) => ({
-            path,
-            content: content.toString('base64'),
-            encoding: 'base64'
-          }))
-        })
-        return response.data
-      }
-    )
+    return await this.connectionManager.executeWithConnection(devboxName, async client => {
+      const response = await client.post('/files/batch-upload', {
+        files: Object.entries(files).map(([path, content]) => ({
+          path,
+          content: content.toString('base64'),
+          encoding: 'base64',
+        })),
+      })
+      return response.data
+    })
   }
 
   /**
    * Watch files in a Devbox instance for changes
    */
-  async watchFiles (
+  async watchFiles(
     devboxName: string,
     path: string,
     callback: (event: FileChangeEvent) => void
@@ -144,31 +131,28 @@ export class DevboxSDK {
   /**
    * Get monitoring data for a Devbox instance
    */
-  async getMonitorData (
-    devboxName: string,
-    timeRange?: TimeRange
-  ): Promise<MonitorData[]> {
+  async getMonitorData(devboxName: string, timeRange?: TimeRange): Promise<MonitorData[]> {
     return await this.apiClient.getMonitorData(devboxName, timeRange)
   }
 
   /**
    * Close all connections and cleanup resources
    */
-  async close (): Promise<void> {
+  async close(): Promise<void> {
     await this.connectionManager.closeAllConnections()
   }
 
   /**
    * Get the API client (for advanced usage)
    */
-  getAPIClient (): DevboxAPI {
+  getAPIClient(): DevboxAPI {
     return this.apiClient
   }
 
   /**
    * Get the connection manager (for advanced usage)
    */
-  getConnectionManager (): ConnectionManager {
+  getConnectionManager(): ConnectionManager {
     return this.connectionManager
   }
 }

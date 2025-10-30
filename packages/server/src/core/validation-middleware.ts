@@ -3,9 +3,9 @@
  * Middleware for request validation using Zod schemas
  */
 
+import { DevboxError, ErrorCode } from '@sealos/devbox-shared/errors'
 import { z } from 'zod'
 import { validationErrorResponse } from './response-builder'
-import { DevboxError, ErrorCode } from '@sealos/devbox-shared/errors'
 
 export interface ValidationContext {
   body?: any
@@ -18,7 +18,9 @@ export interface ValidationContext {
  */
 export function validateBody<T extends z.ZodType>(
   schema: T
-): (req: Request) => Promise<{ valid: true; data: z.infer<T> } | { valid: false; response: Response }> {
+): (
+  req: Request
+) => Promise<{ valid: true; data: z.infer<T> } | { valid: false; response: Response }> {
   return async (req: Request) => {
     try {
       const body = await req.json()
@@ -27,7 +29,7 @@ export function validateBody<T extends z.ZodType>(
       if (!result.success) {
         return {
           valid: false,
-          response: validationErrorResponse(result.error)
+          response: validationErrorResponse(result.error),
         }
       }
 
@@ -42,10 +44,10 @@ export function validateBody<T extends z.ZodType>(
               expected: 'object',
               received: 'string',
               path: [],
-              message: 'Invalid JSON in request body'
-            }
+              message: 'Invalid JSON in request body',
+            },
           ])
-        )
+        ),
       }
     }
   }
@@ -60,7 +62,7 @@ export function validateQuery<T extends z.ZodType>(
   return (req: Request) => {
     const url = new URL(req.url)
     const params: Record<string, string> = {}
-    
+
     for (const [key, value] of url.searchParams.entries()) {
       params[key] = value
     }
@@ -70,7 +72,7 @@ export function validateQuery<T extends z.ZodType>(
     if (!result.success) {
       return {
         valid: false,
-        response: validationErrorResponse(result.error)
+        response: validationErrorResponse(result.error),
       }
     }
 
@@ -83,14 +85,16 @@ export function validateQuery<T extends z.ZodType>(
  */
 export function validateParams<T extends z.ZodType>(
   schema: T
-): (params: Record<string, string>) => { valid: true; data: z.infer<T> } | { valid: false; response: Response } {
+): (
+  params: Record<string, string>
+) => { valid: true; data: z.infer<T> } | { valid: false; response: Response } {
   return (params: Record<string, string>) => {
     const result = schema.safeParse(params)
 
     if (!result.success) {
       return {
         valid: false,
-        response: validationErrorResponse(result.error)
+        response: validationErrorResponse(result.error),
       }
     }
 
@@ -101,21 +105,31 @@ export function validateParams<T extends z.ZodType>(
 /**
  * Combined validation middleware for body, query, and params
  */
-export function validateRequest<TBody extends z.ZodType, TQuery extends z.ZodType, TParams extends z.ZodType>(options: {
+export function validateRequest<
+  TBody extends z.ZodType,
+  TQuery extends z.ZodType,
+  TParams extends z.ZodType,
+>(options: {
   body?: TBody
   query?: TQuery
   params?: TParams
-}): (req: Request, routeParams?: Record<string, string>) => Promise<{
-  valid: true
-  data: {
-    body?: z.infer<TBody>
-    query?: z.infer<TQuery>
-    params?: z.infer<TParams>
-  }
-} | {
-  valid: false
-  response: Response
-}> {
+}): (
+  req: Request,
+  routeParams?: Record<string, string>
+) => Promise<
+  | {
+      valid: true
+      data: {
+        body?: z.infer<TBody>
+        query?: z.infer<TQuery>
+        params?: z.infer<TParams>
+      }
+    }
+  | {
+      valid: false
+      response: Response
+    }
+> {
   return async (req: Request, routeParams?: Record<string, string>) => {
     const validationResults: any = {}
     const errors: z.ZodError[] = []
@@ -138,8 +152,8 @@ export function validateRequest<TBody extends z.ZodType, TQuery extends z.ZodTyp
               expected: 'object',
               received: 'string',
               path: [],
-              message: 'Invalid JSON in request body'
-            }
+              message: 'Invalid JSON in request body',
+            },
           ])
         )
       }
@@ -149,7 +163,7 @@ export function validateRequest<TBody extends z.ZodType, TQuery extends z.ZodTyp
     if (options.query) {
       const url = new URL(req.url)
       const queryParams: Record<string, string> = {}
-      
+
       for (const [key, value] of url.searchParams.entries()) {
         queryParams[key] = value
       }
@@ -174,13 +188,11 @@ export function validateRequest<TBody extends z.ZodType, TQuery extends z.ZodTyp
 
     if (errors.length > 0) {
       // Combine all errors
-      const combinedError = new z.ZodError(
-        errors.flatMap(error => error.errors)
-      )
-      
+      const combinedError = new z.ZodError(errors.flatMap(error => error.errors))
+
       return {
         valid: false,
-        response: validationErrorResponse(combinedError)
+        response: validationErrorResponse(combinedError),
       }
     }
 
@@ -204,7 +216,7 @@ export async function validateRequestBody<T extends z.ZodType>(
     } else {
       return {
         success: false,
-        response: validationErrorResponse(result.error)
+        response: validationErrorResponse(result.error),
       }
     }
   } catch (error) {
@@ -217,10 +229,10 @@ export async function validateRequestBody<T extends z.ZodType>(
             expected: 'object',
             received: 'string',
             path: [],
-            message: 'Invalid JSON in request body'
-          }
+            message: 'Invalid JSON in request body',
+          },
         ])
-      )
+      ),
     }
   }
 }
@@ -234,7 +246,7 @@ export function validateQueryParams<T extends z.ZodType>(
 ): { success: true; data: z.infer<T> } | { success: false; response: Response } {
   const url = new URL(req.url)
   const params: Record<string, string> = {}
-  
+
   for (const [key, value] of url.searchParams.entries()) {
     params[key] = value
   }
@@ -246,7 +258,7 @@ export function validateQueryParams<T extends z.ZodType>(
   } else {
     return {
       success: false,
-      response: validationErrorResponse(result.error)
+      response: validationErrorResponse(result.error),
     }
   }
 }
@@ -265,7 +277,7 @@ export function validatePathParams<T extends z.ZodType>(
   } else {
     return {
       success: false,
-      response: validationErrorResponse(result.error)
+      response: validationErrorResponse(result.error),
     }
   }
 }

@@ -67,8 +67,8 @@ export class Router {
           handler,
           params: {
             path: pathParams,
-            query
-          }
+            query,
+          },
         }
       }
     }

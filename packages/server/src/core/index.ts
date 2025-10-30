@@ -15,7 +15,7 @@ export {
   corsMiddleware,
   loggerMiddleware,
   errorHandlerMiddleware,
-  timeoutMiddleware
+  timeoutMiddleware,
 } from './middleware'
 export type { Middleware, NextFunction } from './middleware'
 
@@ -29,5 +29,5 @@ export {
   internalErrorResponse,
   streamResponse,
   noContentResponse,
-  acceptedResponse
+  acceptedResponse,
 } from './response-builder'

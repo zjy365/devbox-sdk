@@ -24,11 +24,17 @@ export {
   ConnectionError,
   FileOperationError,
   DevboxNotFoundError,
-  ValidationError
+  ValidationError,
 } from './utils/error'
 
 // Export constants
-export { DEFAULT_CONFIG, API_ENDPOINTS, ERROR_CODES, SUPPORTED_RUNTIMES, HTTP_STATUS } from './core/constants'
+export {
+  DEFAULT_CONFIG,
+  API_ENDPOINTS,
+  ERROR_CODES,
+  SUPPORTED_RUNTIMES,
+  HTTP_STATUS,
+} from './core/constants'
 
 // Export types for TypeScript users
 export type {
@@ -57,7 +63,7 @@ export type {
   WriteFileRequest,
   ReadFileRequest,
   BatchUploadRequest,
-  FileOperationResult
+  FileOperationResult,
 } from './core/types'
 
 // Default export for convenience

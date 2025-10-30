@@ -2,7 +2,8 @@
 
 **Priority**: 🔴 Critical
 **Estimated Time**: 2-3 hours
-**Status**: Not Started
+**Status**: ✅ Completed
+**Completed Date**: 2025-10-30
 
 ---
 
@@ -19,20 +20,20 @@ This establishes the architectural foundation that all handlers will build upon.
 ---
 
 ## Parent Task
-- [ ] Phase 1: Core Architecture (2-3 hours)
+- [x] Phase 1: Core Architecture (2-3 hours) ✅ Completed
 
 ---
 
 ## Sub-tasks
 
-### 1.1 Create Dependency Injection Container
-- [ ] Create file: `packages/server/src/core/container.ts`
-- [ ] Implement `ServiceContainer` class
-  - [ ] `register<T>(name: string, factory: () => T): void` - Register a service factory
-  - [ ] `get<T>(name: string): T` - Get service instance (lazy initialization)
-  - [ ] `has(name: string): boolean` - Check if service exists
-  - [ ] `clear(): void` - Clear all services (for testing)
-- [ ] Add TypeScript types for container
+### 1.1 Create Dependency Injection Container ✅
+- [x] Create file: `packages/server/src/core/container.ts`
+- [x] Implement `ServiceContainer` class
+  - [x] `register<T>(name: string, factory: () => T): void` - Register a service factory
+  - [x] `get<T>(name: string): T` - Get service instance (lazy initialization)
+  - [x] `has(name: string): boolean` - Check if service exists
+  - [x] `clear(): void` - Clear all services (for testing)
+- [x] Add TypeScript types for container
 - [ ] Write unit tests: `packages/server/__tests__/core/container.test.ts`
 
 **Acceptance Criteria**:
@@ -45,14 +46,14 @@ expect(logger).toBeDefined()
 
 ---
 
-### 1.2 Create Router System
-- [ ] Create file: `packages/server/src/core/router.ts`
-- [ ] Implement `Router` class
-  - [ ] `register(method: string, pattern: string, handler: RouteHandler): void`
-  - [ ] `match(method: string, path: string): RouteMatch | null`
-  - [ ] Support for path parameters (e.g., `/process/:id`)
-  - [ ] Support for query parameters
-- [ ] Implement route handler type
+### 1.2 Create Router System ✅
+- [x] Create file: `packages/server/src/core/router.ts`
+- [x] Implement `Router` class
+  - [x] `register(method: string, pattern: string, handler: RouteHandler): void`
+  - [x] `match(method: string, path: string): RouteMatch | null`
+  - [x] Support for path parameters (e.g., `/process/:id`)
+  - [x] Support for query parameters
+- [x] Implement route handler type
 - [ ] Write unit tests: `packages/server/__tests__/core/router.test.ts`
 
 **Acceptance Criteria**:
@@ -66,15 +67,15 @@ expect(match.params.path).toBe('app.js')
 
 ---
 
-### 1.3 Create Middleware System
-- [ ] Create file: `packages/server/src/core/middleware.ts`
-- [ ] Implement middleware types
-  - [ ] `Middleware = (req: Request, next: NextFunction) => Promise<Response>`
-- [ ] Create core middlewares:
-  - [ ] `corsMiddleware()` - CORS headers
-  - [ ] `loggerMiddleware()` - Request logging with TraceID
-  - [ ] `errorHandlerMiddleware()` - Catch and format errors
-- [ ] Implement middleware chain executor
+### 1.3 Create Middleware System ✅
+- [x] Create file: `packages/server/src/core/middleware.ts`
+- [x] Implement middleware types
+  - [x] `Middleware = (req: Request, next: NextFunction) => Promise<Response>`
+- [x] Create core middlewares:
+  - [x] `corsMiddleware()` - CORS headers
+  - [x] `loggerMiddleware()` - Request logging with TraceID
+  - [x] `errorHandlerMiddleware()` - Catch and format errors
+- [x] Implement middleware chain executor
 - [ ] Write unit tests: `packages/server/__tests__/core/middleware.test.ts`
 
 **Acceptance Criteria**:
@@ -89,14 +90,14 @@ const response = await executeMiddlewares(request, middlewares)
 
 ---
 
-### 1.4 Create Response Builder
-- [ ] Create file: `packages/server/src/core/response-builder.ts`
-- [ ] Implement response helper functions
-  - [ ] `successResponse<T>(data: T, status?: number): Response`
-  - [ ] `errorResponse(error: DevboxError): Response`
-  - [ ] `notFoundResponse(message: string): Response`
-  - [ ] `validationErrorResponse(errors: ZodError): Response`
-- [ ] Integrate with `@sealos/devbox-shared/errors`
+### 1.4 Create Response Builder ✅
+- [x] Create file: `packages/server/src/core/response-builder.ts`
+- [x] Implement response helper functions
+  - [x] `successResponse<T>(data: T, status?: number): Response`
+  - [x] `errorResponse(error: DevboxError): Response`
+  - [x] `notFoundResponse(message: string): Response`
+  - [x] `validationErrorResponse(errors: ZodError): Response`
+- [x] Integrate with `@sealos/devbox-shared/errors`
 - [ ] Write unit tests: `packages/server/__tests__/core/response-builder.test.ts`
 
 **Acceptance Criteria**:
@@ -111,10 +112,10 @@ expect(errorResp.status).toBe(404)
 
 ---
 
-### 1.5 Integrate Container with Router
-- [ ] Update `Router` to accept `ServiceContainer` in constructor
-- [ ] Handlers can access services through container
-- [ ] Create helper method: `router.getService<T>(name: string): T`
+### 1.5 Integrate Container with Router ✅
+- [x] Update `Router` to accept `ServiceContainer` in constructor
+- [x] Handlers can access services through container
+- [x] Create helper method: `router.getService<T>(name: string): T`
 - [ ] Write integration tests
 
 **Acceptance Criteria**:

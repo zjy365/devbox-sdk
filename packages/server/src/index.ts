@@ -13,6 +13,9 @@ const server = new DevboxHTTPServer({
   maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '104857600') // 100MB
 })
 
+console.log(process.env.WORKSPACE_PATH);
+
+
 server.start().catch((error) => {
   console.error('Failed to start server:', error)
   process.exit(1)

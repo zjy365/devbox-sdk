@@ -13,20 +13,20 @@ export interface ServerConfig {
 export interface WriteFileRequest {
   path: string
   content: string
-  encoding?: 'utf8' | 'base64'
-  permissions?: number
+  encoding?: 'utf8' | 'base64' | 'binary' | 'hex'
+  permissions?: string
 }
 
 export interface ReadFileRequest {
   path: string
-  encoding?: 'utf8' | 'binary'
+  encoding?: 'utf8' | 'base64' | 'binary' | 'hex'
 }
 
 export interface BatchUploadRequest {
   files: Array<{
     path: string
     content: string
-    encoding?: 'utf8' | 'base64'
+    encoding?: 'utf8' | 'base64' | 'binary' | 'hex'
   }>
 }
 
@@ -65,4 +65,46 @@ export interface HealthResponse {
   timestamp: string
   version: string
   uptime: number
+}
+
+// Session types
+export interface CreateSessionRequest {
+  workingDir?: string
+  env?: Record<string, string>
+  shell?: string
+}
+
+export interface UpdateSessionEnvRequest {
+  id: string
+  env: Record<string, string>
+}
+
+export interface TerminateSessionRequest {
+  id: string
+}
+
+export interface SessionInfo {
+  id: string
+  status: 'active' | 'terminated'
+  workingDir: string
+  env: Record<string, string>
+  createdAt: number
+  lastActivity: number
+}
+
+export interface SessionExecRequest {
+  sessionId: string
+  command: string
+}
+
+export interface SessionExecResponse {
+  exitCode: number
+  stdout: string
+  stderr: string
+  duration: number
+}
+
+export interface SessionChangeDirRequest {
+  sessionId: string
+  path: string
 }

@@ -158,7 +158,9 @@ export class FileHandler {
   }
 
   private resolvePath(path: string): string {
-    return resolve(this.workspacePath, path)
+    // Strip leading slashes to treat as relative path
+    const cleanPath = path.replace(/^\/+/, '')
+    return resolve(this.workspacePath, cleanPath)
   }
 
   private createErrorResponse(message: string, status: number): Response {

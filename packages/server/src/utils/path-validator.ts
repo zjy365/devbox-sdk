@@ -3,12 +3,29 @@
  */
 
 import { lookup } from 'mime-types'
-import { resolve } from 'path'
+import { resolve, relative, isAbsolute, sep } from 'path'
 
+/**
+ * Normalize and validate a user-provided path
+ * - Strips leading slashes to treat as relative path
+ * - Prevents path traversal attacks (../)
+ * - Ensures the resolved path stays within allowedBase
+ */
 export function validatePath(path: string, allowedBase: string): void {
-  const normalizedPath = resolve(allowedBase, path)
-
-  if (!normalizedPath.startsWith(allowedBase)) {
+  // Strip leading slashes to treat as relative path
+  const cleanPath = path.replace(/^\/+/, '')
+  
+  // Resolve against the allowed base
+  const normalizedBase = resolve(allowedBase)
+  const normalizedPath = resolve(normalizedBase, cleanPath)
+  
+  // Check if the resolved path is within the allowed base
+  const relativePath = relative(normalizedBase, normalizedPath)
+  
+  // Path is invalid if:
+  // 1. It starts with '..' (trying to go outside base)
+  // 2. It's an absolute path after resolution (shouldn't happen but defense in depth)
+  if (relativePath.startsWith('..' + sep) || relativePath === '..' || isAbsolute(relativePath)) {
     throw new Error('Path traversal detected')
   }
 }

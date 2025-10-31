@@ -285,6 +285,130 @@ export class DevboxAPI {
   }
 
   /**
+   * Update a Devbox instance configuration
+   */
+  async updateDevbox(name: string, config: any): Promise<void> {
+    try {
+      await this.httpClient.request('PATCH', this.endpoints.devboxUpdate(name), {
+        headers: this.authenticator.getAuthHeaders(),
+        data: config,
+      })
+    } catch (error) {
+      throw this.handleAPIError(error, `Failed to update Devbox '${name}'`)
+    }
+  }
+
+  /**
+   * Shutdown a Devbox instance
+   */
+  async shutdownDevbox(name: string): Promise<void> {
+    try {
+      await this.httpClient.post(this.endpoints.devboxShutdown(name), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
+    } catch (error) {
+      throw this.handleAPIError(error, `Failed to shutdown Devbox '${name}'`)
+    }
+  }
+
+  /**
+   * Get available runtime templates
+   */
+  async getTemplates(): Promise<any> {
+    try {
+      const response = await this.httpClient.get(this.endpoints.devboxTemplates(), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
+      return response.data
+    } catch (error) {
+      throw this.handleAPIError(error, 'Failed to get templates')
+    }
+  }
+
+  /**
+   * Update port configuration for a Devbox
+   */
+  async updatePorts(name: string, ports: any[]): Promise<void> {
+    try {
+      await this.httpClient.put(this.endpoints.devboxPorts(name), {
+        headers: this.authenticator.getAuthHeaders(),
+        data: { ports },
+      })
+    } catch (error) {
+      throw this.handleAPIError(error, `Failed to update ports for '${name}'`)
+    }
+  }
+
+  /**
+   * Configure autostart for a Devbox
+   */
+  async configureAutostart(name: string, config?: any): Promise<void> {
+    try {
+      await this.httpClient.post(this.endpoints.devboxAutostart(name), {
+        headers: this.authenticator.getAuthHeaders(),
+        data: config || {},
+      })
+    } catch (error) {
+      throw this.handleAPIError(error, `Failed to configure autostart for '${name}'`)
+    }
+  }
+
+  /**
+   * List releases for a Devbox
+   */
+  async listReleases(name: string): Promise<any[]> {
+    try {
+      const response = await this.httpClient.get(this.endpoints.releaseList(name), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
+      return response.data?.data || []
+    } catch (error) {
+      throw this.handleAPIError(error, `Failed to list releases for '${name}'`)
+    }
+  }
+
+  /**
+   * Create a release for a Devbox
+   */
+  async createRelease(name: string, config: any): Promise<void> {
+    try {
+      await this.httpClient.post(this.endpoints.releaseCreate(name), {
+        headers: this.authenticator.getAuthHeaders(),
+        data: config,
+      })
+    } catch (error) {
+      throw this.handleAPIError(error, `Failed to create release for '${name}'`)
+    }
+  }
+
+  /**
+   * Delete a release
+   */
+  async deleteRelease(name: string, tag: string): Promise<void> {
+    try {
+      await this.httpClient.delete(this.endpoints.releaseDelete(name, tag), {
+        headers: this.authenticator.getAuthHeaders(),
+      })
+    } catch (error) {
+      throw this.handleAPIError(error, `Failed to delete release '${tag}' for '${name}'`)
+    }
+  }
+
+  /**
+   * Deploy a release
+   */
+  async deployRelease(name: string, tag: string): Promise<void> {
+    try {
+      await this.httpClient.post(this.endpoints.releaseDeploy(name, tag), {
+        headers: this.authenticator.getAuthHeaders(),
+        data: {},
+      })
+    } catch (error) {
+      throw this.handleAPIError(error, `Failed to deploy release '${tag}' for '${name}'`)
+    }
+  }
+
+  /**
    * Get monitoring data for a Devbox instance
    */
   async getMonitorData(name: string, timeRange?: TimeRange): Promise<MonitorData[]> {

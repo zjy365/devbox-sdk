@@ -45,6 +45,14 @@ export class APIEndpoints {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.GET, { name })
   }
 
+  devboxUpdate(name: string): string {
+    return this.constructUrl(API_ENDPOINTS.DEVBOX.UPDATE, { name })
+  }
+
+  devboxDelete(name: string): string {
+    return this.constructUrl(API_ENDPOINTS.DEVBOX.DELETE, { name })
+  }
+
   devboxStart(name: string): string {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.START, { name })
   }
@@ -57,12 +65,41 @@ export class APIEndpoints {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.RESTART, { name })
   }
 
-  devboxDelete(name: string): string {
-    return this.constructUrl(API_ENDPOINTS.DEVBOX.DELETE, { name })
+  devboxShutdown(name: string): string {
+    return this.constructUrl(API_ENDPOINTS.DEVBOX.SHUTDOWN, { name })
   }
 
   devboxMonitor(name: string): string {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.MONITOR, { name })
+  }
+
+  devboxTemplates(): string {
+    return this.constructUrl(API_ENDPOINTS.DEVBOX.TEMPLATES)
+  }
+
+  devboxPorts(name: string): string {
+    return this.constructUrl(API_ENDPOINTS.DEVBOX.PORTS, { name })
+  }
+
+  devboxAutostart(name: string): string {
+    return this.constructUrl(API_ENDPOINTS.DEVBOX.AUTOSTART, { name })
+  }
+
+  // Release endpoints
+  releaseList(name: string): string {
+    return this.constructUrl(API_ENDPOINTS.DEVBOX.RELEASE.LIST, { name })
+  }
+
+  releaseCreate(name: string): string {
+    return this.constructUrl(API_ENDPOINTS.DEVBOX.RELEASE.CREATE, { name })
+  }
+
+  releaseDelete(name: string, tag: string): string {
+    return this.constructUrl(API_ENDPOINTS.DEVBOX.RELEASE.DELETE, { name, tag })
+  }
+
+  releaseDeploy(name: string, tag: string): string {
+    return this.constructUrl(API_ENDPOINTS.DEVBOX.RELEASE.DEPLOY, { name, tag })
   }
 
   // Container HTTP server endpoints

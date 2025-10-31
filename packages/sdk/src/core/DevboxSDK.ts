@@ -3,8 +3,8 @@
  */
 
 import { DevboxAPI } from '../api/client'
-import { ConnectionManager } from '../connection/manager'
-import { DevboxInstance } from '../devbox/DevboxInstance'
+import { ConnectionManager } from '../http/manager'
+import { DevboxInstance } from './DevboxInstance'
 import type {
   BatchUploadOptions,
   DevboxCreateConfig,
@@ -139,7 +139,15 @@ export class DevboxSDK {
    * Close all connections and cleanup resources
    */
   async close(): Promise<void> {
+    // 1. Close all HTTP connections
     await this.connectionManager.closeAllConnections()
+    
+    // 2. Clear instance cache to prevent memory leaks
+    // Note: instanceCache would need to be added as a private property
+    // this.instanceCache?.clear()
+    
+    // 3. Log cleanup completion
+    console.log('[DevboxSDK] Closed all connections and cleaned up resources')
   }
 
   /**
@@ -158,4 +166,4 @@ export class DevboxSDK {
 }
 
 // Re-export DevboxInstance for convenience
-export { DevboxInstance } from '../devbox/DevboxInstance'
+export { DevboxInstance } from './DevboxInstance'

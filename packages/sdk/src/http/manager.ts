@@ -9,6 +9,8 @@ import { ConnectionPool } from './pool'
 export class ConnectionManager {
   private pool: ConnectionPool
   private apiClient: any // This would be injected from the SDK
+  private cache: Map<string, { data: any; timestamp: number }> = new Map()
+  private readonly CACHE_TTL = 60000 // 60 seconds
 
   constructor(config: DevboxSDKConfig) {
     this.pool = new ConnectionPool(config.connectionPool)
@@ -44,7 +46,7 @@ export class ConnectionManager {
   }
 
   /**
-   * Get the server URL for a Devbox instance
+   * Get the server URL for a Devbox instance (with caching)
    */
   async getServerUrl(devboxName: string): Promise<string> {
     if (!this.apiClient) {
@@ -54,16 +56,52 @@ export class ConnectionManager {
       )
     }
 
+    // Check cache first
+    const cached = this.getFromCache(`url:${devboxName}`)
+    if (cached) {
+      return cached
+    }
+
     try {
-      const devboxInfo = await this.apiClient.getDevbox(devboxName)
-      if (!devboxInfo.podIP) {
+      const devboxInfo = await this.getDevboxInfo(devboxName)
+      
+      if (!devboxInfo) {
         throw new DevboxSDKError(
-          `Devbox '${devboxName}' does not have a pod IP address`,
+          `Devbox '${devboxName}' not found`,
           ERROR_CODES.DEVBOX_NOT_FOUND
         )
       }
 
-      return `http://${devboxInfo.podIP}:3000`
+      // Try to get URL from ports (publicAddress or privateAddress)
+      if (devboxInfo.ports && devboxInfo.ports.length > 0) {
+        const port = devboxInfo.ports[0]
+        
+        // Prefer public address
+        if (port.publicAddress) {
+          const url = port.publicAddress
+          this.setCache(`url:${devboxName}`, url)
+          return url
+        }
+        
+        // Fallback to private address
+        if (port.privateAddress) {
+          const url = port.privateAddress
+          this.setCache(`url:${devboxName}`, url)
+          return url
+        }
+      }
+
+      // Fallback to podIP if available
+      if (devboxInfo.podIP) {
+        const url = `http://${devboxInfo.podIP}:3000`
+        this.setCache(`url:${devboxName}`, url)
+        return url
+      }
+
+      throw new DevboxSDKError(
+        `Devbox '${devboxName}' does not have an accessible URL`,
+        ERROR_CODES.CONNECTION_FAILED
+      )
     } catch (error) {
       if (error instanceof DevboxSDKError) {
         throw error
@@ -74,6 +112,58 @@ export class ConnectionManager {
         { originalError: (error as Error).message }
       )
     }
+  }
+  
+  /**
+   * Get Devbox info with caching
+   */
+  private async getDevboxInfo(devboxName: string): Promise<any> {
+    // Check cache
+    const cached = this.getFromCache(`devbox:${devboxName}`)
+    if (cached) {
+      return cached
+    }
+
+    try {
+      const devboxInfo = await this.apiClient.getDevbox(devboxName)
+      this.setCache(`devbox:${devboxName}`, devboxInfo)
+      return devboxInfo
+    } catch (error) {
+      return null
+    }
+  }
+  
+  /**
+   * Get value from cache if not expired
+   */
+  private getFromCache(key: string): any | null {
+    const entry = this.cache.get(key)
+    if (!entry) return null
+    
+    // Check if expired
+    if (Date.now() - entry.timestamp > this.CACHE_TTL) {
+      this.cache.delete(key)
+      return null
+    }
+    
+    return entry.data
+  }
+  
+  /**
+   * Set value in cache
+   */
+  private setCache(key: string, data: any): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+    })
+  }
+  
+  /**
+   * Clear all cache
+   */
+  clearCache(): void {
+    this.cache.clear()
   }
 
   /**
@@ -97,6 +187,7 @@ export class ConnectionManager {
    */
   async closeAllConnections(): Promise<void> {
     await this.pool.closeAllConnections()
+    this.clearCache()
   }
 
   /**

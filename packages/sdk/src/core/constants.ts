@@ -45,11 +45,22 @@ export const API_ENDPOINTS = {
     LIST: '/api/v1/devbox',
     CREATE: '/api/v1/devbox',
     GET: '/api/v1/devbox/{name}',
+    UPDATE: '/api/v1/devbox/{name}',
+    DELETE: '/api/v1/devbox/{name}/delete',
     START: '/api/v1/devbox/{name}/start',
     PAUSE: '/api/v1/devbox/{name}/pause',
     RESTART: '/api/v1/devbox/{name}/restart',
-    DELETE: '/api/v1/devbox/{name}',
+    SHUTDOWN: '/api/v1/devbox/{name}/shutdown',
     MONITOR: '/api/v1/devbox/{name}/monitor',
+    TEMPLATES: '/api/v1/devbox/templates',
+    PORTS: '/api/v1/devbox/{name}/ports',
+    AUTOSTART: '/api/v1/devbox/{name}/autostart',
+    RELEASE: {
+      LIST: '/api/v1/devbox/{name}/release',
+      CREATE: '/api/v1/devbox/{name}/release',
+      DELETE: '/api/v1/devbox/{name}/release/{tag}',
+      DEPLOY: '/api/v1/devbox/{name}/release/{tag}/deploy',
+    },
   },
 
   /** Container HTTP server endpoints */

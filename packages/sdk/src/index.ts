@@ -14,7 +14,7 @@ export { DevboxInstance } from './core/DevboxInstance'
 export { DevboxAPI } from './api/client'
 
 // Export connection management
-export { ConnectionManager } from './connection/manager'
+export { ConnectionManager } from './http/manager'
 export { ConnectionPool } from './http/pool'
 
 // Export error handling
@@ -42,29 +42,39 @@ export type {
   DevboxCreateConfig,
   DevboxInfo,
   DevboxStatus,
-  RuntimeConfig,
-  ResourceConfig,
   PortConfig,
-  SSHConfig,
+  SSHInfo,
   FileMap,
   WriteOptions,
   ReadOptions,
   BatchUploadOptions,
   TransferResult,
+  TransferProgress,
+  TransferError,
   FileChangeEvent,
   CommandResult,
   ProcessStatus,
   MonitorData,
   TimeRange,
-  HealthResponse,
-  ProcessExecRequest,
-  ProcessStatusResponse,
-  ServerConfig,
-  WriteFileRequest,
-  ReadFileRequest,
-  BatchUploadRequest,
-  FileOperationResult,
+  ResourceInfo,
+  ConnectionPoolConfig,
+  HttpClientConfig,
 } from './core/types'
 
+// Export API types
+export type {
+  APIResponse,
+  CreateDevboxRequest,
+  UpdateDevboxRequest,
+  PortConfig as APIPortConfig,
+  EnvVar,
+  DevboxDetailApiResponse,
+  DevboxListApiResponse,
+  TemplatesApiResponse,
+  ReleaseListApiResponse,
+  MonitorDataApiResponse,
+} from './api/types'
+
 // Default export for convenience
-export { DevboxSDK as default }
+import { DevboxSDK } from './core/DevboxSDK'
+export default DevboxSDK

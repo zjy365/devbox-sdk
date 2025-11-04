@@ -44,6 +44,35 @@ export interface DevboxSSHInfoResponse {
   }
 }
 
+export interface DevboxCreateResponse {
+  name: string
+  sshPort: number
+  base64PrivateKey: string
+  userName: string
+  workingDir: string
+  domain: string
+  ports: any[]
+  summary: {
+    totalPorts: number
+    successfulPorts: number
+    failedPorts: number
+  }
+}
+
+export interface DevboxGetResponse {
+  name: string
+  iconId: string
+  status: {
+    value: string
+    label: string
+  }
+  cpu: number // in millicores
+  memory: number // in MB
+  sshPort: number
+  networks: any[]
+  [key: string]: any // other fields we don't care about
+}
+
 export interface DevboxListResponse {
   devboxes: DevboxSSHInfoResponse[]
 }

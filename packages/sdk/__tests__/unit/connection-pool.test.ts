@@ -18,12 +18,12 @@ describe('Connection Pool Tests', () => {
       maxIdleTime: 30000,
       healthCheckInterval: 10000,
       retryAttempts: 3,
-      timeout: 5000
+      timeout: 5000,
     })
 
     connectionManager = new ConnectionManager({
       baseURL: 'https://test-server.com',
-      pool: connectionPool
+      pool: connectionPool,
     })
   })
 
@@ -48,7 +48,7 @@ describe('Connection Pool Tests', () => {
       const customPool = new ConnectionPool({
         maxConnections: 3,
         maxIdleTime: 60000,
-        healthCheckInterval: 15000
+        healthCheckInterval: 15000,
       })
 
       assert.strictEqual(customPool.getStats().maxConnections, 3)
@@ -190,7 +190,7 @@ describe('Connection Pool Tests', () => {
 
     test('should close old connections', async () => {
       const oldPool = new ConnectionPool({
-        maxIdleTime: 50 // Very short idle time
+        maxIdleTime: 50, // Very short idle time
       })
 
       const connection = await oldPool.acquire()
@@ -226,7 +226,7 @@ describe('Connection Pool Tests', () => {
       const promises = [
         connectionManager.request('/test1'),
         connectionManager.request('/test2'),
-        connectionManager.request('/test3')
+        connectionManager.request('/test3'),
       ]
 
       const results = await Promise.all(promises)
@@ -237,7 +237,7 @@ describe('Connection Pool Tests', () => {
     })
 
     test('should retry failed requests with new connections', async () => {
-      let attempts = 0
+      const attempts = 0
 
       mockServer
         .get('/api/retry')
@@ -259,9 +259,7 @@ describe('Connection Pool Tests', () => {
       }
 
       const startTime = Date.now()
-      const promises = Array.from({ length: 50 }, (_, i) =>
-        connectionManager.request(`/load/${i}`)
-      )
+      const promises = Array.from({ length: 50 }, (_, i) => connectionManager.request(`/load/${i}`))
 
       const results = await Promise.all(promises)
       const duration = Date.now() - startTime
@@ -306,7 +304,10 @@ describe('Connection Pool Tests', () => {
       const maxDuration = Math.max(...durations)
 
       assert(avgDuration < 2000, `Average batch time: ${avgDuration}ms`)
-      assert(maxDuration < avgDuration * 2, `Max batch time: ${maxDuration}ms, avg: ${avgDuration}ms`)
+      assert(
+        maxDuration < avgDuration * 2,
+        `Max batch time: ${maxDuration}ms, avg: ${avgDuration}ms`
+      )
     })
   })
 
@@ -317,35 +318,25 @@ describe('Connection Pool Tests', () => {
         .delayConnection(10000) // Longer than timeout
         .reply(200, { data: 'late response' })
 
-      await assert.rejects(
-        connectionManager.request('/timeout'),
-        /timeout/
-      )
+      await assert.rejects(connectionManager.request('/timeout'), /timeout/)
     })
 
     test('should handle connection resets', async () => {
-      mockServer
-        .get('/api/reset')
-        .replyWithError('Connection reset by peer')
+      mockServer.get('/api/reset').replyWithError('Connection reset by peer')
 
-      await assert.rejects(
-        connectionManager.request('/reset'),
-        /Connection reset/
-      )
+      await assert.rejects(connectionManager.request('/reset'), /Connection reset/)
     })
 
     test('should recover from connection failures', async () => {
       let failureCount = 0
 
-      mockServer
-        .get('/api/recover')
-        .reply(() => {
-          failureCount++
-          if (failureCount <= 2) {
-            return [500, { error: 'Temporary failure' }]
-          }
-          return [200, { data: 'recovered' }]
-        })
+      mockServer.get('/api/recover').reply(() => {
+        failureCount++
+        if (failureCount <= 2) {
+          return [500, { error: 'Temporary failure' }]
+        }
+        return [200, { data: 'recovered' }]
+      })
 
       const response = await connectionManager.request('/recover')
       assert.strictEqual(response.data, 'recovered')
@@ -353,16 +344,11 @@ describe('Connection Pool Tests', () => {
     })
 
     test('should handle malformed responses', async () => {
-      mockServer
-        .get('/api/malformed')
-        .reply(200, 'invalid json response', {
-          'Content-Type': 'application/json'
-        })
+      mockServer.get('/api/malformed').reply(200, 'invalid json response', {
+        'Content-Type': 'application/json',
+      })
 
-      await assert.rejects(
-        connectionManager.request('/malformed'),
-        /Invalid JSON/
-      )
+      await assert.rejects(connectionManager.request('/malformed'), /Invalid JSON/)
     })
   })
 
@@ -403,15 +389,9 @@ describe('Connection Pool Tests', () => {
     })
 
     test('should track error rates', async () => {
-      mockServer
-        .get('/api/error1')
-        .reply(500, { error: 'Server error' })
-      mockServer
-        .get('/api/error2')
-        .reply(404, { error: 'Not found' })
-      mockServer
-        .get('/api/success')
-        .reply(200, { data: 'success' })
+      mockServer.get('/api/error1').reply(500, { error: 'Server error' })
+      mockServer.get('/api/error2').reply(404, { error: 'Not found' })
+      mockServer.get('/api/success').reply(200, { data: 'success' })
 
       await assert.rejects(connectionManager.request('/error1'))
       await assert.rejects(connectionManager.request('/error2'))
@@ -421,7 +401,7 @@ describe('Connection Pool Tests', () => {
       assert.strictEqual(metrics.totalRequests, 3)
       assert.strictEqual(metrics.successfulRequests, 1)
       assert.strictEqual(metrics.failedRequests, 2)
-      assert.strictEqual(metrics.errorRate, 2/3)
+      assert.strictEqual(metrics.errorRate, 2 / 3)
     })
   })
 })

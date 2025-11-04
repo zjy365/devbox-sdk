@@ -47,10 +47,10 @@ export class TestHelper {
 
     const devbox = await this.sdk.createDevbox({
       name,
-      runtime: 'node',
+      runtime: 'node.js',
       resource: {
-        cpu: 1000, // 1 core in millicores
-        memory: 2048, // 2GB in MB
+        cpu: 1, // 1 core
+        memory: 2, // 2GB
       },
       ...overrides,
     })

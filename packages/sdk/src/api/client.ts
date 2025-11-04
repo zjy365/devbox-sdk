@@ -10,6 +10,8 @@ import type {
   APIClientConfig,
   APIResponse,
   DevboxCreateRequest,
+  DevboxCreateResponse,
+  DevboxGetResponse,
   DevboxListResponse,
   DevboxListApiResponse,
   DevboxListItem,
@@ -70,6 +72,8 @@ class SimpleHTTPClient {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
+        // console.log(fetchOptions);
+        console.log(url.toString());
         const response = await fetch(url.toString(), {
           ...fetchOptions,
           signal: controller.signal,
@@ -88,6 +92,8 @@ class SimpleHTTPClient {
         const data = response.headers.get('content-type')?.includes('application/json')
           ? await response.json()
           : await response.text()
+        
+        console.log('response.data', data);
 
         return {
           data,
@@ -196,8 +202,8 @@ export class DevboxAPI {
         headers: this.authenticator.getAuthHeaders(),
         data: request,
       })
-
-      return this.transformSSHInfoToDevboxInfo(response.data as DevboxSSHInfoResponse)
+      
+      return this.transformCreateResponseToDevboxInfo(response.data.data as DevboxCreateResponse)
     } catch (error) {
       throw this.handleAPIError(error, 'Failed to create Devbox')
     }
@@ -212,7 +218,7 @@ export class DevboxAPI {
         headers: this.authenticator.getAuthHeaders(),
       })
 
-      return this.transformSSHInfoToDevboxInfo(response.data as DevboxSSHInfoResponse)
+      return this.transformGetResponseToDevboxInfo(response.data.data as DevboxGetResponse)
     } catch (error) {
       throw this.handleAPIError(error, `Failed to get Devbox '${name}'`)
     }
@@ -471,6 +477,36 @@ export class DevboxAPI {
       status: listItem.status,
       runtime: listItem.runtime,
       resources: listItem.resources,
+    }
+  }
+
+  private transformCreateResponseToDevboxInfo(createResponse: DevboxCreateResponse): DevboxInfo {
+    return {
+      name: createResponse.name,
+      status: 'Pending', // New devboxes start in Pending state
+      runtime: '', // Runtime not returned in create response, would need to be fetched
+      resources: {
+        cpu: 0, // Not returned in create response
+        memory: 0, // Not returned in create response
+      },
+      ssh: {
+        host: createResponse.domain,
+        port: createResponse.sshPort,
+        user: createResponse.userName,
+        privateKey: createResponse.base64PrivateKey,
+      },
+    }
+  }
+
+  private transformGetResponseToDevboxInfo(getResponse: DevboxGetResponse): DevboxInfo {
+    return {
+      name: getResponse.name,
+      status: getResponse.status.value,
+      runtime: getResponse.iconId,
+      resources: {
+        cpu: getResponse.cpu,
+        memory: getResponse.memory,
+      },
     }
   }
 

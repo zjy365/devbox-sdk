@@ -79,8 +79,7 @@ describe('DevboxSDK', () => {
 
   describe('Devbox 生命周期', () => {
     it('应该列出所有 Devbox', async () => {
-      const list = await sdk.listDevboxes()
-      
+      const list = await sdk.listDevboxes() 
       expect(Array.isArray(list)).toBe(true)
       if (list.length > 0) {
         expect(list[0]).toHaveProperty('name')
@@ -93,17 +92,24 @@ describe('DevboxSDK', () => {
       
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'nextjs',
+        runtime: 'next.js',
         resource: {
-          cpu: 1000,
-          memory: 2048,
+          cpu: 1,
+          memory: 2,
         },
+        ports: [
+          {
+            number: 3000,
+            protocol: 'HTTP',
+          },
+        ],
       })
-
+    
+      
       expect(devbox).toBeDefined()
       expect(devbox.name).toBe(name)
 
-      // 清理
+    
       try {
         await devbox.delete()
       } catch (error) {
@@ -117,8 +123,8 @@ describe('DevboxSDK', () => {
       // 先创建
       const created = await sdk.createDevbox({
         name,
-        runtime: 'node',
-        resource: { cpu: 1000, memory: 2048 },
+        runtime: 'node.js',
+        resource: { cpu: 1, memory: 2 },
       })
 
       // 再获取
@@ -148,16 +154,16 @@ describe('DevboxSDK', () => {
       
       const first = await sdk.createDevbox({
         name,
-        runtime: 'node',
-        resource: { cpu: 1000, memory: 2048 },
+        runtime: 'node.js',
+        resource: { cpu: 1, memory: 2 },
       })
 
       // 尝试创建同名 Devbox
       await expect(
         sdk.createDevbox({
           name,
-          runtime: 'node',
-          resource: { cpu: 1000, memory: 2048 },
+          runtime: 'node.js',
+          resource: { cpu: 1, memory: 2 },
         })
       ).rejects.toThrow()
 

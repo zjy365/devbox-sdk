@@ -11,6 +11,8 @@ import type {
   APIResponse,
   DevboxCreateRequest,
   DevboxListResponse,
+  DevboxListApiResponse,
+  DevboxListItem,
   DevboxSSHInfoResponse,
   MonitorDataPoint,
   MonitorRequest,
@@ -43,11 +45,11 @@ class SimpleHTTPClient {
 
     // Add query parameters
     if (options.params) {
-      Object.entries(options.params).forEach(([key, value]) => {
+      for (const [key, value] of Object.entries(options.params)) {
         if (value !== undefined && value !== null) {
           url.searchParams.append(key, String(value))
         }
-      })
+      }
     }
 
     const fetchOptions: RequestInit = {
@@ -101,7 +103,7 @@ class SimpleHTTPClient {
         }
 
         // Exponential backoff
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000))
+        await new Promise(resolve => setTimeout(resolve, 2 ** attempt * 1000))
       }
     }
 
@@ -224,9 +226,9 @@ export class DevboxAPI {
       const response = await this.httpClient.get(this.endpoints.devboxList(), {
         headers: this.authenticator.getAuthHeaders(),
       })
-
-      const listResponse = response.data as DevboxListResponse
-      return listResponse.devboxes.map(this.transformSSHInfoToDevboxInfo)
+      
+      const listResponse = response.data as DevboxListApiResponse
+      return listResponse.data.map(this.transformListItemToDevboxInfo)
     } catch (error) {
       throw this.handleAPIError(error, 'Failed to list Devboxes')
     }
@@ -460,6 +462,15 @@ export class DevboxAPI {
             privateKey: sshInfo.ssh.privateKey,
           }
         : undefined,
+    }
+  }
+
+  private transformListItemToDevboxInfo(listItem: DevboxListItem): DevboxInfo {
+    return {
+      name: listItem.name,
+      status: listItem.status,
+      runtime: listItem.runtime,
+      resources: listItem.resources,
     }
   }
 

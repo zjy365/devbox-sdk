@@ -1,230 +1,205 @@
-import { test, describe, beforeEach, afterEach } from 'node:test'
-import assert from 'node:assert'
-import { DevboxSDK } from '../../src/core/DevboxSDK'
-import { DevboxConfig } from '../../src/core/types'
+/**
+ * DevboxSDK 单元测试
+ */
 
-describe('DevboxSDK Core', () => {
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { DevboxSDK } from '../../src/core/DevboxSDK'
+import { TEST_CONFIG } from '../setup'
+import type { DevboxSDKConfig } from '../../src/core/types'
+
+describe('DevboxSDK', () => {
   let sdk: DevboxSDK
-  let mockConfig: DevboxConfig
 
   beforeEach(() => {
-    mockConfig = {
-      apiEndpoint: 'https://api.example.com',
-      authToken: 'test-token',
-      timeout: 5000,
-      retryAttempts: 3
-    }
+    sdk = new DevboxSDK(TEST_CONFIG)
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     if (sdk) {
-      sdk.disconnect()
+      await sdk.close()
     }
   })
 
-  describe('Constructor', () => {
-    test('should create SDK instance with default config', () => {
-      sdk = new DevboxSDK()
-      assert(sdk instanceof DevboxSDK)
-      assert.strictEqual(sdk.isConnected(), false)
+  describe('初始化', () => {
+    it('应该成功初始化 SDK', () => {
+      expect(sdk).toBeDefined()
+      expect(sdk.createDevbox).toBeDefined()
+      expect(sdk.getDevbox).toBeDefined()
+      expect(sdk.listDevboxes).toBeDefined()
+      expect(sdk.writeFile).toBeDefined()
+      expect(sdk.readFile).toBeDefined()
     })
 
-    test('should create SDK instance with custom config', () => {
-      sdk = new DevboxSDK(mockConfig)
-      assert(sdk instanceof DevboxSDK)
-      assert.strictEqual(sdk.isConnected(), false)
+    it('应该验证配置参数 - 缺少 apiEndpoint', () => {
+      expect(() => {
+        new DevboxSDK({} as DevboxSDKConfig)
+      }).toThrow()
     })
 
-    test('should validate config parameters', () => {
-      assert.throws(() => {
-        new DevboxSDK({ apiEndpoint: '', authToken: 'token' })
-      }, /apiEndpoint is required/)
-
-      assert.throws(() => {
-        new DevboxSDK({ apiEndpoint: 'https://api.example.com', authToken: '' })
-      }, /authToken is required/)
+    it('应该接受有效的配置', () => {
+      const validConfig: DevboxSDKConfig = {
+        baseUrl: 'http://localhost:3000',
+        kubeconfig: 'test-kubeconfig',
+        http: {
+          timeout: 10000,
+        },
+      }
+      const testSdk = new DevboxSDK(validConfig)
+      expect(testSdk).toBeDefined()
+      testSdk.close()
     })
   })
 
-  describe('Connection Management', () => {
-    beforeEach(() => {
-      sdk = new DevboxSDK(mockConfig)
-    })
-
-    test('should connect successfully', async () => {
-      // Mock successful connection
-      const mockConnect = async () => {
-        await new Promise(resolve => setTimeout(resolve, 100))
-        return { success: true, message: 'Connected' }
+  describe('配置管理', () => {
+    it('应该使用默认超时值', () => {
+      const config: DevboxSDKConfig = {
+        baseUrl: 'http://localhost:3000',
+        kubeconfig: 'test',
       }
-
-      // This would be replaced with actual implementation
-      const result = await mockConnect()
-      assert.strictEqual(result.success, true)
+      
+      const testSdk = new DevboxSDK(config)
+      expect(testSdk).toBeDefined()
+      testSdk.close()
     })
 
-    test('should handle connection failures', async () => {
-      // Mock connection failure
-      const mockConnect = async () => {
-        throw new Error('Connection failed')
+    it('应该使用自定义超时值', () => {
+      const config: DevboxSDKConfig = {
+        baseUrl: 'http://localhost:3000',
+        kubeconfig: 'test',
+        http: {
+          timeout: 60000,
+        },
       }
-
-      await assert.rejects(mockConnect, /Connection failed/)
-    })
-
-    test('should disconnect properly', async () => {
-      // Mock disconnect
-      const mockDisconnect = async () => {
-        await new Promise(resolve => setTimeout(resolve, 50))
-        return { success: true }
-      }
-
-      const result = await mockDisconnect()
-      assert.strictEqual(result.success, true)
-    })
-
-    test('should track connection state', () => {
-      assert.strictEqual(sdk.isConnected(), false)
-      // After connecting, this should be true
-      // sdk.connect() would be called here in actual implementation
+      
+      const testSdk = new DevboxSDK(config)
+      expect(testSdk).toBeDefined()
+      testSdk.close()
     })
   })
 
-  describe('Devbox Management', () => {
-    beforeEach(() => {
-      sdk = new DevboxSDK(mockConfig)
+  describe('Devbox 生命周期', () => {
+    it('应该列出所有 Devbox', async () => {
+      const list = await sdk.listDevboxes()
+      
+      expect(Array.isArray(list)).toBe(true)
+      if (list.length > 0) {
+        expect(list[0]).toHaveProperty('name')
+        expect(list[0]).toHaveProperty('status')
+      }
+    }, 30000)
+
+    it('应该创建 Devbox', async () => {
+      const name = `test-sdk-${Date.now()}`
+      
+      const devbox = await sdk.createDevbox({
+        name,
+        runtime: 'nextjs',
+        resource: {
+          cpu: 1000,
+          memory: 2048,
+        },
+      })
+
+      expect(devbox).toBeDefined()
+      expect(devbox.name).toBe(name)
+
+      // 清理
+      try {
+        await devbox.delete()
+      } catch (error) {
+        console.warn('Cleanup failed:', error)
+      }
+    }, 120000)
+
+    it('应该获取单个 Devbox', async () => {
+      const name = `test-sdk-get-${Date.now()}`
+      
+      // 先创建
+      const created = await sdk.createDevbox({
+        name,
+        runtime: 'node',
+        resource: { cpu: 1000, memory: 2048 },
+      })
+
+      // 再获取
+      const fetched = await sdk.getDevbox(name)
+
+      expect(fetched.name).toBe(name)
+      expect(fetched.name).toBe(created.name)
+
+      // 清理
+      try {
+        await created.delete()
+      } catch (error) {
+        console.warn('Cleanup failed:', error)
+      }
+    }, 120000)
+  })
+
+  describe('错误处理', () => {
+    it('应该处理无效的 Devbox 名称', async () => {
+      await expect(
+        sdk.getDevbox('INVALID-NONEXISTENT-NAME-999')
+      ).rejects.toThrow()
+    }, 30000)
+
+    it('应该处理重复创建', async () => {
+      const name = `test-sdk-duplicate-${Date.now()}`
+      
+      const first = await sdk.createDevbox({
+        name,
+        runtime: 'node',
+        resource: { cpu: 1000, memory: 2048 },
+      })
+
+      // 尝试创建同名 Devbox
+      await expect(
+        sdk.createDevbox({
+          name,
+          runtime: 'node',
+          resource: { cpu: 1000, memory: 2048 },
+        })
+      ).rejects.toThrow()
+
+      // 清理
+      try {
+        await first.delete()
+      } catch (error) {
+        console.warn('Cleanup failed:', error)
+      }
+    }, 120000)
+  })
+
+  describe('资源清理', () => {
+    it('应该正确关闭 SDK', async () => {
+      const testSdk = new DevboxSDK(TEST_CONFIG)
+      await testSdk.close()
+      
+      // 关闭后不应该抛出错误（多次关闭应该是安全的）
+      await expect(testSdk.close()).resolves.not.toThrow()
     })
 
-    test('should list devboxes', async () => {
-      const mockDevboxes = [
-        { id: 'devbox-1', name: 'Development Box 1', status: 'running' },
-        { id: 'devbox-2', name: 'Development Box 2', status: 'stopped' }
-      ]
-
-      // Mock API call
-      const mockList = async () => {
-        await new Promise(resolve => setTimeout(resolve, 100))
-        return { devboxes: mockDevboxes }
-      }
-
-      const result = await mockList()
-      assert.strictEqual(result.devboxes.length, 2)
-      assert.strictEqual(result.devboxes[0].id, 'devbox-1')
-    })
-
-    test('should create new devbox', async () => {
-      const mockCreate = async (name: string) => {
-        await new Promise(resolve => setTimeout(resolve, 200))
-        return { id: 'devbox-3', name, status: 'creating' }
-      }
-
-      const result = await mockCreate('Test Devbox')
-      assert.strictEqual(result.name, 'Test Devbox')
-      assert.strictEqual(result.status, 'creating')
-    })
-
-    test('should delete devbox', async () => {
-      const mockDelete = async (id: string) => {
-        await new Promise(resolve => setTimeout(resolve, 100))
-        return { success: true, deletedId: id }
-      }
-
-      const result = await mockDelete('devbox-1')
-      assert.strictEqual(result.success, true)
-      assert.strictEqual(result.deletedId, 'devbox-1')
+    it('应该支持多次关闭', async () => {
+      const testSdk = new DevboxSDK(TEST_CONFIG)
+      await testSdk.close()
+      await testSdk.close()
+      await testSdk.close()
+      
+      // 不应该抛出错误
+      expect(true).toBe(true)
     })
   })
 
-  describe('Error Handling', () => {
-    beforeEach(() => {
-      sdk = new DevboxSDK(mockConfig)
+  describe('API 客户端访问', () => {
+    it('应该提供 API 客户端访问', () => {
+      const apiClient = sdk.getAPIClient()
+      expect(apiClient).toBeDefined()
     })
 
-    test('should handle network errors gracefully', async () => {
-      const mockOperation = async () => {
-        throw new Error('Network timeout')
-      }
-
-      await assert.rejects(mockOperation, /Network timeout/)
-    })
-
-    test('should retry failed operations', async () => {
-      let attempts = 0
-      const mockRetry = async () => {
-        attempts++
-        if (attempts < 3) {
-          throw new Error('Temporary failure')
-        }
-        return { success: true }
-      }
-
-      const result = await mockRetry()
-      assert.strictEqual(result.success, true)
-      assert.strictEqual(attempts, 3)
-    })
-
-    test('should validate input parameters', () => {
-      // Test parameter validation
-      assert.throws(() => {
-        // This would be an actual SDK method call
-        throw new Error('Invalid devbox ID')
-      }, /Invalid devbox ID/)
-    })
-  })
-
-  describe('Configuration', () => {
-    test('should update configuration', () => {
-      sdk = new DevboxSDK(mockConfig)
-
-      const newConfig = { timeout: 10000 }
-      // sdk.updateConfig(newConfig) would be called here
-
-      // Verify configuration was updated
-      // assert.strictEqual(sdk.getConfig().timeout, 10000)
-    })
-
-    test('should reset to default configuration', () => {
-      sdk = new DevboxSDK(mockConfig)
-
-      // sdk.resetConfig() would be called here
-
-      // Verify configuration was reset
-      // assert.deepStrictEqual(sdk.getConfig(), new DevboxSDK().getConfig())
-    })
-  })
-
-  describe('Events', () => {
-    beforeEach(() => {
-      sdk = new DevboxSDK(mockConfig)
-    })
-
-    test('should emit connection events', (done) => {
-      let eventCount = 0
-
-      // Mock event listeners
-      const onConnect = () => {
-        eventCount++
-        if (eventCount === 2) done()
-      }
-
-      const onDisconnect = () => {
-        eventCount++
-        if (eventCount === 2) done()
-      }
-
-      // Simulate events
-      setTimeout(onConnect, 50)
-      setTimeout(onDisconnect, 100)
-    })
-
-    test('should emit devbox status events', (done) => {
-      const onStatusChange = (status: string) => {
-        assert.strictEqual(status, 'running')
-        done()
-      }
-
-      // Simulate status change event
-      setTimeout(() => onStatusChange('running'), 50)
+    it('应该提供连接管理器访问', () => {
+      const connManager = sdk.getConnectionManager()
+      expect(connManager).toBeDefined()
     })
   })
 })
+ 

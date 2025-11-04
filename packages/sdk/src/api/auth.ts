@@ -7,10 +7,33 @@ import type { KubeconfigAuth } from './types'
 
 export class KubeconfigAuthenticator {
   private auth: KubeconfigAuth
+  private token: string
 
   constructor(kubeconfig: string) {
     this.auth = { kubeconfig }
+    this.token = this.extractToken(kubeconfig)
     this.validateKubeconfig()
+  }
+
+  /**
+   * 从 kubeconfig 中提取 token
+   */
+  private extractToken(kubeconfig: string): string {
+    try {
+      // 尝试解析为 JSON
+      if (kubeconfig.trim().startsWith('{') || kubeconfig.trim().startsWith('apiVersion')) {
+        // 如果是 YAML 格式，提取 token
+        const tokenMatch = kubeconfig.match(/token:\s*([^\s\n]+)/)
+        if (tokenMatch && tokenMatch[1]) {
+          return tokenMatch[1]
+        }
+      }
+      // 如果直接是 token（向后兼容）
+      return kubeconfig
+    } catch (error) {
+      // 如果解析失败，直接返回原始字符串（可能本身就是 token）
+      return kubeconfig
+    }
   }
 
   /**
@@ -18,7 +41,7 @@ export class KubeconfigAuthenticator {
    */
   getAuthHeaders(): Record<string, string> {
     return {
-      Authorization: `Bearer ${this.auth.kubeconfig}`,
+      Authorization: `Bearer ${this.token}`,
       'Content-Type': 'application/json',
     }
   }

@@ -10,7 +10,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     silent: false, // 显示 console 输出
-    include: ['packages/**/__tests__/**/*.{test,bench}.ts'],
+    include: ['packages/**/tests/**/*.{test,bench}.ts'],
     exclude: ['node_modules', 'dist', '**/*.d.ts'],
     testTimeout: 300000, // 5 minutes for complex tests
     hookTimeout: 180000, // 3 minutes for setup/teardown
@@ -34,7 +34,7 @@ export default defineConfig({
       }
     },
     benchmark: {
-      include: ['packages/**/__tests__/**/*.bench.ts'],
+      include: ['packages/**/tests/**/*.bench.ts'],
       exclude: ['node_modules', 'dist'],
     }
   },

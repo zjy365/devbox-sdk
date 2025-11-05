@@ -29,7 +29,7 @@ class SimpleHTTPClient {
   private retries: number
 
   constructor(config: { baseUrl?: string; timeout?: number; retries?: number }) {
-    this.baseUrl = config.baseUrl || 'https://api.sealos.io'
+    this.baseUrl = config.baseUrl || 'https://devbox.usw.sealos.io/v1'
     this.timeout = config.timeout || 30000
     this.retries = config.retries || 3
   }
@@ -439,6 +439,7 @@ export class DevboxAPI {
     }
   }
 
+  
   /**
    * Test authentication
    */

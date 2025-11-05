@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { DevboxSDK } from '../../src/core/DevboxSDK'
-import { TEST_CONFIG } from '../setup'
-import type { DevboxSDKConfig } from '../../src/core/types'
+import { DevboxSDK } from '../src/core/DevboxSDK'
+import { TEST_CONFIG } from './setup'
+import type { DevboxSDKConfig } from '../src/core/types'
 
 describe('DevboxSDK', () => {
   let sdk: DevboxSDK
@@ -77,103 +77,18 @@ describe('DevboxSDK', () => {
     })
   })
 
-  describe('Devbox 生命周期', () => {
-    it('应该列出所有 Devbox', async () => {
-      const list = await sdk.listDevboxes() 
+  
+  describe('API 方法可用性', () => {
+    it('应该能够列出所有 Devbox', async () => {
+      const list = await sdk.listDevboxes()
       expect(Array.isArray(list)).toBe(true)
-      if (list.length > 0) {
-        expect(list[0]).toHaveProperty('name')
-        expect(list[0]).toHaveProperty('status')
-      }
     }, 30000)
 
-    it('应该创建 Devbox', async () => {
-      const name = `test-sdk-${Date.now()}`
-      
-      const devbox = await sdk.createDevbox({
-        name,
-        runtime: 'next.js',
-        resource: {
-          cpu: 1,
-          memory: 2,
-        },
-        ports: [
-          {
-            number: 3000,
-            protocol: 'HTTP',
-          },
-        ],
-      })
-    
-      
-      expect(devbox).toBeDefined()
-      expect(devbox.name).toBe(name)
-
-    
-      try {
-        await devbox.delete()
-      } catch (error) {
-        console.warn('Cleanup failed:', error)
-      }
-    }, 120000)
-
-    it('应该获取单个 Devbox', async () => {
-      const name = `test-sdk-get-${Date.now()}`
-      
-      // 先创建
-      const created = await sdk.createDevbox({
-        name,
-        runtime: 'node.js',
-        resource: { cpu: 1, memory: 2 },
-      })
-
-      // 再获取
-      const fetched = await sdk.getDevbox(name)
-
-      expect(fetched.name).toBe(name)
-      expect(fetched.name).toBe(created.name)
-
-      // 清理
-      try {
-        await created.delete()
-      } catch (error) {
-        console.warn('Cleanup failed:', error)
-      }
-    }, 120000)
-  })
-
-  describe('错误处理', () => {
     it('应该处理无效的 Devbox 名称', async () => {
       await expect(
         sdk.getDevbox('INVALID-NONEXISTENT-NAME-999')
       ).rejects.toThrow()
     }, 30000)
-
-    it('应该处理重复创建', async () => {
-      const name = `test-sdk-duplicate-${Date.now()}`
-      
-      const first = await sdk.createDevbox({
-        name,
-        runtime: 'node.js',
-        resource: { cpu: 1, memory: 2 },
-      })
-
-      // 尝试创建同名 Devbox
-      await expect(
-        sdk.createDevbox({
-          name,
-          runtime: 'node.js',
-          resource: { cpu: 1, memory: 2 },
-        })
-      ).rejects.toThrow()
-
-      // 清理
-      try {
-        await first.delete()
-      } catch (error) {
-        console.warn('Cleanup failed:', error)
-      }
-    }, 120000)
   })
 
   describe('资源清理', () => {

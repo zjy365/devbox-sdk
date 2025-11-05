@@ -3,7 +3,8 @@
  * Handles file reading, writing, and directory operations
  */
 
-import { resolve } from 'path'
+import { resolve } from 'node:path'
+import { promises as fs } from 'node:fs'
 import type {
   BatchUploadRequest,
   FileOperationResult,
@@ -80,15 +81,15 @@ export class FileHandler {
             'Content-Length': content.byteLength.toString(),
           },
         })
-      } else {
-        const content = await file.text()
-        return new Response(content, {
-          headers: {
-            'Content-Type': getContentType(fullPath),
-            'Content-Length': content.length.toString(),
-          },
-        })
       }
+
+      const content = await file.text()
+      return new Response(content, {
+        headers: {
+          'Content-Type': getContentType(fullPath),
+          'Content-Length': content.length.toString(),
+        },
+      })
     } catch (error) {
       return this.createErrorResponse(error instanceof Error ? error.message : 'Unknown error', 500)
     }
@@ -155,6 +156,62 @@ export class FileHandler {
       return Response.json({
         success: true,
         path,
+        timestamp: new Date().toISOString(),
+      })
+    } catch (error) {
+      return this.createErrorResponse(error instanceof Error ? error.message : 'Unknown error', 500)
+    }
+  }
+
+  async handleListFiles(path: string): Promise<Response> {
+    try {
+      const fullPath = this.resolvePath(path)
+      validatePath(fullPath, this.workspacePath)
+
+      const files = []
+
+      // Check if path exists and is a directory
+      const dir = Bun.file(fullPath)
+      const exists = await dir.exists()
+
+      if (!exists) {
+        return this.createErrorResponse('Directory not found', 404)
+      }
+
+      // List directory contents
+      try {
+        const entries = await fs.readdir(fullPath, { withFileTypes: true })
+
+        for (const entry of entries) {
+          const entryPath = `${fullPath}/${entry.name}`
+          const stat = await fs.stat(entryPath)
+
+          files.push({
+            name: entry.name,
+            path: `${path}/${entry.name}`.replace(/\/+/g, '/'),
+            type: entry.isDirectory() ? 'directory' : 'file',
+            size: entry.isFile() ? stat.size : 0,
+            modified: stat.mtime.toISOString(),
+          })
+        }
+      } catch (dirError) {
+        // If it's not a directory, check if it's a file
+        try {
+          const stat = await fs.stat(fullPath)
+          if (stat.isFile()) {
+            return this.createErrorResponse('Path is a file, not a directory', 400)
+          }
+        } catch {
+          // Path doesn't exist or is not accessible
+        }
+        throw dirError
+      }
+
+      return Response.json({
+        success: true,
+        path,
+        files,
+        count: files.length,
         timestamp: new Date().toISOString(),
       })
     } catch (error) {

@@ -10,7 +10,7 @@ import { API_ENDPOINTS } from '../core/constants'
 export class APIEndpoints {
   private baseUrl: string
 
-  constructor(baseUrl = 'https://api.sealos.io') {
+  constructor(baseUrl = 'https://devbox.usw.sealos.io/v1') {
     this.baseUrl = baseUrl
   }
 

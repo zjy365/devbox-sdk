@@ -155,6 +155,14 @@ export class DevboxHTTPServer {
       return await fileHandler.handleDeleteFile(validation.data.path)
     })
 
+    this.router.register('POST', '/files/list', async req => {
+      const validation = await validateRequestBody(req, z.object({ path: z.string().min(1) }))
+      if (!validation.success) {
+        return validation.response
+      }
+      return await fileHandler.handleListFiles(validation.data.path)
+    })
+
     this.router.register('POST', '/files/batch-upload', async req => {
       const validation = await validateRequestBody(req, BatchUploadRequestSchema)
       if (!validation.success) {

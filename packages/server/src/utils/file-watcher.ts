@@ -11,8 +11,11 @@ export class FileWatcher extends EventTarget {
   private fileWatchers = new Map<string, any>() // Chokidar watcher instances
 
   startWatching(path: string, ws: any): void {
-    if (!this.watchers.has(path)) {
-      this.watchers.set(path, new Set())
+    let watcherSet = this.watchers.get(path)
+
+    if (!watcherSet) {
+      watcherSet = new Set()
+      this.watchers.set(path, watcherSet)
 
       // Start chokidar watcher if this is the first subscription
       const watcher = watch(path, {
@@ -47,7 +50,8 @@ export class FileWatcher extends EventTarget {
 
       this.fileWatchers.set(path, watcher)
     }
-    this.watchers.get(path)!.add(ws)
+
+    watcherSet.add(ws)
   }
 
   stopWatching(path: string, ws: any): void {

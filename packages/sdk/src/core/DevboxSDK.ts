@@ -105,6 +105,30 @@ export class DevboxSDK {
   }
 
   /**
+   * Delete a file from a Devbox instance
+   */
+  async deleteFile(devboxName: string, path: string): Promise<void> {
+    return await this.connectionManager.executeWithConnection(devboxName, async client => {
+      const response = await client.post('/files/delete', {
+        path,
+      })
+      return response.data
+    })
+  }
+
+  /**
+   * List files in a directory in a Devbox instance
+   */
+  async listFiles(devboxName: string, path: string): Promise<any> {
+    return await this.connectionManager.executeWithConnection(devboxName, async client => {
+      const response = await client.post('/files/list', {
+        path,
+      })
+      return response.data
+    })
+  }
+
+  /**
    * Watch files in a Devbox instance for changes
    */
   async watchFiles(

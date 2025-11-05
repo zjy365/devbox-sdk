@@ -11,9 +11,13 @@ export class ConnectionManager {
   private apiClient: any // This would be injected from the SDK
   private cache: Map<string, { data: any; timestamp: number }> = new Map()
   private readonly CACHE_TTL = 60000 // 60 seconds
+  private mockServerUrl?: string
+  private devboxServerUrl?: string
 
   constructor(config: DevboxSDKConfig) {
     this.pool = new ConnectionPool(config.connectionPool)
+    this.mockServerUrl = config.mockServerUrl || process.env.MOCK_SERVER_URL
+    this.devboxServerUrl = config.devboxServerUrl || process.env.DEVBOX_SERVER_URL
   }
 
   /**
@@ -49,6 +53,16 @@ export class ConnectionManager {
    * Get the server URL for a Devbox instance (with caching)
    */
   async getServerUrl(devboxName: string): Promise<string> {
+    // If mock server URL is configured, use it for all Devbox instances
+    if (this.mockServerUrl) {
+      return this.mockServerUrl
+    }
+
+    // If devbox server URL is configured, use it for all Devbox instances
+    if (this.devboxServerUrl) {
+      return this.devboxServerUrl
+    }
+
     if (!this.apiClient) {
       throw new DevboxSDKError(
         'API client not set. Call setAPIClient() first.',
@@ -64,7 +78,7 @@ export class ConnectionManager {
 
     try {
       const devboxInfo = await this.getDevboxInfo(devboxName)
-      
+
       if (!devboxInfo) {
         throw new DevboxSDKError(
           `Devbox '${devboxName}' not found`,
@@ -75,14 +89,14 @@ export class ConnectionManager {
       // Try to get URL from ports (publicAddress or privateAddress)
       if (devboxInfo.ports && devboxInfo.ports.length > 0) {
         const port = devboxInfo.ports[0]
-        
+
         // Prefer public address
         if (port.publicAddress) {
           const url = port.publicAddress
           this.setCache(`url:${devboxName}`, url)
           return url
         }
-        
+
         // Fallback to private address
         if (port.privateAddress) {
           const url = port.privateAddress

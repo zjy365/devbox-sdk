@@ -4,10 +4,16 @@
 
 export const DEFAULT_CONFIG = {
   /** Default base URL for Devbox API */
-  BASE_URL: 'https://api.sealos.io',
+  BASE_URL: 'https://devbox.usw.sealos.io/v1',
 
   /** Default HTTP server port for containers */
   CONTAINER_HTTP_PORT: 3000,
+
+  /** Default mock server configuration */
+  MOCK_SERVER: {
+    DEFAULT_URL: 'http://localhost:9757',
+    ENV_VAR: 'MOCK_SERVER_URL',
+  },
 
   /** Default connection pool settings */
   CONNECTION_POOL: {

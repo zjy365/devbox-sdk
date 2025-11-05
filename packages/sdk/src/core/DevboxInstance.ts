@@ -119,6 +119,18 @@ export class DevboxInstance {
     }
   }
 
+  async deleteFile(path: string): Promise<void> {
+    // Validate path to prevent directory traversal
+    this.validatePath(path)
+    return await this.sdk.deleteFile(this.name, path)
+  }
+
+  async listFiles(path: string): Promise<any> {
+    // Validate path to prevent directory traversal
+    this.validatePath(path)
+    return await this.sdk.listFiles(this.name, path)
+  }
+
   async uploadFiles(files: FileMap, options?: BatchUploadOptions): Promise<TransferResult> {
     return await this.sdk.uploadFiles(this.name, files, options)
   }

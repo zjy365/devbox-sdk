@@ -7,6 +7,10 @@ export interface DevboxSDKConfig {
   kubeconfig: string
   /** Optional base URL for the Devbox API */
   baseUrl?: string
+  /** Optional mock server URL for development/testing */
+  mockServerUrl?: string
+  /** Optional devbox sandbox server URL for container communication */
+  devboxServerUrl?: string
   /** Connection pool configuration */
   connectionPool?: ConnectionPoolConfig
   /** HTTP client configuration */
@@ -95,6 +99,8 @@ export interface WriteOptions {
   encoding?: string
   /** File permissions */
   mode?: number
+  /** Create parent directories if they don't exist */
+  createDirs?: boolean
 }
 
 export interface ReadOptions {

@@ -6,7 +6,7 @@
 import { DevboxHTTPServer } from './server'
 
 const server = new DevboxHTTPServer({
-  port: Number.parseInt(process.env.PORT || '3000'),
+  port: Number.parseInt(process.env.PORT || '9757'),
   host: process.env.HOST || '0.0.0.0',
   workspacePath: process.env.WORKSPACE_PATH || '/workspace',
   enableCors: process.env.ENABLE_CORS === 'true',

@@ -41,5 +41,5 @@ func (h *ProcessHandler) parseSignal(signalStr string) (syscall.Signal, error) {
 
 // formatLog formats a log entry with timestamp
 func (h *ProcessHandler) formatLog(source, message string) string {
-	return fmt.Sprintf("[%s] %s: %s", time.Now().Format("2006-01-02 15:04:05"), source, message)
+	return fmt.Sprintf("[%d] %s: %s", time.Now().Unix(), source, message)
 }

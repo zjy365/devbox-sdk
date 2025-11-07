@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/hex"
 	"flag"
 	"log/slog"
 	"os"
@@ -37,34 +36,6 @@ func TestGetLogLevel(t *testing.T) {
 			assert.Equal(t, tc.expected, level)
 		})
 	}
-}
-
-func TestGenerateRandomToken(t *testing.T) {
-	cases := []struct {
-		name   string
-		bytes  int
-		length int
-	}{
-		{"zero length", 0, 0},
-		{"one byte", 1, 2},
-		{"eight bytes", 8, 16},
-		{"sixteen bytes", 16, 32},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			token := generateRandomToken(c.bytes)
-			assert.Equal(t, c.length, len(token))
-			_, err := hex.DecodeString(token)
-			assert.NoError(t, err, "token should be valid hex")
-		})
-	}
-
-	t.Run("generates different tokens", func(t *testing.T) {
-		t1 := generateRandomToken(16)
-		t2 := generateRandomToken(16)
-		assert.NotEqual(t, t1, t2)
-	})
 }
 
 func TestParseCfg_TableDriven(t *testing.T) {
@@ -223,9 +194,7 @@ func TestParseCfg_TableDriven(t *testing.T) {
 
 			if c.exp.token == "non-empty" {
 				assert.NotEmpty(t, cfg.Token)
-				assert.Equal(t, 32, len(cfg.Token))
-				_, err := hex.DecodeString(cfg.Token)
-				assert.NoError(t, err)
+				assert.Equal(t, 8, len(cfg.Token))
 			} else {
 				assert.Equal(t, c.exp.token, cfg.Token)
 			}

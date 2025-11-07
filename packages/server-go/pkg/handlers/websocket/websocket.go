@@ -138,25 +138,25 @@ func (h *WebSocketHandler) handleClient(conn *websocket.Conn, client *ClientInfo
 		// Parse subscription-based request
 		var req common.SubscriptionRequest
 		if err := json.Unmarshal(message, &req); err != nil {
-			h.sendError(conn, "Invalid request format", "INVALID_FORMAT")
+			h.sendError(conn, "Invalid request format")
 			continue
 		}
 
 		switch req.Action {
 		case "subscribe":
 			if err := h.handleSubscribe(conn, client, &req); err != nil {
-				h.sendError(conn, err.Error(), "SUBSCRIBE_FAILED")
+				h.sendError(conn, err.Error())
 			}
 		case "unsubscribe":
 			if err := h.handleUnsubscribe(conn, client, &req); err != nil {
-				h.sendError(conn, err.Error(), "UNSUBSCRIBE_FAILED")
+				h.sendError(conn, err.Error())
 			}
 		case "list":
 			if err := h.handleList(conn, client); err != nil {
-				h.sendError(conn, err.Error(), "LIST_FAILED")
+				h.sendError(conn, err.Error())
 			}
 		default:
-			h.sendError(conn, "Unknown action", "UNKNOWN_ACTION")
+			h.sendError(conn, "Unknown action")
 		}
 	}
 }
@@ -164,7 +164,7 @@ func (h *WebSocketHandler) handleClient(conn *websocket.Conn, client *ClientInfo
 // handleSubscribe handles subscription requests
 func (h *WebSocketHandler) handleSubscribe(conn *websocket.Conn, client *ClientInfo, req *common.SubscriptionRequest) error {
 	if req.Type == "" || req.TargetID == "" {
-		return fmt.Errorf("type and targetId are required")
+		return fmt.Errorf("type and target_id are required")
 	}
 
 	subscriptionID := fmt.Sprintf("%s:%s:%s", client.ID, req.Type, req.TargetID)
@@ -217,7 +217,7 @@ func (h *WebSocketHandler) handleSubscribe(conn *websocket.Conn, client *ClientI
 // handleUnsubscribe handles unsubscription requests
 func (h *WebSocketHandler) handleUnsubscribe(conn *websocket.Conn, client *ClientInfo, req *common.SubscriptionRequest) error {
 	if req.Type == "" || req.TargetID == "" {
-		return fmt.Errorf("type and targetId are required")
+		return fmt.Errorf("type and target_id are required")
 	}
 
 	subscriptionID := fmt.Sprintf("%s:%s:%s", client.ID, req.Type, req.TargetID)
@@ -268,7 +268,7 @@ func (h *WebSocketHandler) handleList(conn *websocket.Conn, client *ClientInfo) 
 			subscriptions = append(subscriptions, map[string]any{
 				"id":        sub.ID,
 				"type":      sub.Type,
-				"targetId":  sub.TargetID,
+				"target_id": sub.TargetID,
 				"logLevels": logLevels,
 				"createdAt": sub.CreatedAt.Unix(),
 				"active":    sub.Active,
@@ -466,11 +466,10 @@ func (h *WebSocketHandler) sendHistoricalLogs(conn *websocket.Conn, targetType, 
 }
 
 // sendError sends an error message over WebSocket
-func (h *WebSocketHandler) sendError(conn *websocket.Conn, message string, code string) error {
-	errorMsg := common.ErrorResponse{
-		Error:     message,
-		Code:      code,
-		Timestamp: time.Now().Unix(),
+func (h *WebSocketHandler) sendError(conn *websocket.Conn, message string) error {
+	errorMsg := common.Response{
+		Error:   message,
+		Success: false,
 	}
 	return h.sendJSON(conn, errorMsg)
 }

@@ -1,7 +1,6 @@
 package process
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/labring/devbox-sdk-server/pkg/errors"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/utils"
 )
 
 // Process operation request types
@@ -28,10 +27,10 @@ type ProcessExecRequest struct {
 // Process operation response types
 type ProcessExecResponse struct {
 	common.Response
-	ProcessID string  `json:"processId"`
+	ProcessID string  `json:"process_id"`
 	PID       int     `json:"pid"`
 	Status    string  `json:"status"`
-	ExitCode  *int    `json:"exitCode,omitempty"`
+	ExitCode  *int    `json:"exit_code,omitempty"`
 	Stdout    *string `json:"stdout,omitempty"`
 	Stderr    *string `json:"stderr,omitempty"`
 }
@@ -51,7 +50,7 @@ func (h *ProcessHandler) ExecProcess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate process ID
-	processID := uuid.New().String()
+	processID := utils.NewNanoID()
 
 	// Prepare command
 	var cmd *exec.Cmd
@@ -95,7 +94,44 @@ func (h *ProcessHandler) ExecProcess(w http.ResponseWriter, r *http.Request) {
 
 	// Start the process
 	if err := cmd.Start(); err != nil {
-		errors.WriteErrorResponse(w, errors.NewInternalError(fmt.Sprintf("Failed to start process: %v", err)))
+		// If process fails to start, create a failed process entry for consistency
+		// This allows users to query the process status and logs
+		processInfo := &ProcessInfo{
+			ID:         processID,
+			Cmd:        cmd,
+			StartAt:    time.Now(),
+			Status:     "failed",
+			Logs:       make([]string, 0),
+			LogEntries: make([]common.LogEntry, 0),
+		}
+
+		// Add failure log entry
+		logEntry := common.LogEntry{
+			Timestamp:  time.Now().Unix(),
+			Level:      "error",
+			Source:     "system",
+			TargetID:   processID,
+			TargetType: "process",
+			Message:    fmt.Sprintf("Failed to start process: %v", err),
+		}
+		processInfo.LogEntries = append(processInfo.LogEntries, logEntry)
+
+		// Store process info
+		h.mutex.Lock()
+		h.processes[processID] = processInfo
+		h.mutex.Unlock()
+
+		// Return success response with process ID, but indicate failure in status
+		response := ProcessExecResponse{
+			Response: common.Response{
+				Success: false,
+				Error:   fmt.Sprintf("Failed to start process: %v", err),
+			},
+			ProcessID: processID,
+			Status:    "failed",
+		}
+
+		common.WriteJSONResponse(w, response)
 		return
 	}
 
@@ -105,8 +141,6 @@ func (h *ProcessHandler) ExecProcess(w http.ResponseWriter, r *http.Request) {
 		Cmd:        cmd,
 		StartAt:    time.Now(),
 		Status:     "running",
-		Stdout:     bufio.NewScanner(stdout),
-		Stderr:     bufio.NewScanner(stderr),
 		Logs:       make([]string, 0),
 		LogEntries: make([]common.LogEntry, 0),
 	}

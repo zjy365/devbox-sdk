@@ -51,6 +51,12 @@ cleanup() {
     pkill -f "devbox-server.*$SERVER_PORT" 2>/dev/null || true
     pkill -f ".*$SERVER_PORT" 2>/dev/null || true
 
+    # Clean up test files and directories
+    rm -rf test_tmp/ test_file.txt test/response.tmp test/process_id.tmp 2>/dev/null || true
+
+    # Clean up any accidentally created directories in project root
+    rm -rf tmp/ temp/ 2>/dev/null || true
+
     echo -e "${GREEN}Cleanup completed.${NC}"
 }
 
@@ -123,7 +129,7 @@ run_test() {
     local test_passed=true
     if [ "$expected_success" = "true" ]; then
         # Expect success: check for success indicators
-        if echo "$response_body" | grep -q '"success":true\|"status":"healthy"\|"status":"ready"\|"ready":true\|"files":\[\|"processId":"\|"status":"running\|"status":"completed\|"status":"terminated"\|"logs":\[\|"status":"exited"'; then
+        if echo "$response_body" | grep -q '"success":true\|"status":"healthy"\|"status":"ready"\|"ready":true\|"files":\[\|"process_id":"\|"status":"running\|"status":"completed\|"status":"terminated"\|"logs":\[\|"status":"exited"'; then
             echo -e "${GREEN}✓ PASSED (Status: $response_code, Success confirmed)${NC}"
         elif echo "$response_body" | grep -q '"error"\|"type":".*error"'; then
             echo -e "${RED}✗ FAILED (Status: $response_code, but error in response)${NC}"
@@ -207,16 +213,16 @@ if run_test "GET" "/health/ready" "" "200" "Readiness Check"; then ((PASSED_TEST
 
 # Test File Operations
 echo -e "\n${YELLOW}=== File Operations ===${NC}"
-if run_test "POST" "/api/v1/files/read" '{"path":"/tmp/test.txt"}' "404" "Read File (nonexistent)" "false"; then ((PASSED_TESTS++)); fi
+if run_test "POST" "/api/v1/files/read" '{"path":"test_tmp/test.txt"}' "404" "Read File (nonexistent)" "false"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
 if run_test "GET" "/api/v1/files/list" "" "200" "List Files (current directory)" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
-if run_test "GET" "/api/v1/files/list?path=/tmp" "" "200" "List Files (tmp directory)" "true"; then ((PASSED_TESTS++)); fi
+if run_test "GET" "/api/v1/files/list?path=test_tmp" "" "200" "List Files (test directory)" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
-if run_test "POST" "/api/v1/files/write" '{"path":"/tmp/test.txt","content":"test content"}' "200" "Write File (in tmp directory)" "true"; then ((PASSED_TESTS++)); fi
+if run_test "POST" "/api/v1/files/write" '{"path":"test_tmp/test.txt","content":"test content"}' "200" "Write File (in test directory)" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
 # Test successful file operations in current directory
@@ -232,7 +238,11 @@ if run_test "GET" "/api/v1/files/list?path=." "" "200" "List Files (current dire
 if run_test "POST" "/api/v1/files/delete" '{"path":"test_file.txt"}' "200" "Delete File (successful)" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
-if run_test "POST" "/api/v1/files/delete" '{"path":"/tmp/test.txt"}' "200" "Delete File (nonexistent)" "false"; then ((PASSED_TESTS++)); fi
+if run_test "POST" "/api/v1/files/delete" '{"path":"test_tmp/test.txt"}' "200" "Delete File (nonexistent)" "false"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+# Test batch upload (without files - should fail due to missing multipart data)
+if run_test "POST" "/api/v1/files/batch-upload" "" "200" "Batch Upload (no multipart data)" "false"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
 # Test Process Operations
@@ -240,8 +250,16 @@ echo -e "\n${YELLOW}=== Process Operations ===${NC}"
 if run_test "POST" "/api/v1/process/exec" '{"command":"echo hello world"}' "200" "Execute Process" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
+# Test exec-sync endpoint
+if run_test "POST" "/api/v1/process/exec-sync" '{"command":"echo","args":["sync","test"],"timeout":10}' "200" "Exec Sync" "true"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+# Test sync-stream endpoint
+if run_test "POST" "/api/v1/process/sync-stream" '{"command":"echo","args":["stream","test"],"timeout":10}' "200" "Sync Stream" "true"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
 # Extract process ID from exec response for further tests
-PROCESS_ID=$(cat test/response.tmp 2>/dev/null | grep -o '"processId":"[^"]*"' | cut -d'"' -f4 | head -1)
+PROCESS_ID=$(cat test/response.tmp 2>/dev/null | grep -o '"process_id":"[^"]*"' | cut -d'"' -f4 | head -1)
 # Save process ID to temp file to avoid being overwritten
 echo "$PROCESS_ID" > test/process_id.tmp
 
@@ -277,15 +295,15 @@ if run_test "GET" "/api/v1/process/nonexistent/logs" "" "404" "Get Process Logs 
 
 # Test Session Operations
 echo -e "\n${YELLOW}=== Session Operations ===${NC}"
-if run_test "POST" "/api/v1/sessions/create" '{"workingDirectory":"/tmp"}' "200" "Create Session" "true"; then ((PASSED_TESTS++)); fi
+if run_test "POST" "/api/v1/sessions/create" '{"working_dir":"/tmp"}' "200" "Create Session" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
 if run_test "GET" "/api/v1/sessions" "" "200" "Get All Sessions" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
 # Get session ID from previous response for subsequent tests
-# Try both "sessionId" and "id" patterns to handle different API responses
-SESSION_ID=$(cat test/response.tmp 2>/dev/null | grep -o '"sessionId":"[^"]*"' | cut -d'"' -f4 | head -1)
+# Try both "session_id" and "id" patterns to handle different API responses
+SESSION_ID=$(cat test/response.tmp 2>/dev/null | grep -o '"session_id":"[^"]*"' | cut -d'"' -f4 | head -1)
 if [ -z "$SESSION_ID" ]; then
     SESSION_ID=$(cat test/response.tmp 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4 | head -1)
 fi
@@ -296,19 +314,19 @@ if [ -n "$SESSION_ID" ]; then
     if run_test "GET" "/api/v1/sessions/$SESSION_ID" "" "400" "Get Specific Session" "false"; then ((PASSED_TESTS++)); fi
     ((TOTAL_TESTS++))
 
-    if run_test "POST" "/api/v1/sessions/$SESSION_ID/env" "{\"sessionId\":\"$SESSION_ID\",\"key\":\"TEST\",\"value\":\"value\"}" "400" "Update Session Environment" "false"; then ((PASSED_TESTS++)); fi
+    if run_test "POST" "/api/v1/sessions/$SESSION_ID/env" "{\"session_id\":\"$SESSION_ID\",\"key\":\"TEST\",\"value\":\"value\"}" "400" "Update Session Environment" "false"; then ((PASSED_TESTS++)); fi
     ((TOTAL_TESTS++))
 
-    if run_test "POST" "/api/v1/sessions/$SESSION_ID/exec" "{\"sessionId\":\"$SESSION_ID\",\"command\":\"pwd\"}" "400" "Session Exec" "false"; then ((PASSED_TESTS++)); fi
+    if run_test "POST" "/api/v1/sessions/$SESSION_ID/exec" "{\"session_id\":\"$SESSION_ID\",\"command\":\"pwd\"}" "400" "Session Exec" "false"; then ((PASSED_TESTS++)); fi
     ((TOTAL_TESTS++))
 
     if run_test "GET" "/api/v1/sessions/$SESSION_ID/logs" "" "200" "Get Session Logs" "true"; then ((PASSED_TESTS++)); fi
     ((TOTAL_TESTS++))
 
-    if run_test "POST" "/api/v1/sessions/$SESSION_ID/cd" "{\"sessionId\":\"$SESSION_ID\",\"directory\":\"/tmp\"}" "400" "Session CD" "false"; then ((PASSED_TESTS++)); fi
+    if run_test "POST" "/api/v1/sessions/$SESSION_ID/cd" "{\"session_id\":\"$SESSION_ID\",\"directory\":\"/tmp\"}" "400" "Session CD" "false"; then ((PASSED_TESTS++)); fi
     ((TOTAL_TESTS++))
 
-    if run_test "POST" "/api/v1/sessions/$SESSION_ID/terminate" "{\"sessionId\":\"$SESSION_ID\"}" "200" "Terminate Session" "true"; then ((PASSED_TESTS++)); fi
+    if run_test "POST" "/api/v1/sessions/$SESSION_ID/terminate" "{\"session_id\":\"$SESSION_ID\"}" "200" "Terminate Session" "true"; then ((PASSED_TESTS++)); fi
     ((TOTAL_TESTS++))
 else
     echo -e "${YELLOW}Warning: Could not extract session ID, skipping session-specific tests${NC}"

@@ -72,7 +72,7 @@ func (h *SessionHandler) collectSessionLogs(ctx context.Context, sessionInfo *Se
 			return
 		default:
 			line := scanner.Text()
-			logEntry := fmt.Sprintf("[%s] %s: %s", time.Now().Format("2006-01-02 15:04:05"), source, line)
+			logEntry := fmt.Sprintf("[%d] %s: %s", time.Now().Unix(), source, line)
 
 			sessionInfo.LogMux.Lock()
 			sessionInfo.Logs = append(sessionInfo.Logs, logEntry)
@@ -109,7 +109,7 @@ func (h *SessionHandler) monitorSession(sessionInfo *SessionInfo) {
 	sessionInfo.LogMux.Lock()
 	if err != nil {
 		sessionInfo.Status = "failed"
-		logEntry := fmt.Sprintf("[%s] session: Shell exited with error: %v", time.Now().Format("2006-01-02 15:04:05"), err)
+		logEntry := fmt.Sprintf("[%d] session: Shell exited with error: %v", time.Now().Unix(), err)
 		sessionInfo.Logs = append(sessionInfo.Logs, logEntry)
 		// Add structured log entry for failure
 		structuredLogEntry := &common.LogEntry{
@@ -127,7 +127,7 @@ func (h *SessionHandler) monitorSession(sessionInfo *SessionInfo) {
 		}
 	} else {
 		sessionInfo.Status = "completed"
-		logEntry := fmt.Sprintf("[%s] session: Shell exited normally", time.Now().Format("2006-01-02 15:04:05"))
+		logEntry := fmt.Sprintf("[%d] session: Shell exited normally", time.Now().Unix())
 		sessionInfo.Logs = append(sessionInfo.Logs, logEntry)
 		// Add structured log entry for completion
 		structuredLogEntry := &common.LogEntry{

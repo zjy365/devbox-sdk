@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/labring/devbox-sdk-server/pkg/errors"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
 )
 
@@ -17,100 +18,96 @@ func (h *ProcessHandler) collectLogs(processID string, stdout, stderr io.Reader)
 		return
 	}
 
-	// Create scanners for stdout and stderr
-	stdoutScanner := bufio.NewScanner(stdout)
-	stderrScanner := bufio.NewScanner(stderr)
-
-	// Create channels for log lines
-	stdoutLines := make(chan string)
-	stderrLines := make(chan string)
-	done := make(chan bool, 2)
-
-	// Start stdout reader
+	// Create a single goroutine to handle both stdout and stderr
 	go func() {
-		for stdoutScanner.Scan() {
-			stdoutLines <- h.formatLog("stdout", stdoutScanner.Text())
-		}
-		close(stdoutLines)
-		done <- true
-	}()
+		// Create scanners with larger buffer
+		stdoutScanner := bufio.NewScanner(stdout)
+		stderrScanner := bufio.NewScanner(stderr)
 
-	// Start stderr reader
-	go func() {
-		for stderrScanner.Scan() {
-			stderrLines <- h.formatLog("stderr", stderrScanner.Text())
-		}
-		close(stderrLines)
-		done <- true
-	}()
+		buf := make([]byte, 0, 64*1024)      // 64KB initial buffer
+		stdoutScanner.Buffer(buf, 1024*1024) // 1MB max line length
+		stderrScanner.Buffer(buf, 1024*1024) // 1MB max line length
 
-	// Collect logs
-	go func() {
-		defer func() {
-			<-done
-			<-done
+		// Read all available data from both streams using goroutines
+		done := make(chan bool, 2)
+
+		// Handle stdout in separate goroutine
+		go func() {
+			defer func() { done <- true }()
+			for stdoutScanner.Scan() {
+				text := stdoutScanner.Text()
+				formattedLog := h.formatLog("stdout", text)
+
+				processInfo.LogMux.Lock()
+				processInfo.Logs = append(processInfo.Logs, formattedLog)
+
+				// Add structured log entry
+				logEntry := &common.LogEntry{
+					Timestamp:  time.Now().Unix(),
+					Level:      "info",
+					Source:     "stdout",
+					TargetID:   processID,
+					TargetType: "process",
+					Message:    text,
+				}
+				processInfo.LogEntries = append(processInfo.LogEntries, *logEntry)
+
+				// Broadcast log entry
+				if h.webSocketHandler != nil {
+					h.webSocketHandler.BroadcastLogEntry(logEntry)
+				}
+
+				// Keep only last 1000 log lines to prevent memory issues
+				if len(processInfo.Logs) > 1000 {
+					processInfo.Logs = processInfo.Logs[len(processInfo.Logs)-1000:]
+				}
+				if len(processInfo.LogEntries) > 1000 {
+					processInfo.LogEntries = processInfo.LogEntries[len(processInfo.LogEntries)-1000:]
+				}
+				processInfo.LogMux.Unlock()
+			}
 		}()
 
-		for {
-			select {
-			case line, ok := <-stdoutLines:
-				if ok {
-					processInfo.LogMux.Lock()
-					processInfo.Logs = append(processInfo.Logs, line)
-					// Add structured log entry
-					logEntry := &common.LogEntry{
-						Timestamp:  time.Now().Unix(),
-						Level:      "info",
-						Source:     "stdout",
-						TargetID:   processID,
-						TargetType: "process",
-						Message:    stdoutScanner.Text(),
-					}
-					processInfo.LogEntries = append(processInfo.LogEntries, *logEntry)
-					// Broadcast log entry
-					if h.webSocketHandler != nil {
-						h.webSocketHandler.BroadcastLogEntry(logEntry)
-					}
-					// Keep only last 1000 log lines to prevent memory issues
-					if len(processInfo.Logs) > 1000 {
-						processInfo.Logs = processInfo.Logs[len(processInfo.Logs)-1000:]
-					}
-					if len(processInfo.LogEntries) > 1000 {
-						processInfo.LogEntries = processInfo.LogEntries[len(processInfo.LogEntries)-1000:]
-					}
-					processInfo.LogMux.Unlock()
+		// Handle stderr in separate goroutine
+		go func() {
+			defer func() { done <- true }()
+			for stderrScanner.Scan() {
+				text := stderrScanner.Text()
+				formattedLog := h.formatLog("stderr", text)
+
+				processInfo.LogMux.Lock()
+				processInfo.Logs = append(processInfo.Logs, formattedLog)
+
+				// Add structured log entry
+				logEntry := &common.LogEntry{
+					Timestamp:  time.Now().Unix(),
+					Level:      "error",
+					Source:     "stderr",
+					TargetID:   processID,
+					TargetType: "process",
+					Message:    text,
 				}
-			case line, ok := <-stderrLines:
-				if ok {
-					processInfo.LogMux.Lock()
-					processInfo.Logs = append(processInfo.Logs, line)
-					// Add structured log entry
-					logEntry := &common.LogEntry{
-						Timestamp:  time.Now().Unix(),
-						Level:      "error",
-						Source:     "stderr",
-						TargetID:   processID,
-						TargetType: "process",
-						Message:    stderrScanner.Text(),
-					}
-					processInfo.LogEntries = append(processInfo.LogEntries, *logEntry)
-					// Broadcast log entry
-					if h.webSocketHandler != nil {
-						h.webSocketHandler.BroadcastLogEntry(logEntry)
-					}
-					// Keep only last 1000 log lines to prevent memory issues
-					if len(processInfo.Logs) > 1000 {
-						processInfo.Logs = processInfo.Logs[len(processInfo.Logs)-1000:]
-					}
-					if len(processInfo.LogEntries) > 1000 {
-						processInfo.LogEntries = processInfo.LogEntries[len(processInfo.LogEntries)-1000:]
-					}
-					processInfo.LogMux.Unlock()
+				processInfo.LogEntries = append(processInfo.LogEntries, *logEntry)
+
+				// Broadcast log entry
+				if h.webSocketHandler != nil {
+					h.webSocketHandler.BroadcastLogEntry(logEntry)
 				}
-			case <-done:
-				return
+
+				// Keep only last 1000 log lines to prevent memory issues
+				if len(processInfo.Logs) > 1000 {
+					processInfo.Logs = processInfo.Logs[len(processInfo.Logs)-1000:]
+				}
+				if len(processInfo.LogEntries) > 1000 {
+					processInfo.LogEntries = processInfo.LogEntries[len(processInfo.LogEntries)-1000:]
+				}
+				processInfo.LogMux.Unlock()
 			}
-		}
+		}()
+
+		// Wait for both streams to complete
+		<-done
+		<-done
 	}()
 }
 
@@ -171,10 +168,7 @@ func (h *ProcessHandler) monitorProcess(processID string) {
 func (h *ProcessHandler) streamLogs(w http.ResponseWriter, processID string) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		common.WriteJSONResponse(w, common.ErrorResponse{
-			Error:     "Streaming not supported",
-			Timestamp: time.Now().Unix(),
-		})
+		errors.WriteErrorResponse(w, errors.NewInternalError("Streaming not supported"))
 		return
 	}
 

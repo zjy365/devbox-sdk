@@ -1,7 +1,6 @@
 package process
 
 import (
-	"bufio"
 	"os/exec"
 	"sync"
 	"time"
@@ -27,8 +26,6 @@ type ProcessInfo struct {
 	Cmd        *exec.Cmd
 	StartAt    time.Time
 	Status     string
-	Stdout     *bufio.Scanner
-	Stderr     *bufio.Scanner
 	Logs       []string
 	LogMux     sync.RWMutex
 	LogEntries []common.LogEntry // Structured log entries
@@ -45,31 +42,6 @@ func NewProcessHandler() *ProcessHandler {
 // SetWebSocketHandler sets the WebSocket handler for broadcasting logs
 func (h *ProcessHandler) SetWebSocketHandler(handler WebSocketBroadcaster) {
 	h.webSocketHandler = handler
-}
-
-// AddLogEntry adds a structured log entry and broadcasts it
-func (h *ProcessHandler) AddLogEntry(processID string, logEntry *common.LogEntry) {
-	h.mutex.RLock()
-	processInfo, exists := h.processes[processID]
-	h.mutex.RUnlock()
-
-	if !exists {
-		return
-	}
-
-	// Add to log entries
-	processInfo.LogMux.Lock()
-	processInfo.LogEntries = append(processInfo.LogEntries, *logEntry)
-	// Keep only last 1000 log entries to prevent memory issues
-	if len(processInfo.LogEntries) > 1000 {
-		processInfo.LogEntries = processInfo.LogEntries[len(processInfo.LogEntries)-1000:]
-	}
-	processInfo.LogMux.Unlock()
-
-	// Broadcast log entry
-	if h.webSocketHandler != nil {
-		h.webSocketHandler.BroadcastLogEntry(logEntry)
-	}
 }
 
 // GetHistoricalLogs returns historical logs for a process

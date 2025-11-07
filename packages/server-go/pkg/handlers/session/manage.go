@@ -28,13 +28,13 @@ type SessionCdRequest struct {
 // Session operation response types
 type SessionInfoResponse struct {
 	common.Response
-	SessionID  string            `json:"sessionId"`
+	SessionID  string            `json:"session_id"`
 	Shell      string            `json:"shell"`
 	Cwd        string            `json:"cwd"`
 	Env        map[string]string `json:"env"`
 	Status     string            `json:"status"`
-	CreatedAt  string            `json:"createdAt"`
-	LastUsedAt string            `json:"lastUsedAt"`
+	CreatedAt  string            `json:"created_at"`
+	LastUsedAt string            `json:"last_used_at"`
 }
 
 type SessionEnvUpdateResponse struct {
@@ -43,7 +43,7 @@ type SessionEnvUpdateResponse struct {
 
 type SessionExecResponse struct {
 	common.Response
-	ExitCode int    `json:"exitCode"`
+	ExitCode int    `json:"exit_code"`
 	Stdout   string `json:"stdout"`
 	Stderr   string `json:"stderr"`
 	Duration int64  `json:"duration"`
@@ -51,7 +51,7 @@ type SessionExecResponse struct {
 
 type SessionCdResponse struct {
 	common.Response
-	WorkingDir string `json:"workingDir"`
+	WorkingDir string `json:"working_dir"`
 }
 
 // GetSession handles session information retrieval
@@ -192,7 +192,7 @@ func (h *SessionHandler) SessionExec(w http.ResponseWriter, r *http.Request) {
 
 	// Log the command
 	sessionInfo.LogMux.Lock()
-	sessionInfo.Logs = append(sessionInfo.Logs, fmt.Sprintf("[%s] exec: %s", time.Now().Format("2006-01-02 15:04:05"), req.Command))
+	sessionInfo.Logs = append(sessionInfo.Logs, fmt.Sprintf("[%d] exec: %s", time.Now().Unix(), req.Command))
 	sessionInfo.LogMux.Unlock()
 
 	response := SessionExecResponse{
@@ -276,7 +276,7 @@ func (h *SessionHandler) SessionCd(w http.ResponseWriter, r *http.Request) {
 
 	// Log the directory change
 	sessionInfo.LogMux.Lock()
-	sessionInfo.Logs = append(sessionInfo.Logs, fmt.Sprintf("[%s] cd: %s", time.Now().Format("2006-01-02 15:04:05"), newPath))
+	sessionInfo.Logs = append(sessionInfo.Logs, fmt.Sprintf("[%d] cd: %s", time.Now().Unix(), newPath))
 	sessionInfo.LogMux.Unlock()
 
 	response := SessionCdResponse{

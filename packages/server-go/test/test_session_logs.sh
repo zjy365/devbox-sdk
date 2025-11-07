@@ -137,30 +137,30 @@ log "Health interface path: $used status code: ${code:-N/A}"; [[ "${code:-}" == 
 
 # Create sessions
 section "Create Sessions"
-read c1 u1 b1 < <(api POST "/api/v1/sessions/create" "{\"workingDir\":\"/tmp\"}")
+read c1 u1 b1 < <(api POST "/api/v1/sessions/create" "{\"working_dir\":\"/tmp\"}")
 save "session_create_simple.json" "$b1"
-sid_simple=$(echo "$b1" | sed -n 's/.*"sessionId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+sid_simple=$(echo "$b1" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 [[ -n "${sid_simple:-}" ]] && pass "Created session: $sid_simple" || fail "Failed to create simple session"
 
 read c2 u2 b2 < <(api POST "/api/v1/sessions/create" "{}")
 save "session_create_interactive.json" "$b2"
-sid_inter=$(echo "$b2" | sed -n 's/.*"sessionId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+sid_inter=$(echo "$b2" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 [[ -n "${sid_inter:-}" ]] && pass "Created session: $sid_inter" || fail "Failed to create interactive session"
 
 read c3 u3 b3 < <(api POST "/api/v1/sessions/create" "{}")
 save "session_create_error.json" "$b3"
-sid_err=$(echo "$b3" | sed -n 's/.*"sessionId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+sid_err=$(echo "$b3" | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 [[ -n "${sid_err:-}" ]] && pass "Created session (for error execution): $sid_err" || fail "Failed to create error session"
 
 # Status
 section "Query Status"
 if [[ -n "${sid_simple:-}" ]]; then
-  read cs us bs < <(api GET "/api/v1/sessions/$sid_simple?sessionId=$sid_simple")
+  read cs us bs < <(api GET "/api/v1/sessions/$sid_simple?session_id=$sid_simple")
   save "session_status_simple.json" "$bs"
   expect_contains "$bs" "status"
 fi
 if [[ -n "${sid_inter:-}" ]]; then
-  read ci ui bi < <(api GET "/api/v1/sessions/$sid_inter?sessionId=$sid_inter")
+  read ci ui bi < <(api GET "/api/v1/sessions/$sid_inter?session_id=$sid_inter")
   save "session_status_interactive.json" "$bi"
   expect_contains "$bi" "status"
 fi
@@ -181,7 +181,7 @@ fi
 # Exec on interactive
 section "Interactive Session Execute Command"
 if [[ -n "${sid_inter:-}" ]]; then
-  read cx ux bx < <(api POST "/api/v1/sessions/$sid_inter/exec?sessionId=$sid_inter" "{\"command\":\"echo run-interactive\"}")
+  read cx ux bx < <(api POST "/api/v1/sessions/$sid_inter/exec?session_id=$sid_inter" "{\"command\":\"echo run-interactive\"}")
   save "session_exec_interactive.json" "$bx"
   expect_contains "$bx" "run-interactive"
 fi
@@ -189,7 +189,7 @@ fi
 # Env update
 section "Update Environment Variables"
 if [[ -n "${sid_inter:-}" ]]; then
-  read cv uv bv < <(api POST "/api/v1/sessions/$sid_inter/env?sessionId=$sid_inter" "{\"env\":{\"FOO\":\"BAR\"}}")
+  read cv uv bv < <(api POST "/api/v1/sessions/$sid_inter/env?session_id=$sid_inter" "{\"env\":{\"FOO\":\"BAR\"}}")
   save "session_env_update.json" "$bv"
   expect_contains "$bv" "success"
 fi
@@ -197,9 +197,9 @@ fi
 # Change directory
 section "Change Working Directory"
 if [[ -n "${sid_inter:-}" ]]; then
-  read cdcode cdurl cdbody < <(api POST "/api/v1/sessions/$sid_inter/cd?sessionId=$sid_inter" "{\"path\":\"/tmp\"}")
+  read cdcode cdurl cdbody < <(api POST "/api/v1/sessions/$sid_inter/cd?session_id=$sid_inter" "{\"path\":\"/tmp\"}")
   save "session_cd.json" "$cdbody"
-  expect_contains "$cdbody" "workingDir"
+  expect_contains "$cdbody" "working_dir"
 fi
 
 # Pseudo streaming logs
@@ -226,7 +226,7 @@ expect_contains "$blist" "count"
 section "Terminate Sessions"
 for sid in "$sid_simple" "$sid_inter" "$sid_err"; do
   if [[ -n "${sid:-}" ]]; then
-    read ct ut bt < <(api POST "/api/v1/sessions/$sid/terminate" "{\"sessionId\":\"$sid\"}")
+    read ct ut bt < <(api POST "/api/v1/sessions/$sid/terminate" "{\"session_id\":\"$sid\"}")
     save "session_terminate_$sid.json" "$bt"
     expect_contains "$bt" "terminated"
   fi

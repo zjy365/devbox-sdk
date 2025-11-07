@@ -52,8 +52,8 @@ type FileInfo struct {
 	Name    string `json:"name"`
 	Path    string `json:"path"`
 	Size    int64  `json:"size"`
-	IsDir   bool   `json:"isDir"`
-	ModTime string `json:"modTime"`
+	IsDir   bool   `json:"is_dir"`
+	ModTime string `json:"mod_time"`
 }
 
 // WriteFile handles file write operations

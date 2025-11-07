@@ -7,14 +7,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/labring/devbox-sdk-server/pkg/errors"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/utils"
 )
 
 // Session operation request types
 type CreateSessionRequest struct {
-	WorkingDir *string           `json:"workingDir,omitempty"`
+	WorkingDir *string           `json:"working_dir,omitempty"`
 	Env        map[string]string `json:"env,omitempty"`
 	Shell      *string           `json:"shell,omitempty"`
 }
@@ -22,7 +22,7 @@ type CreateSessionRequest struct {
 // Session operation response types
 type CreateSessionResponse struct {
 	Success   bool   `json:"success"`
-	SessionID string `json:"sessionId"`
+	SessionID string `json:"session_id"`
 	Shell     string `json:"shell"`
 	Cwd       string `json:"cwd"`
 	Status    string `json:"status"`
@@ -48,7 +48,7 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate session ID
-	sessionID := uuid.New().String()
+	sessionID := utils.NewNanoID()
 
 	// Prepare environment
 	env := make(map[string]string)

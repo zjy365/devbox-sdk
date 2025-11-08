@@ -1,14 +1,16 @@
 package middleware
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/labring/devbox-sdk-server/pkg/errors"
 )
 
@@ -31,17 +33,6 @@ func Logger() Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			// Generate or get TraceID
-			traceID := r.Header.Get("X-Trace-ID")
-			if traceID == "" {
-				traceID = uuid.New().String()
-			}
-
-			// Add TraceID to context and response header
-			ctx := context.WithValue(r.Context(), "traceID", traceID)
-			r = r.WithContext(ctx)
-			w.Header().Set("X-Trace-ID", traceID)
-
 			// Wrap ResponseWriter to capture status code
 			wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
@@ -51,13 +42,23 @@ func Logger() Middleware {
 			// Log request completion
 			duration := time.Since(start)
 			fields := []any{
-				slog.String("trace_id", traceID),
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.String("remote", r.RemoteAddr),
 				slog.Int("status", wrapped.statusCode),
 				slog.String("duration", duration.String()),
 				slog.Int64("bytes", wrapped.bytesWritten),
+			}
+
+			// Generate or get TraceID
+			traceID := r.Header.Get("X-Trace-ID")
+			if traceID != "" {
+				// Add TraceID to context and response header
+				ctx := context.WithValue(r.Context(), "trace_id", traceID)
+				r = r.WithContext(ctx)
+				w.Header().Set("X-Trace-ID", traceID)
+
+				fields = append(fields, slog.String("trace_id", traceID))
 			}
 
 			// Choose log level based solely on status code
@@ -90,6 +91,19 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
+func (rw *responseWriter) Flush() {
+	if flusher, ok := rw.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, fmt.Errorf("hijacking not supported by underlying ResponseWriter")
+}
+
 // Recovery middleware recovers from panics and returns proper error responses
 func Recovery() Middleware {
 	return func(next http.Handler) http.Handler {
@@ -97,7 +111,7 @@ func Recovery() Middleware {
 			defer func() {
 				if err := recover(); err != nil {
 					// Log the panic with stack trace independently
-					if traceID, ok := r.Context().Value("traceID").(string); ok && traceID != "" {
+					if traceID, ok := r.Context().Value("trace_id").(string); ok && traceID != "" {
 						slog.Error("panic recovered", slog.Any("error", err), slog.String("stack", string(debug.Stack())), slog.String("trace_id", traceID))
 					} else {
 						slog.Error("panic recovered", slog.Any("error", err), slog.String("stack", string(debug.Stack())))

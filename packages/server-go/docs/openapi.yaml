@@ -1,0 +1,1828 @@
+openapi: 3.1.0
+jsonSchemaDialect: "https://json-schema.org/draft/2020-12/schema"
+info:
+  title: DevBox SDK Server API
+  description: |
+    A comprehensive API for managing processes, sessions, files, and providing real-time monitoring capabilities.
+
+    The DevBox SDK Server provides HTTP endpoints for:
+    - **File Operations**: Read, write, delete, and list files with security constraints
+    - **Process Management**: Execute processes synchronously or asynchronously with log monitoring
+    - **Session Management**: Create and manage interactive shell sessions
+    - **Real-time Communication**: WebSocket connections for live log streaming
+    - **Health Monitoring**: Health check and readiness endpoints
+
+    ## Authentication
+    All API endpoints (except health checks) require Bearer token authentication:
+
+    ```http
+    Authorization: Bearer <your-token>
+    ```
+
+    ## Error Handling
+    The API uses standard HTTP status codes and returns consistent error responses:
+
+    ```json
+    {
+      "error": "Error description",
+      "code": "ERROR_CODE",
+      "timestamp": 1640995200000
+    }
+    ```
+
+  version: 1.0.0
+  contact:
+    name: DevBox SDK Team
+    url: https://github.com/labring/devbox-sdk
+  license:
+    name: Apache License 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.devbox.io
+    description: Production server
+
+tags:
+  - name: Health
+    description: Health check and monitoring endpoints
+  - name: Files
+    description: File operations and management
+  - name: Processes
+    description: Process execution and management
+  - name: Sessions
+    description: Interactive shell session management
+  - name: WebSocket
+    description: Real-time communication and streaming
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Basic health check
+      description: Returns basic server status including uptime and version information
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                timestamp: "2024-01-01T12:00:00Z"
+                uptime: 3600
+                version: "1.0.0"
+
+  /health/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      description: Performs readiness checks including filesystem write tests
+      operationId: readinessCheck
+      responses:
+        '200':
+          description: Server is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              example:
+                status: "ready"
+                ready: true
+                timestamp: "2024-01-01T12:00:00Z"
+                checks:
+                  filesystem: true
+        '503':
+          description: Server is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              example:
+                status: "not_ready"
+                ready: false
+                timestamp: "2024-01-01T12:00:00Z"
+                checks:
+                  filesystem: false
+
+  /api/v1/files/write:
+    post:
+      tags:
+        - Files
+      summary: Write file
+      description: Write content to a file with support for encoding and permissions
+      security:
+        - bearerAuth: []
+      operationId: writeFile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WriteFileRequest'
+            example:
+              path: "/tmp/example.txt"
+              content: "Hello, World!"
+              encoding: "utf-8"
+              permissions: "0644"
+      responses:
+        '200':
+          description: File written successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WriteFileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: File size exceeds limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/files/read:
+    post:
+      tags:
+        - Files
+      summary: Read file
+      description: Read file content. Supports both query parameter and JSON body for path specification
+      security:
+        - bearerAuth: []
+      operationId: readFile
+      parameters:
+        - name: path
+          in: query
+          description: File path to read (alternative to JSON body)
+          required: false
+          schema:
+            type: string
+      requestBody:
+        description: File path specification (alternative to query parameter)
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                  description: File path to read
+      responses:
+        '200':
+          description: File read successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadFileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/files/delete:
+    post:
+      tags:
+        - Files
+      summary: Delete file or directory
+      description: Delete files or directories with optional recursive deletion
+      security:
+        - bearerAuth: []
+      operationId: deleteFile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteFileRequest'
+            example:
+              path: "/tmp/example.txt"
+              recursive: false
+      responses:
+        '200':
+          description: File deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteFileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/files/batch-upload:
+    post:
+      tags:
+        - Files
+      summary: Batch upload files
+      description: Upload multiple files to a target directory
+      security:
+        - bearerAuth: []
+      operationId: batchUpload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                targetDir:
+                  type: string
+                  description: Target directory path
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Files to upload
+              required:
+                - targetDir
+                - files
+      responses:
+        '200':
+          description: Files uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUploadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/files/list:
+    get:
+      tags:
+        - Files
+      summary: List directory contents
+      description: List files and directories with pagination and filtering options
+      security:
+        - bearerAuth: []
+      operationId: listFiles
+      parameters:
+        - name: path
+          in: query
+          description: "Directory path to list (default: current directory)"
+          required: false
+          schema:
+            type: string
+            default: "."
+        - name: showHidden
+          in: query
+          description: Show hidden files (starting with .)
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: limit
+          in: query
+          description: Maximum number of items to return
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+        - name: offset
+          in: query
+          description: Number of items to skip for pagination
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Directory listing successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListFilesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Directory not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/process/list:
+    get:
+      tags:
+        - Processes
+      summary: List all processes
+      description: Get a list of all running processes with their metadata
+      security:
+        - bearerAuth: []
+      operationId: listProcesses
+      responses:
+        '200':
+          description: Process list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListProcessesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/process/exec:
+    post:
+      tags:
+        - Processes
+      summary: Execute process asynchronously
+      description: Execute a new process asynchronously and return immediately with process ID
+      security:
+        - bearerAuth: []
+      operationId: execProcess
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessExecRequest'
+            example:
+              command: "ls"
+              args: ["-la", "/tmp"]
+              cwd: "/home/user"
+              env:
+                PATH: "/usr/bin:/bin"
+                DEBUG: "true"
+              timeout: 300
+      responses:
+        '200':
+          description: Process started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessExecResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: Failed to start process
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/process/exec-sync:
+    post:
+      tags:
+        - Processes
+      summary: Execute process synchronously
+      description: Execute a process and wait for completion with timeout support
+      security:
+        - bearerAuth: []
+      operationId: execProcessSync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncExecutionRequest'
+            example:
+              command: "echo"
+              args: ["Hello World"]
+              timeout: 30
+      responses:
+        '200':
+          description: Process completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncExecutionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '408':
+          description: Process execution timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/process/sync-stream:
+    post:
+      tags:
+        - Processes
+      summary: Execute process with streaming
+      description: Execute a process synchronously with Server-Sent Events streaming for real-time output
+      security:
+        - bearerAuth: []
+      operationId: execProcessSyncStream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncExecutionRequest'
+      responses:
+        '200':
+          description: Process streaming started
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-Sent Events stream with process output
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/process/{process_id}/status:
+    get:
+      tags:
+        - Processes
+      summary: Get process status
+      description: Get the current status of a specific process
+      security:
+        - bearerAuth: []
+      operationId: getProcessStatus
+      parameters:
+        - name: process_id
+          in: path
+          description: Process ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Process status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetProcessStatusResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Process not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/process/{process_id}/kill:
+    post:
+      tags:
+        - Processes
+      summary: Kill process
+      description: Terminate a running process with optional signal specification
+      security:
+        - bearerAuth: []
+      operationId: killProcess
+      parameters:
+        - name: process_id
+          in: path
+          description: Process ID
+          required: true
+          schema:
+            type: string
+        - name: signal
+          in: query
+          description: "Signal to send (default: SIGTERM)"
+          required: false
+          schema:
+            type: string
+            enum: [SIGTERM, SIGKILL, SIGINT]
+            default: "SIGTERM"
+      responses:
+        '200':
+          description: Process terminated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Process not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Process is not running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/process/{process_id}/logs:
+    get:
+      tags:
+        - Processes
+      summary: Get process logs
+      description: Retrieve logs for a specific process with optional streaming
+      security:
+        - bearerAuth: []
+      operationId: getProcessLogs
+      parameters:
+        - name: process_id
+          in: path
+          description: Process ID
+          required: true
+          schema:
+            type: string
+        - name: stream
+          in: query
+          description: Enable log streaming
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Process logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetProcessLogsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Process not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/sessions:
+    get:
+      tags:
+        - Sessions
+      summary: List all sessions
+      description: Get a list of all active sessions
+      security:
+        - bearerAuth: []
+      operationId: getAllSessions
+      responses:
+        '200':
+          description: Sessions list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAllSessionsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/sessions/create:
+    post:
+      tags:
+        - Sessions
+      summary: Create session
+      description: Create a new interactive shell session
+      security:
+        - bearerAuth: []
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+            example:
+              working_dir: "/home/user"
+              env:
+                PATH: "/usr/bin:/bin"
+                DEBUG: "true"
+              shell: "/bin/bash"
+      responses:
+        '200':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/sessions/{session_id}:
+    get:
+      tags:
+        - Sessions
+      summary: Get session info
+      description: Get information about a specific session
+      security:
+        - bearerAuth: []
+      operationId: getSession
+      parameters:
+        - name: session_id
+          in: path
+          description: Session ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/sessions/{session_id}/env:
+    post:
+      tags:
+        - Sessions
+      summary: Update session environment
+      description: Update environment variables for a session
+      security:
+        - bearerAuth: []
+      operationId: updateSessionEnv
+      parameters:
+        - name: session_id
+          in: path
+          description: Session ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSessionEnvRequest'
+            example:
+              env:
+                PATH: "/usr/bin:/bin:/usr/local/bin"
+                DEBUG: "true"
+                NEW_VAR: "value"
+      responses:
+        '200':
+          description: Environment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/sessions/{session_id}/exec:
+    post:
+      tags:
+        - Sessions
+      summary: Execute command in session
+      description: Execute a command in an active session
+      security:
+        - bearerAuth: []
+      operationId: sessionExec
+      parameters:
+        - name: session_id
+          in: path
+          description: Session ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionExecRequest'
+            example:
+              command: "ls -la"
+      responses:
+        '200':
+          description: Command executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionExecResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/sessions/{session_id}/cd:
+    post:
+      tags:
+        - Sessions
+      summary: Change directory in session
+      description: Change the working directory in a session
+      security:
+        - bearerAuth: []
+      operationId: sessionCd
+      parameters:
+        - name: session_id
+          in: path
+          description: Session ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionCdRequest'
+            example:
+              path: "/tmp"
+      responses:
+        '200':
+          description: Directory changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/sessions/{session_id}/terminate:
+    post:
+      tags:
+        - Sessions
+      summary: Terminate session
+      description: Terminate an active session
+      security:
+        - bearerAuth: []
+      operationId: terminateSession
+      parameters:
+        - name: session_id
+          in: path
+          description: Session ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session terminated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/sessions/{session_id}/logs:
+    get:
+      tags:
+        - Sessions
+      summary: Get session logs
+      description: Retrieve logs for a specific session with filtering options
+      security:
+        - bearerAuth: []
+      operationId: getSessionLogs
+      parameters:
+        - name: session_id
+          in: path
+          description: Session ID
+          required: true
+          schema:
+            type: string
+        - name: levels
+          in: query
+          description: Log levels to filter
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [stdout, stderr, system]
+        - name: limit
+          in: query
+          description: Maximum number of log entries
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+      responses:
+        '200':
+          description: Session logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetSessionLogsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ws:
+    get:
+      tags:
+        - WebSocket
+      summary: WebSocket connection
+      description: |
+        Establish a WebSocket connection for real-time log streaming and subscriptions.
+
+        The WebSocket supports JSON-based protocol with the following message types:
+
+        **Subscription Request:**
+        ```json
+        {
+          "action": "subscribe",
+          "type": "process|session",
+          "target_id": "process-or-session-id",
+          "options": {
+            "levels": ["stdout", "stderr"],
+            "tail": 100,
+            "follow": true,
+            "start_time": 1640995200000
+          }
+        }
+        ```
+
+        **Log Message:**
+        ```json
+        {
+          "type": "log",
+          "data_type": "process|session",
+          "target_id": "target-id",
+          "log": {
+            "level": "stdout",
+            "content": "output content",
+            "timestamp": 1640995200000,
+            "sequence": 1
+          },
+          "sequence": 1,
+          "is_history": false
+        }
+        ```
+      security:
+        - bearerAuth: []
+      operationId: webSocket
+      responses:
+        '101':
+          description: WebSocket connection established
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Common Schemas
+    Response:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the operation was successful
+        error:
+          type: string
+          description: Error message (if any)
+      required:
+        - success
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error description
+        code:
+          type: string
+          description: Error code
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+      required:
+        - error
+        - timestamp
+
+    SuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          example:
+            success: true
+
+    # Health Schemas
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-01T12:00:00Z"
+        uptime:
+          type: integer
+          format: int64
+          description: Server uptime in seconds
+          example: 3600
+        version:
+          type: string
+          example: "1.0.0"
+      required:
+        - status
+        - timestamp
+        - uptime
+        - version
+
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ["ready", "not_ready"]
+          example: "ready"
+        ready:
+          type: boolean
+          example: true
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-01T12:00:00Z"
+        checks:
+          type: object
+          additionalProperties:
+            type: boolean
+          description: Results of readiness checks
+          example:
+            filesystem: true
+      required:
+        - status
+        - ready
+        - timestamp
+        - checks
+
+    # File Schemas
+    WriteFileRequest:
+      type: object
+      properties:
+        path:
+          type: string
+          description: File path to write to
+          example: "/tmp/example.txt"
+        content:
+          type: string
+          description: File content
+          example: "Hello, World!"
+        encoding:
+          type: string
+          description: Content encoding
+          example: "utf-8"
+        permissions:
+          type: string
+          description: File permissions in octal format
+          example: "0644"
+      required:
+        - path
+        - content
+
+    WriteFileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        path:
+          type: string
+          description: File path that was written
+          example: "/tmp/example.txt"
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes
+          example: 13
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-01T12:00:00Z"
+      required:
+        - success
+        - path
+        - size
+        - timestamp
+
+    ReadFileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        path:
+          type: string
+          description: File path that was read
+          example: "/tmp/example.txt"
+        content:
+          type: string
+          description: File content
+          example: "Hello, World!"
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes
+          example: 13
+      required:
+        - success
+        - path
+        - content
+        - size
+
+    DeleteFileRequest:
+      type: object
+      properties:
+        path:
+          type: string
+          description: File or directory path to delete
+          example: "/tmp/example.txt"
+        recursive:
+          type: boolean
+          description: Whether to delete directories recursively
+          default: false
+          example: false
+      required:
+        - path
+
+    DeleteFileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        path:
+          type: string
+          description: Path that was deleted
+          example: "/tmp/example.txt"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-01T12:00:00Z"
+      required:
+        - success
+        - path
+        - timestamp
+
+    FileInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          description: File or directory name
+          example: "example.txt"
+        path:
+          type: string
+          description: Full path
+          example: "/tmp/example.txt"
+        size:
+          type: integer
+          format: int64
+          description: Size in bytes
+          example: 1024
+        isDir:
+          type: boolean
+          description: Whether this is a directory
+          example: false
+        mod_time:
+          type: string
+          format: date-time
+          description: Last modification time
+          example: "2024-01-01T12:00:00Z"
+      required:
+        - name
+        - path
+        - size
+        - isDir
+        - mod_time
+
+    ListFilesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileInfo'
+        count:
+          type: integer
+          description: Number of files returned
+          example: 5
+      required:
+        - success
+        - files
+        - count
+
+    BatchUploadResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            uploadedFiles:
+              type: array
+              items:
+                type: object
+                properties:
+                  path:
+                    type: string
+                  size:
+                    type: integer
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+              description: Upload results for each file
+
+    # Process Schemas
+    ProcessExecRequest:
+      type: object
+      properties:
+        command:
+          type: string
+          description: Command to execute
+          example: "ls"
+        args:
+          type: array
+          items:
+            type: string
+          description: Command arguments
+          example: ["-la", "/tmp"]
+        cwd:
+          type: string
+          description: Working directory
+          example: "/home/user"
+        env:
+          type: object
+          additionalProperties:
+            type: string
+          description: Environment variables
+          example:
+            PATH: "/usr/bin:/bin"
+            DEBUG: "true"
+        shell:
+          type: string
+          description: Shell to use for execution
+          example: "/bin/bash"
+        timeout:
+          type: integer
+          description: Timeout in seconds
+          example: 300
+      required:
+        - command
+
+    ProcessExecResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            process_id:
+              type: string
+              description: Generated process ID
+              example: "550e8400-e29b-41d4-a716-446655440000"
+            pid:
+              type: integer
+              description: System process ID
+              example: 12345
+            status:
+              type: string
+              description: Process status
+              example: "running"
+            exit_code:
+              type: integer
+              description: Exit code (if completed)
+              example: 0
+      required:
+        - success
+        - process_id
+        - pid
+        - status
+
+    SyncExecutionRequest:
+      type: object
+      properties:
+        command:
+          type: string
+          description: Command to execute
+          example: "echo"
+        args:
+          type: array
+          items:
+            type: string
+          description: Command arguments
+          example: ["Hello World"]
+        cwd:
+          type: string
+          description: Working directory
+          example: "/home/user"
+        env:
+          type: object
+          additionalProperties:
+            type: string
+          description: Environment variables
+          example:
+            PATH: "/usr/bin:/bin"
+        shell:
+          type: string
+          description: Shell to use for execution
+          example: "/bin/bash"
+        timeout:
+          type: integer
+          description: Timeout in seconds
+          example: 30
+      required:
+        - command
+
+    SyncExecutionResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            stdout:
+              type: string
+              description: Standard output
+              example: "Hello World\n"
+            stderr:
+              type: string
+              description: Standard error
+              example: ""
+            exit_code:
+              type: integer
+              description: Process exit code
+              example: 0
+            duration:
+              type: integer
+              format: int64
+              description: Execution duration in milliseconds
+              example: 150
+            start_time:
+              type: integer
+              format: int64
+              description: Start timestamp (Unix)
+              example: 1640995200
+            end_time:
+              type: integer
+              format: int64
+              description: End timestamp (Unix)
+              example: 1640995201
+      required:
+        - success
+        - stdout
+        - stderr
+        - duration
+        - start_time
+        - end_time
+
+    ProcessInfoResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Process ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        pid:
+          type: integer
+          description: System process ID
+          example: 12345
+        command:
+          type: string
+          description: Command that was executed
+          example: "ls"
+        status:
+          type: string
+          description: Current process status
+          example: "running"
+        start_time:
+          type: integer
+          format: int64
+          description: Start timestamp (Unix)
+          example: 1640995200
+        end_time:
+          type: integer
+          format: int64
+          description: End timestamp (Unix)
+          example: 1640995260
+        exit_code:
+          type: integer
+          description: Process exit code
+          example: 0
+      required:
+        - id
+        - pid
+        - command
+        - status
+        - start_time
+
+    ListProcessesResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            processes:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProcessInfoResponse'
+      required:
+        - success
+        - processes
+
+    GetProcessStatusResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            process_id:
+              type: string
+              description: Process ID
+              example: "550e8400-e29b-41d4-a716-446655440000"
+            pid:
+              type: integer
+              description: System process ID
+              example: 12345
+            status:
+              type: string
+              description: Process status
+              example: "running"
+            start_at:
+              type: string
+              format: date-time
+              description: Process start time
+              example: "2024-01-01T12:00:00Z"
+      required:
+        - success
+        - process_id
+        - pid
+        - status
+        - start_at
+
+    GetProcessLogsResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            process_id:
+              type: string
+              description: Process ID
+              example: "550e8400-e29b-41d4-a716-446655440000"
+            logs:
+              type: array
+              items:
+                type: string
+              description: Process log lines
+              example: ["output line 1", "output line 2"]
+      required:
+        - success
+        - process_id
+        - logs
+
+    # Session Schemas
+    CreateSessionRequest:
+      type: object
+      properties:
+        working_dir:
+          type: string
+          description: Initial working directory
+          example: "/home/user"
+        env:
+          type: object
+          additionalProperties:
+            type: string
+          description: Initial environment variables
+          example:
+            PATH: "/usr/bin:/bin"
+            DEBUG: "true"
+        shell:
+          type: string
+          description: Shell type to use
+          example: "/bin/bash"
+      required:
+        - shell
+
+    CreateSessionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        session_id:
+          type: string
+          description: Generated session ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        shell:
+          type: string
+          description: Shell type being used
+          example: "/bin/bash"
+        cwd:
+          type: string
+          description: Current working directory
+          example: "/home/user"
+        status:
+          type: string
+          description: Session status
+          example: "active"
+      required:
+        - success
+        - session_id
+        - shell
+        - cwd
+        - status
+
+    SessionInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Session ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        shell:
+          type: string
+          description: Shell type
+          example: "/bin/bash"
+        cwd:
+          type: string
+          description: Current working directory
+          example: "/home/user"
+        env:
+          type: object
+          additionalProperties:
+            type: string
+          description: Environment variables
+          example:
+            PATH: "/usr/bin:/bin"
+            DEBUG: "true"
+        created_at:
+          type: string
+          format: date-time
+          description: Session creation time
+          example: "2024-01-01T12:00:00Z"
+        last_used_at:
+          type: string
+          format: date-time
+          description: Last activity time
+          example: "2024-01-01T12:05:00Z"
+        status:
+          type: string
+          description: Session status
+          example: "active"
+      required:
+        - id
+        - shell
+        - cwd
+        - created_at
+        - last_used_at
+        - status
+
+    GetAllSessionsResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            sessions:
+              type: array
+              items:
+                $ref: '#/components/schemas/SessionInfo'
+      required:
+        - success
+        - sessions
+
+    GetSessionResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            session:
+              $ref: '#/components/schemas/SessionInfo'
+      required:
+        - success
+        - session
+
+    UpdateSessionEnvRequest:
+      type: object
+      properties:
+        env:
+          type: object
+          additionalProperties:
+            type: string
+          description: Environment variables to set or update
+          example:
+            PATH: "/usr/bin:/bin:/usr/local/bin"
+            DEBUG: "true"
+            NEW_VAR: "value"
+      required:
+        - env
+
+    SessionExecRequest:
+      type: object
+      properties:
+        command:
+          type: string
+          description: Command to execute in session
+          example: "ls -la"
+      required:
+        - command
+
+    SessionExecResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            stdout:
+              type: string
+              description: Command output
+              example: "total 8\ndrwxr-xr-x 2 user user 4096 Jan  1 12:00 ."
+            stderr:
+              type: string
+              description: Error output
+              example: ""
+            exit_code:
+              type: integer
+              description: Command exit code
+              example: 0
+      required:
+        - success
+        - stdout
+        - stderr
+        - exit_code
+
+    SessionCdRequest:
+      type: object
+      properties:
+        path:
+          type: string
+          description: Directory path to change to
+          example: "/tmp"
+      required:
+        - path
+
+    GetSessionLogsResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            session_id:
+              type: string
+              description: Session ID
+              example: "550e8400-e29b-41d4-a716-446655440000"
+            logs:
+              type: array
+              items:
+                $ref: '#/components/schemas/LogEntry'
+      required:
+        - success
+        - session_id
+        - logs
+
+    # WebSocket and Log Schemas
+    LogEntry:
+      type: object
+      properties:
+        level:
+          type: string
+          enum: ["stdout", "stderr", "system"]
+          description: Log level
+          example: "stdout"
+        content:
+          type: string
+          description: Log content
+          example: "Process output line"
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+          example: 1640995200000
+        sequence:
+          type: integer
+          format: int64
+          description: Sequence number
+          example: 1
+        source:
+          type: string
+          description: Log source
+          example: "process"
+        target_id:
+          type: string
+          description: Target process/session ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        target_type:
+          type: string
+          enum: ["process", "session"]
+          description: Target type
+          example: "process"
+        message:
+          type: string
+          description: Additional message
+          example: "Process started"
+      required:
+        - level
+        - content
+        - timestamp
+
+    SubscriptionRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: ["subscribe", "unsubscribe", "list"]
+          description: Action to perform
+          example: "subscribe"
+        type:
+          type: string
+          enum: ["process", "session"]
+          description: Subscription type
+          example: "process"
+        target_id:
+          type: string
+          description: Target process or session ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        options:
+          $ref: '#/components/schemas/SubscriptionOptions'
+      required:
+        - action
+        - type
+
+    SubscriptionOptions:
+      type: object
+      properties:
+        levels:
+          type: array
+          items:
+            type: string
+            enum: ["stdout", "stderr", "system"]
+          description: Log levels to receive
+          example: ["stdout", "stderr"]
+        tail:
+          type: integer
+          description: Number of historical log entries to send
+          example: 100
+        follow:
+          type: boolean
+          description: Whether to follow new logs
+          default: true
+          example: true
+        start_time:
+          type: integer
+          format: int64
+          description: Start timestamp filter
+          example: 1640995200000
+      required:
+        - tail
+
+    LogMessage:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Message type
+          example: "log"
+        data_type:
+          type: string
+          enum: ["process", "session"]
+          description: Data type
+          example: "process"
+        target_id:
+          type: string
+          description: Target ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        log:
+          $ref: '#/components/schemas/LogEntry'
+        sequence:
+          type: integer
+          description: Message sequence
+          example: 1
+        is_history:
+          type: boolean
+          description: Whether this is a historical log entry
+          default: false
+          example: false
+      required:
+        - type
+        - data_type
+        - target_id
+        - log
+        - sequence
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Invalid request parameters"
+            code: "INVALID_REQUEST"
+            timestamp: 1640995200000
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Authentication required"
+            code: "UNAUTHORIZED"
+            timestamp: 1640995200000
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Process not found"
+            code: "NOT_FOUND"
+            timestamp: 1640995200000
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Process is not running"
+            code: "CONFLICT"
+            timestamp: 1640995200000
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Internal server error"
+            code: "INTERNAL_ERROR"
+            timestamp: 1640995200000

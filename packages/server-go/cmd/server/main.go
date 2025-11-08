@@ -60,8 +60,7 @@ func setupLogger(cfg *config.Config) {
 		AddSource: addSource,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.TimeKey {
-				t := a.Value.Time()
-				return slog.String(a.Key, t.Format("2006-01-02T15:04:05.000Z07:00"))
+				return slog.String(a.Key, a.Value.Time().Format("2006-01-02T15:04:05.000Z07:00"))
 			}
 			return a
 		},

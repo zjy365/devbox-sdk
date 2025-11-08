@@ -43,6 +43,8 @@ func (s *Server) registerRoutes(r *router.Router, middlewareChain func(http.Hand
 		// Process operations
 		{"GET", "/api/v1/process/list", processHandler.ListProcesses},
 		{"POST", "/api/v1/process/exec", processHandler.ExecProcess},
+		{"POST", "/api/v1/process/exec-sync", processHandler.ExecProcessSync},
+		{"POST", "/api/v1/process/sync-stream", processHandler.ExecProcessSyncStream},
 		{"GET", "/api/v1/process/:id/status", processHandler.GetProcessStatus},
 		{"POST", "/api/v1/process/:id/kill", processHandler.KillProcess},
 		{"GET", "/api/v1/process/:id/logs", processHandler.GetProcessLogs},

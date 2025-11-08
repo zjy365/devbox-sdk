@@ -99,17 +99,6 @@ func TestSessionHandler_ConcurrentAccess(t *testing.T) {
 }
 
 func TestSessionHandler_TypeAliases(t *testing.T) {
-	t.Run("type aliases should work correctly", func(t *testing.T) {
-		// Test Handler alias
-		handler := NewSessionHandler()
-		assert.NotNil(t, handler, "Handler alias should work")
-
-		// Test NewHandler alias
-		handler2 := NewHandler()
-		assert.NotNil(t, handler2, "NewHandler alias should work")
-		assert.IsType(t, &SessionHandler{}, handler2, "NewHandler should return SessionHandler")
-	})
-
 	t.Run("SessionInfo structure is valid", func(t *testing.T) {
 		// Test that SessionInfo can be properly initialized with all fields
 		sessionInfo := &SessionInfo{

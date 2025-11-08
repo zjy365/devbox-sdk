@@ -11,17 +11,17 @@ import (
 // Session operation response types
 type SessionLogsResponse struct {
 	Success   bool     `json:"success"`
-	SessionID string   `json:"sessionId"`
+	SessionID string   `json:"session_id"`
 	Logs      []string `json:"logs"`
 }
 
 type SessionResponse struct {
-	ID         string            `json:"sessionId"`
+	ID         string            `json:"session_id"`
 	Shell      string            `json:"shell"`
 	Cwd        string            `json:"cwd"`
 	Env        map[string]string `json:"env"`
-	CreatedAt  int64             `json:"createdAt"`
-	LastUsedAt int64             `json:"lastUsedAt"`
+	CreatedAt  int64             `json:"created_at"`
+	LastUsedAt int64             `json:"last_used_at"`
 	Status     string            `json:"status"`
 }
 

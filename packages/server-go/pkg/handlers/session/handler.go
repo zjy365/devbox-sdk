@@ -61,31 +61,6 @@ func (h *SessionHandler) SetWebSocketHandler(handler WebSocketBroadcaster) {
 	h.webSocketHandler = handler
 }
 
-// AddLogEntry adds a structured log entry and broadcasts it
-func (h *SessionHandler) AddLogEntry(sessionID string, logEntry *common.LogEntry) {
-	h.mutex.RLock()
-	sessionInfo, exists := h.sessions[sessionID]
-	h.mutex.RUnlock()
-
-	if !exists {
-		return
-	}
-
-	// Add to log entries
-	sessionInfo.LogMux.Lock()
-	sessionInfo.LogEntries = append(sessionInfo.LogEntries, *logEntry)
-	// Keep only last 1000 log entries to prevent memory issues
-	if len(sessionInfo.LogEntries) > 1000 {
-		sessionInfo.LogEntries = sessionInfo.LogEntries[len(sessionInfo.LogEntries)-1000:]
-	}
-	sessionInfo.LogMux.Unlock()
-
-	// Broadcast log entry
-	if h.webSocketHandler != nil {
-		h.webSocketHandler.BroadcastLogEntry(logEntry)
-	}
-}
-
 // GetHistoricalLogs returns historical logs for a session
 func (h *SessionHandler) GetHistoricalLogs(sessionID string, logLevels []string) []common.LogEntry {
 	h.mutex.RLock()
@@ -119,9 +94,3 @@ func (h *SessionHandler) GetHistoricalLogs(sessionID string, logLevels []string)
 
 	return result
 }
-
-// Handler is an alias for SessionHandler to maintain backward compatibility
-type Handler = SessionHandler
-
-// NewHandler is an alias for NewSessionHandler to maintain backward compatibility
-func NewHandler() *SessionHandler { return NewSessionHandler() }

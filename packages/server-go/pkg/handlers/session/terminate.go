@@ -12,13 +12,13 @@ import (
 
 // Session operation request types
 type SessionTerminateRequest struct {
-	SessionID string `json:"sessionId"`
+	SessionID string `json:"session_id"`
 }
 
 // Session operation response types
 type SessionTerminateResponse struct {
 	Success   bool   `json:"success"`
-	SessionID string `json:"sessionId"`
+	SessionID string `json:"session_id"`
 	Status    string `json:"status"`
 }
 

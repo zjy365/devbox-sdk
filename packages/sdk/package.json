@@ -58,8 +58,8 @@
     "@sealos/devbox-shared": "file:../shared",
     "node-fetch": "^3.3.2",
     "ws": "^8.18.3",
-    "p-queue": "^7.3.4",
-    "p-retry": "^5.1.2",
+    "p-queue": "^9.0.0",
+    "p-retry": "^7.1.0",
     "form-data": "^4.0.0"
   },
   "devDependencies": {

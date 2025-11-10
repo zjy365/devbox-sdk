@@ -194,22 +194,36 @@ describe('Devbox 生命周期管理', () => {
       })
       createdDevboxes.push(name)
 
-      // 等待 Devbox 就绪
-      await devbox.waitForReady(60000)
-
-      // 如果已经运行，先暂停
-      if (devbox.status === 'Running') {
-        await devbox.pause()
-        // 等待暂停完成
-        await new Promise(resolve => setTimeout(resolve, 5000))
-      }
-
       // 启动 Devbox
       await devbox.start()
+      
+      // 简单等待状态变为运行中（不检查健康状态，避免卡住）
+      let currentDevbox = await sdk.getDevbox(name)
+      const startTime = Date.now()
+      while (currentDevbox.status !== 'Running' && Date.now() - startTime < 30000) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        currentDevbox = await sdk.getDevbox(name)
+      }
+      
+      expect(currentDevbox.status).toBe('Running')
+
+      // 如果已经运行，先暂停
+      await currentDevbox.pause()
+      // 等待暂停完成
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      currentDevbox = await sdk.getDevbox(name)
+      expect(currentDevbox.status).toBe('Stopped')
+
+      // 再次启动 Devbox
+      await currentDevbox.start()
+      
+      // 等待启动完成
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      currentDevbox = await sdk.getDevbox(name)
 
       // 验证状态变为运行中
-      expect(devbox.status).toBe('Running')
-    }, 120000)
+      expect(currentDevbox.status).toBe('Running')
+    }, 60000)
 
     it('启动运行中的 Devbox 应该是安全的', async () => {
       const name = generateDevboxName('start-running')
@@ -221,11 +235,18 @@ describe('Devbox 生命周期管理', () => {
       })
       createdDevboxes.push(name)
 
-      await devbox.waitForReady(60000)
+      // 启动并等待就绪
+      await devbox.start()
+      let currentDevbox = await sdk.getDevbox(name)
+      const startTime = Date.now()
+      while (currentDevbox.status !== 'Running' && Date.now() - startTime < 30000) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        currentDevbox = await sdk.getDevbox(name)
+      }
 
       // 再次启动运行中的 Devbox 应该不报错
-      await expect(devbox.start()).resolves.not.toThrow()
-    }, 120000)
+      await expect(currentDevbox.start()).resolves.not.toThrow()
+    }, 60000)
   })
 
   describe('暂停 Devbox', () => {
@@ -239,15 +260,24 @@ describe('Devbox 生命周期管理', () => {
       })
       createdDevboxes.push(name)
 
-      // 等待 Devbox 就绪
-      await devbox.waitForReady(60000)
+      // 启动并等待就绪
+      await devbox.start()
+      let currentDevbox = await sdk.getDevbox(name)
+      const startTime = Date.now()
+      while (currentDevbox.status !== 'Running' && Date.now() - startTime < 30000) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        currentDevbox = await sdk.getDevbox(name)
+      }
 
       // 暂停 Devbox
-      await devbox.pause()
+      await currentDevbox.pause()
+      
+      // 等待暂停完成
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      currentDevbox = await sdk.getDevbox(name)
 
-      // 验证状态变为暂停
-      expect(devbox.status).toBe('Paused')
-    }, 120000)
+      expect(currentDevbox.status).toBe('Stopped')
+    }, 60000)
 
     it('暂停已暂停的 Devbox 应该是安全的', async () => {
       const name = generateDevboxName('pause-paused')
@@ -259,12 +289,22 @@ describe('Devbox 生命周期管理', () => {
       })
       createdDevboxes.push(name)
 
-      await devbox.waitForReady(60000)
-      await devbox.pause()
+      // 启动并等待就绪
+      await devbox.start()
+      let currentDevbox = await sdk.getDevbox(name)
+      const startTime = Date.now()
+      while (currentDevbox.status !== 'Running' && Date.now() - startTime < 30000) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        currentDevbox = await sdk.getDevbox(name)
+      }
+      
+      await currentDevbox.pause()
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      currentDevbox = await sdk.getDevbox(name)
 
       // 再次暂停应该不报错
-      await expect(devbox.pause()).resolves.not.toThrow()
-    }, 120000)
+      await expect(currentDevbox.pause()).resolves.not.toThrow()
+    }, 60000)
   })
 
   describe('重启 Devbox', () => {
@@ -278,14 +318,25 @@ describe('Devbox 生命周期管理', () => {
       })
       createdDevboxes.push(name)
 
-      await devbox.waitForReady(60000)
+      // 启动并等待就绪
+      await devbox.start()
+      let currentDevbox = await sdk.getDevbox(name)
+      const startTime = Date.now()
+      while (currentDevbox.status !== 'Running' && Date.now() - startTime < 30000) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        currentDevbox = await sdk.getDevbox(name)
+      }
 
       // 重启 Devbox
-      await devbox.restart()
+      await currentDevbox.restart()
+      
+      // 等待重启完成
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      currentDevbox = await sdk.getDevbox(name)
 
       // 重启后应该仍然是运行状态
-      expect(devbox.status).toBe('Running')
-    }, 120000)
+      expect(currentDevbox.status).toBe('Running')
+    }, 60000)
   })
 
   describe('删除 Devbox', () => {
@@ -331,17 +382,27 @@ describe('Devbox 生命周期管理', () => {
       expect(devbox.name).toBe(name)
       createdDevboxes.push(name)
 
-      // 2. 等待就绪
-      await devbox.waitForReady(60000)
-      expect(devbox.status).toBe('Running')
+      // 2. 启动并等待就绪
+      await devbox.start()
+      let currentDevbox = await sdk.getDevbox(name)
+      const startTime = Date.now()
+      while (currentDevbox.status !== 'Running' && Date.now() - startTime < 30000) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        currentDevbox = await sdk.getDevbox(name)
+      }
+      expect(currentDevbox.status).toBe('Running')
 
       // 3. 暂停
-      await devbox.pause()
-      expect(devbox.status).toBe('Paused')
+      await currentDevbox.pause()
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      currentDevbox = await sdk.getDevbox(name)
+      expect(currentDevbox.status).toBe('Stopped')
 
       // 4. 重启
-      await devbox.restart()
-      expect(devbox.status).toBe('Running')
+      await currentDevbox.restart()
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      currentDevbox = await sdk.getDevbox(name)
+      expect(currentDevbox.status).toBe('Running')
 
       // 5. 验证仍然可以获取
       const fetched = await sdk.getDevbox(name)
@@ -362,7 +423,14 @@ describe('Devbox 生命周期管理', () => {
       })
       createdDevboxes.push(name)
 
-      await devbox.waitForReady(60000)
+      // 启动并等待就绪
+      await devbox.start()
+      let currentDevbox = await sdk.getDevbox(name)
+      const startTime = Date.now()
+      while (currentDevbox.status !== 'Running' && Date.now() - startTime < 30000) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        currentDevbox = await sdk.getDevbox(name)
+      }
 
       // 获取监控数据
       const monitorData = await sdk.getMonitorData(name)

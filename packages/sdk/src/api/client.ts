@@ -87,7 +87,7 @@ class SimpleHTTPClient {
           signal: controller.signal,
         })
 
-        console.log('response.url',url.toString(),fetchOptions?.body)
+        console.log('response.url',url.toString(),fetchOptions)
 
         clearTimeout(timeoutId)
 
@@ -270,6 +270,7 @@ export class DevboxAPI {
     try {
       await this.httpClient.post(this.endpoints.devboxStart(name), {
         headers: this.authenticator.getAuthHeaders(),
+        data: {},
       })
     } catch (error) {
       throw this.handleAPIError(error, `Failed to start Devbox '${name}'`)
@@ -283,6 +284,7 @@ export class DevboxAPI {
     try {
       await this.httpClient.post(this.endpoints.devboxPause(name), {
         headers: this.authenticator.getAuthHeaders(),
+        data: {},
       })
     } catch (error) {
       throw this.handleAPIError(error, `Failed to pause Devbox '${name}'`)
@@ -296,6 +298,7 @@ export class DevboxAPI {
     try {
       await this.httpClient.post(this.endpoints.devboxRestart(name), {
         headers: this.authenticator.getAuthHeaders(),
+        data: {},
       })
     } catch (error) {
       throw this.handleAPIError(error, `Failed to restart Devbox '${name}'`)
@@ -336,6 +339,7 @@ export class DevboxAPI {
     try {
       await this.httpClient.post(this.endpoints.devboxShutdown(name), {
         headers: this.authenticator.getAuthHeaders(),
+        data: {},
       })
     } catch (error) {
       throw this.handleAPIError(error, `Failed to shutdown Devbox '${name}'`)

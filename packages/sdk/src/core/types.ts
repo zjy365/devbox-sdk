@@ -264,4 +264,4 @@ export interface ProcessStatus {
   runningTime: number
 }
 
-export type DevboxStatus = 'creating' | 'running' | 'paused' | 'error' | 'deleting' | 'unknown'
+export type DevboxStatus = 'Creating' | 'Running' | 'Stopped' | 'Error' | 'Deleting' | 'Unknown'

@@ -2,6 +2,7 @@
  * Devbox instance class for managing individual Devbox containers
  */
 
+import type { ListFilesResponse } from '@sealos/devbox-shared'
 import type { DevboxSDK } from '../core/DevboxSDK'
 import type {
   BatchUploadOptions,
@@ -9,13 +10,16 @@ import type {
   DevboxInfo,
   FileChangeEvent,
   FileMap,
+  FileWatchWebSocket,
   MonitorData,
   ProcessStatus,
   ReadOptions,
+  ResourceInfo,
   TimeRange,
   TransferResult,
   WriteOptions,
 } from '../core/types'
+import type { DevboxRuntime } from '../api/types'
 
 export class DevboxInstance {
   private info: DevboxInfo
@@ -35,11 +39,11 @@ export class DevboxInstance {
     return this.info.status
   }
 
-  get runtime(): string {
+  get runtime(): DevboxRuntime {
     return this.info.runtime
   }
 
-  get resources(): any {
+  get resources(): ResourceInfo {
     return this.info.resources
   }
 
@@ -70,6 +74,12 @@ export class DevboxInstance {
     await this.refreshInfo()
   }
 
+  async shutdown(): Promise<void> {
+    const apiClient = this.sdk.getAPIClient()
+    await apiClient.shutdownDevbox(this.name)
+    await this.refreshInfo()
+  }
+
   async delete(): Promise<void> {
     const apiClient = this.sdk.getAPIClient()
     await apiClient.deleteDevbox(this.name)
@@ -95,7 +105,7 @@ export class DevboxInstance {
     this.validatePath(path)
     return await this.sdk.readFile(this.name, path, options)
   }
-  
+
   /**
    * Validate file path to prevent directory traversal attacks
    */
@@ -103,18 +113,15 @@ export class DevboxInstance {
     if (!path || path.length === 0) {
       throw new Error('Path cannot be empty')
     }
-    
+
     // Check for directory traversal attempts
     const normalized = path.replace(/\\/g, '/')
     if (normalized.includes('../') || normalized.includes('..\\')) {
       throw new Error(`Path traversal detected: ${path}`)
     }
-    
+
     // Ensure absolute paths start from workspace
-    if (normalized.startsWith('/') && (
-      normalized.startsWith('/../') ||
-      normalized === '/..'
-    )) {
+    if (normalized.startsWith('/') && (normalized.startsWith('/../') || normalized === '/..')) {
       throw new Error(`Invalid absolute path: ${path}`)
     }
   }
@@ -125,7 +132,7 @@ export class DevboxInstance {
     return await this.sdk.deleteFile(this.name, path)
   }
 
-  async listFiles(path: string): Promise<any> {
+  async listFiles(path: string): Promise<ListFilesResponse> {
     // Validate path to prevent directory traversal
     this.validatePath(path)
     return await this.sdk.listFiles(this.name, path)
@@ -136,7 +143,10 @@ export class DevboxInstance {
   }
 
   // File watching (instance method)
-  async watchFiles(path: string, callback: (event: FileChangeEvent) => void): Promise<any> {
+  async watchFiles(
+    path: string,
+    callback: (event: FileChangeEvent) => void
+  ): Promise<FileWatchWebSocket> {
     return await this.sdk.watchFiles(this.name, path, callback)
   }
 
@@ -183,30 +193,31 @@ export class DevboxInstance {
    */
   async waitForReady(timeout = 300000, checkInterval = 2000): Promise<void> {
     const startTime = Date.now()
-    
+
     console.log(`[DevboxInstance] Waiting for devbox '${this.name}' to be ready...`)
 
     while (Date.now() - startTime < timeout) {
       try {
         // 1. Check Devbox status via API
         await this.refreshInfo()
-        
+
         if (this.status === 'Running') {
           // 2. Check health status via Bun server
           const healthy = await this.isHealthy()
-          
+
           if (healthy) {
             console.log(`[DevboxInstance] Devbox '${this.name}' is ready and healthy`)
             return
           }
         }
-        
+
         // Log current status for debugging
         console.log(`[DevboxInstance] Current status: ${this.status}, waiting...`)
-        
       } catch (error) {
         // Log error but continue waiting
-        console.warn(`[DevboxInstance] Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        console.warn(
+          `[DevboxInstance] Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        )
       }
 
       // Wait before next check

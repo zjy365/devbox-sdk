@@ -11,14 +11,16 @@ import type {
   APIResponse,
   DevboxCreateRequest,
   DevboxCreateResponse,
+  DevboxDetail,
   DevboxGetResponse,
-  DevboxListResponse,
   DevboxListApiResponse,
   DevboxListItem,
+  DevboxListResponse,
   DevboxSSHInfoResponse,
   MonitorDataPoint,
   MonitorRequest,
 } from './types'
+import { DevboxRuntime } from './types'
 
 /**
  * Simple HTTP client implementation
@@ -27,11 +29,17 @@ class SimpleHTTPClient {
   private baseUrl: string
   private timeout: number
   private retries: number
+  private rejectUnauthorized: boolean
 
-  constructor(config: { baseUrl?: string; timeout?: number; retries?: number }) {
+  constructor(config: { baseUrl?: string; timeout?: number; retries?: number; rejectUnauthorized?: boolean }) {
     this.baseUrl = config.baseUrl || 'https://devbox.usw.sealos.io/v1'
     this.timeout = config.timeout || 30000
     this.retries = config.retries || 3
+    this.rejectUnauthorized = config.rejectUnauthorized ?? 
+      (process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0')
+    if (!this.rejectUnauthorized) {
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+    }
   }
 
   async request(
@@ -72,28 +80,32 @@ class SimpleHTTPClient {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
-        // console.log(fetchOptions);
-        console.log(url.toString());
+        // console.log('fetchOptions',fetchOptions)
+ 
         const response = await fetch(url.toString(), {
           ...fetchOptions,
           signal: controller.signal,
         })
 
+        console.log('response.url',url.toString(),fetchOptions?.body)
+
         clearTimeout(timeoutId)
 
         if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unable to read error response')
           throw new DevboxSDKError(
             `HTTP ${response.status}: ${response.statusText}`,
             this.getErrorCodeFromStatus(response.status),
-            { status: response.status, statusText: response.statusText }
+            { status: response.status, statusText: response.statusText, body: errorText }
           )
         }
 
-        const data = response.headers.get('content-type')?.includes('application/json')
+        const contentType = response.headers.get('content-type')
+        const data = contentType?.includes('application/json')
           ? await response.json()
           : await response.text()
         
-        console.log('response.data', data);
+        console.log('response.data',data)
 
         return {
           data,
@@ -103,6 +115,13 @@ class SimpleHTTPClient {
         }
       } catch (error) {
         lastError = error as Error
+        
+        if (error instanceof Error && 'cause' in error && error.cause instanceof Error) {
+          const cause = error.cause
+          if (cause.message.includes('certificate') || (cause as any).code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
+            console.error('⚠️  SSL/TLS certificate error detected. Set http.rejectUnauthorized: false in config for development/testing.')
+          }
+        }
 
         if (attempt === this.retries || !this.shouldRetry(error as Error)) {
           break
@@ -112,7 +131,6 @@ class SimpleHTTPClient {
         await new Promise(resolve => setTimeout(resolve, 2 ** attempt * 1000))
       }
     }
-
     throw lastError
   }
 
@@ -180,6 +198,7 @@ export class DevboxAPI {
       baseUrl: config.baseUrl,
       timeout: config.timeout,
       retries: config.retries,
+      rejectUnauthorized: config.rejectUnauthorized,
     })
     this.authenticator = new KubeconfigAuthenticator(config.kubeconfig)
     this.endpoints = new APIEndpoints(config.baseUrl)
@@ -202,8 +221,12 @@ export class DevboxAPI {
         headers: this.authenticator.getAuthHeaders(),
         data: request,
       })
-      
-      return this.transformCreateResponseToDevboxInfo(response.data.data as DevboxCreateResponse)
+      const responseData = response.data as { data: DevboxCreateResponse }
+      return this.transformCreateResponseToDevboxInfo(
+        responseData.data,
+        config.runtime,
+        config.resource
+      )
     } catch (error) {
       throw this.handleAPIError(error, 'Failed to create Devbox')
     }
@@ -218,7 +241,8 @@ export class DevboxAPI {
         headers: this.authenticator.getAuthHeaders(),
       })
 
-      return this.transformGetResponseToDevboxInfo(response.data.data as DevboxGetResponse)
+      const responseData = response.data as { data: DevboxDetail }
+      return this.transformDetailToDevboxInfo(responseData.data)
     } catch (error) {
       throw this.handleAPIError(error, `Failed to get Devbox '${name}'`)
     }
@@ -232,7 +256,6 @@ export class DevboxAPI {
       const response = await this.httpClient.get(this.endpoints.devboxList(), {
         headers: this.authenticator.getAuthHeaders(),
       })
-      
       const listResponse = response.data as DevboxListApiResponse
       return listResponse.data.map(this.transformListItemToDevboxInfo)
     } catch (error) {
@@ -369,7 +392,8 @@ export class DevboxAPI {
       const response = await this.httpClient.get(this.endpoints.releaseList(name), {
         headers: this.authenticator.getAuthHeaders(),
       })
-      return response.data?.data || []
+      const responseData = response.data as { data?: any[] } | undefined
+      return responseData?.data || []
     } catch (error) {
       throw this.handleAPIError(error, `Failed to list releases for '${name}'`)
     }
@@ -439,7 +463,6 @@ export class DevboxAPI {
     }
   }
 
-  
   /**
    * Test authentication
    */
@@ -481,14 +504,35 @@ export class DevboxAPI {
     }
   }
 
-  private transformCreateResponseToDevboxInfo(createResponse: DevboxCreateResponse): DevboxInfo {
+  /**
+   * Safely convert a string to DevboxRuntime enum
+   * Returns the enum value if valid, otherwise returns a default value
+   */
+  private stringToRuntime(value: string | null | undefined): DevboxRuntime {
+    if (!value) {
+      return DevboxRuntime.NODE_JS // Default fallback
+    }
+    // Check if the value matches any enum value
+    const runtimeValues = Object.values(DevboxRuntime) as string[]
+    if (runtimeValues.includes(value)) {
+      return value as DevboxRuntime
+    }
+    // If not found, return default
+    return DevboxRuntime.NODE_JS
+  }
+
+  private transformCreateResponseToDevboxInfo(
+    createResponse: DevboxCreateResponse,
+    runtime: DevboxRuntime,
+    resource: { cpu: number; memory: number }
+  ): DevboxInfo {
     return {
       name: createResponse.name,
       status: 'Pending', // New devboxes start in Pending state
-      runtime: '', // Runtime not returned in create response, would need to be fetched
+      runtime: runtime, // Use the runtime from the create request
       resources: {
-        cpu: 0, // Not returned in create response
-        memory: 0, // Not returned in create response
+        cpu: resource.cpu, // Use the resource from the create request
+        memory: resource.memory, // Use the resource from the create request
       },
       ssh: {
         host: createResponse.domain,
@@ -499,15 +543,57 @@ export class DevboxAPI {
     }
   }
 
+  /**
+   * Transform DevboxDetail (actual API response) to DevboxInfo
+   */
+  private transformDetailToDevboxInfo(detail: DevboxDetail): DevboxInfo {
+    // 处理 runtime：可能是字符串或枚举值
+    const runtime = typeof detail.runtime === 'string' 
+      ? this.stringToRuntime(detail.runtime)
+      : detail.runtime
+
+    // 处理 SSH 信息：只在 privateKey 存在时设置
+    const ssh = detail.ssh?.privateKey ? {
+      host: detail.ssh.host,
+      port: detail.ssh.port,
+      user: detail.ssh.user,
+      privateKey: detail.ssh.privateKey,
+    } : undefined
+
+    return {
+      name: detail.name,
+      status: detail.status,
+      runtime,
+      resources: detail.resources,
+      ssh,
+    }
+  }
+
+  /**
+   * Transform DevboxGetResponse to DevboxInfo (legacy method, kept for backward compatibility)
+   */
   private transformGetResponseToDevboxInfo(getResponse: DevboxGetResponse): DevboxInfo {
+    // 处理 status：可能是字符串或对象
+    const status = typeof getResponse.status === 'string' 
+      ? getResponse.status 
+      : getResponse.status.value
+
+    // 处理 resources：优先使用 resources 对象，否则使用直接的 cpu/memory 字段
+    const resources = getResponse.resources || {
+      cpu: getResponse.cpu || 0,
+      memory: getResponse.memory || 0,
+    }
+
+    // 处理 runtime：优先使用 runtime 字段，否则使用 iconId
+    const runtime = getResponse.runtime 
+      ? this.stringToRuntime(getResponse.runtime)
+      : (getResponse.iconId ? this.stringToRuntime(getResponse.iconId) : DevboxRuntime.NODE_JS)
+
     return {
       name: getResponse.name,
-      status: getResponse.status.value,
-      runtime: getResponse.iconId,
-      resources: {
-        cpu: getResponse.cpu,
-        memory: getResponse.memory,
-      },
+      status,
+      runtime,
+      resources,
     }
   }
 

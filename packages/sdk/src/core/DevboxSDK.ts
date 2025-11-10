@@ -2,6 +2,7 @@
  * Main Devbox SDK class for managing Sealos Devbox instances
  */
 
+import type { ListFilesResponse } from '@sealos/devbox-shared'
 import { DevboxAPI } from '../api/client'
 import { ConnectionManager } from '../http/manager'
 import { DevboxInstance } from './DevboxInstance'
@@ -12,10 +13,12 @@ import type {
   DevboxSDKConfig,
   FileChangeEvent,
   FileMap,
+  FileWatchWebSocket,
   MonitorData,
   ReadOptions,
   TimeRange,
   TransferResult,
+  WatchRequest,
   WriteOptions,
 } from './types'
 
@@ -24,7 +27,13 @@ export class DevboxSDK {
   private connectionManager: ConnectionManager
 
   constructor(config: DevboxSDKConfig) {
-    this.apiClient = new DevboxAPI(config)
+    this.apiClient = new DevboxAPI({
+      kubeconfig: config.kubeconfig,
+      baseUrl: config.baseUrl,
+      timeout: config.http?.timeout,
+      retries: config.http?.retries,
+      rejectUnauthorized: config.http?.rejectUnauthorized,
+    })
     this.connectionManager = new ConnectionManager(config)
   }
 
@@ -119,7 +128,7 @@ export class DevboxSDK {
   /**
    * List files in a directory in a Devbox instance
    */
-  async listFiles(devboxName: string, path: string): Promise<any> {
+  async listFiles(devboxName: string, path: string): Promise<ListFilesResponse> {
     return await this.connectionManager.executeWithConnection(devboxName, async client => {
       const response = await client.post('/files/list', {
         path,
@@ -135,18 +144,24 @@ export class DevboxSDK {
     devboxName: string,
     path: string,
     callback: (event: FileChangeEvent) => void
-  ): Promise<any> {
+  ): Promise<FileWatchWebSocket> {
     const serverUrl = await this.connectionManager.getServerUrl(devboxName)
     const { default: WebSocket } = await import('ws')
-    const ws = new WebSocket(`ws://${serverUrl.replace('http://', '')}/ws`) as any
+    const ws = new WebSocket(`ws://${serverUrl.replace('http://', '')}/ws`) as FileWatchWebSocket
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'watch', path }))
+      const watchRequest: WatchRequest = { type: 'watch', path }
+      ws.send(JSON.stringify(watchRequest))
     }
 
-    ws.onmessage = (event: any) => {
-      const fileEvent = JSON.parse(event.data)
-      callback(fileEvent)
+    ws.onmessage = (event: MessageEvent<FileChangeEvent>) => {
+      try {
+        const fileEvent =
+          typeof event.data === 'string' ? (JSON.parse(event.data) as FileChangeEvent) : event.data
+        callback(fileEvent)
+      } catch (error) {
+        console.error('Failed to parse file watch event:', error)
+      }
     }
 
     return ws
@@ -165,11 +180,11 @@ export class DevboxSDK {
   async close(): Promise<void> {
     // 1. Close all HTTP connections
     await this.connectionManager.closeAllConnections()
-    
+
     // 2. Clear instance cache to prevent memory leaks
     // Note: instanceCache would need to be added as a private property
     // this.instanceCache?.clear()
-    
+
     // 3. Log cleanup completion
     console.log('[DevboxSDK] Closed all connections and cleaned up resources')
   }

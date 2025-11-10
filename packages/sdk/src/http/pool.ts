@@ -8,14 +8,17 @@ import type {
   ConnectionPoolConfig,
   ConnectionStrategy,
   HTTPConnection,
+  HTTPResponse,
   HealthCheckResult,
+  IHTTPClient,
   PoolStats,
+  RequestOptions,
 } from './types'
 
 /**
  * Simple HTTP client for container communication
  */
-class ContainerHTTPClient {
+class ContainerHTTPClient implements IHTTPClient {
   private baseUrl: string
   private timeout: number
 
@@ -24,23 +27,27 @@ class ContainerHTTPClient {
     this.timeout = timeout
   }
 
-  async get(path: string, options?: any): Promise<any> {
-    return this.request('GET', path, options)
+  async get<T = unknown>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>> {
+    return this.request<T>('GET', path, options)
   }
 
-  async post(path: string, options?: any): Promise<any> {
-    return this.request('POST', path, options)
+  async post<T = unknown>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>> {
+    return this.request<T>('POST', path, options)
   }
 
-  async put(path: string, options?: any): Promise<any> {
-    return this.request('PUT', path, options)
+  async put<T = unknown>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>> {
+    return this.request<T>('PUT', path, options)
   }
 
-  async delete(path: string, options?: any): Promise<any> {
-    return this.request('DELETE', path, options)
+  async delete<T = unknown>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>> {
+    return this.request<T>('DELETE', path, options)
   }
 
-  private async request(method: string, path: string, options?: any): Promise<any> {
+  private async request<T = unknown>(
+    method: string,
+    path: string,
+    options?: RequestOptions
+  ): Promise<HTTPResponse<T>> {
     const url = new URL(path, this.baseUrl)
 
     const fetchOptions: RequestInit = {
@@ -49,27 +56,21 @@ class ContainerHTTPClient {
         'Content-Type': 'application/json',
         ...options?.headers,
       },
+      signal: options?.signal,
     }
 
-    if (options?.data) {
-      fetchOptions.body = JSON.stringify(options.data)
-    }
-
-    if (options?.params) {
-      Object.entries(options.params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          url.searchParams.append(key, String(value))
-        }
-      })
+    if (options?.body !== undefined) {
+      fetchOptions.body =
+        typeof options.body === 'string' ? options.body : JSON.stringify(options.body)
     }
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout || 30000)
 
     try {
       const response = await fetch(url.toString(), {
         ...fetchOptions,
-        signal: controller.signal,
+        signal: options?.signal || controller.signal,
       })
 
       clearTimeout(timeoutId)
@@ -82,15 +83,13 @@ class ContainerHTTPClient {
         )
       }
 
-      const contentType = response.headers.get('content-type')
-      if (contentType?.includes('application/json')) {
-        return {
-          data: await response.json(),
-          arrayBuffer: () => response.arrayBuffer(),
-          headers: Object.fromEntries(response.headers.entries()),
-        }
-      } else {
-        return response.arrayBuffer()
+      const data = (await response.json()) as T
+
+      return {
+        data,
+        status: response.status,
+        headers: Object.fromEntries(response.headers.entries()),
+        url: response.url,
       }
     } catch (error) {
       clearTimeout(timeoutId)

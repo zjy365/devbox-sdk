@@ -2,11 +2,42 @@
  * Connection pool type definitions
  */
 
+/**
+ * HTTP request options
+ */
+export interface RequestOptions {
+  headers?: Record<string, string>
+  body?: unknown
+  timeout?: number
+  signal?: AbortSignal
+}
+
+/**
+ * HTTP response wrapper
+ */
+export interface HTTPResponse<T = unknown> {
+  data: T
+  status: number
+  headers: Record<string, string>
+  url: string
+}
+
+/**
+ * HTTP client interface
+ */
+export interface IHTTPClient {
+  get<T = unknown>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>>
+  post<T = unknown>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>>
+  put<T = unknown>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>>
+  delete<T = unknown>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>>
+  close(): Promise<void>
+}
+
 export interface HTTPConnection {
   /** Unique connection identifier */
   id: string
   /** HTTP client instance */
-  client: any
+  client: IHTTPClient
   /** Target Devbox name */
   devboxName: string
   /** Server URL */

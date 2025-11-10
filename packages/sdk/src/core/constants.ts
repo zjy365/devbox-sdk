@@ -119,18 +119,6 @@ export const ERROR_CODES = {
   INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const
 
-export const SUPPORTED_RUNTIMES = [
-  'node.js',
-  'python',
-  'go',
-  'java',
-  'react',
-  'vue',
-  'angular',
-  'docker',
-  'bash',
-] as const
-
 export const HTTP_STATUS = {
   OK: 200,
   CREATED: 201,

@@ -5,11 +5,19 @@
 import type { DevboxSDKConfig } from '../core/types'
 import { DevboxSDKError, ERROR_CODES } from '../utils/error'
 import { ConnectionPool } from './pool'
+import type { HTTPResponse, IHTTPClient, PoolStats } from './types'
+
+/**
+ * Interface for Devbox API client
+ */
+interface IDevboxAPIClient {
+  getDevbox(name: string): Promise<{ host: string; port: number }>
+}
 
 export class ConnectionManager {
   private pool: ConnectionPool
-  private apiClient: any // This would be injected from the SDK
-  private cache: Map<string, { data: any; timestamp: number }> = new Map()
+  private apiClient?: IDevboxAPIClient
+  private cache: Map<string, { data: unknown; timestamp: number }> = new Map()
   private readonly CACHE_TTL = 60000 // 60 seconds
   private mockServerUrl?: string
   private devboxServerUrl?: string
@@ -23,7 +31,7 @@ export class ConnectionManager {
   /**
    * Set the API client for resolving server URLs
    */
-  setAPIClient(apiClient: any): void {
+  setAPIClient(apiClient: IDevboxAPIClient): void {
     this.apiClient = apiClient
   }
 
@@ -32,7 +40,7 @@ export class ConnectionManager {
    */
   async executeWithConnection<T>(
     devboxName: string,
-    operation: (client: any) => Promise<T>
+    operation: (client: IHTTPClient) => Promise<T>
   ): Promise<T> {
     const serverUrl = await this.getServerUrl(devboxName)
     const client = await this.pool.getConnection(devboxName, serverUrl)
@@ -80,10 +88,7 @@ export class ConnectionManager {
       const devboxInfo = await this.getDevboxInfo(devboxName)
 
       if (!devboxInfo) {
-        throw new DevboxSDKError(
-          `Devbox '${devboxName}' not found`,
-          ERROR_CODES.DEVBOX_NOT_FOUND
-        )
+        throw new DevboxSDKError(`Devbox '${devboxName}' not found`, ERROR_CODES.DEVBOX_NOT_FOUND)
       }
 
       // Try to get URL from ports (publicAddress or privateAddress)
@@ -127,11 +132,11 @@ export class ConnectionManager {
       )
     }
   }
-  
+
   /**
    * Get Devbox info with caching
    */
-  private async getDevboxInfo(devboxName: string): Promise<any> {
+  private async getDevboxInfo(devboxName: string): Promise<{ host: string; port: number } | null> {
     // Check cache
     const cached = this.getFromCache(`devbox:${devboxName}`)
     if (cached) {
@@ -139,6 +144,9 @@ export class ConnectionManager {
     }
 
     try {
+      if (!this.apiClient) {
+        throw new Error('API client not set')
+      }
       const devboxInfo = await this.apiClient.getDevbox(devboxName)
       this.setCache(`devbox:${devboxName}`, devboxInfo)
       return devboxInfo
@@ -146,33 +154,33 @@ export class ConnectionManager {
       return null
     }
   }
-  
+
   /**
    * Get value from cache if not expired
    */
-  private getFromCache(key: string): any | null {
+  private getFromCache(key: string): unknown | null {
     const entry = this.cache.get(key)
     if (!entry) return null
-    
+
     // Check if expired
     if (Date.now() - entry.timestamp > this.CACHE_TTL) {
       this.cache.delete(key)
       return null
     }
-    
+
     return entry.data
   }
-  
+
   /**
    * Set value in cache
    */
-  private setCache(key: string, data: any): void {
+  private setCache(key: string, data: unknown): void {
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
     })
   }
-  
+
   /**
    * Clear all cache
    */
@@ -183,7 +191,7 @@ export class ConnectionManager {
   /**
    * Handle connection errors and cleanup
    */
-  private async handleConnectionError(client: any, error: any): Promise<void> {
+  private async handleConnectionError(client: IHTTPClient, error: unknown): Promise<void> {
     // If it's a connection-related error, we might need to clean up the connection
     if (
       error instanceof DevboxSDKError &&
@@ -207,7 +215,7 @@ export class ConnectionManager {
   /**
    * Get connection pool statistics
    */
-  getConnectionStats(): any {
+  getConnectionStats(): PoolStats {
     return this.pool.getStats()
   }
 

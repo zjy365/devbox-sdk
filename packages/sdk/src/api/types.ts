@@ -2,6 +2,88 @@
  * API response and request type definitions
  */
 
+/**
+ * Devbox runtime environment enum
+ */
+export enum DevboxRuntime {
+  NUXT3 = 'nuxt3',
+  ANGULAR = 'angular',
+  QUARKUS = 'quarkus',
+  UBUNTU = 'ubuntu',
+  FLASK = 'flask',
+  JAVA = 'java',
+  CHI = 'chi',
+  NET = 'net',
+  IRIS = 'iris',
+  HEXO = 'hexo',
+  PYTHON = 'python',
+  DOCUSAURUS = 'docusaurus',
+  VITEPRESS = 'vitepress',
+  CPP = 'cpp',
+  VUE = 'vue',
+  NGINX = 'nginx',
+  ROCKET = 'rocket',
+  DEBIAN_SSH = 'debian-ssh',
+  VERT_X = 'vert.x',
+  EXPRESS_JS = 'express.js',
+  DJANGO = 'django',
+  NEXT_JS = 'next.js',
+  SEALAF = 'sealaf',
+  GO = 'go',
+  REACT = 'react',
+  PHP = 'php',
+  SVELTE = 'svelte',
+  C = 'c',
+  ASTRO = 'astro',
+  UMI = 'umi',
+  GIN = 'gin',
+  NODE_JS = 'node.js',
+  ECHO = 'echo',
+  RUST = 'rust',
+}
+
+/**
+ * Port configuration interface
+ */
+export interface PortConfiguration {
+  /** Port number */
+  number: number
+  /** Port protocol (tcp/udp) */
+  protocol: 'tcp' | 'udp'
+  /** Publicly accessible address */
+  publicAddress?: string
+  /** Private container address */
+  privateAddress?: string
+  /** Port name/identifier */
+  name?: string
+  /** Whether port is currently active */
+  isActive?: boolean
+  /** Port status */
+  status?: 'open' | 'closed' | 'pending'
+}
+
+/**
+ * Network configuration interface
+ */
+export interface NetworkConfiguration {
+  /** Network name */
+  name: string
+  /** Network type */
+  type: 'bridge' | 'host' | 'overlay'
+  /** Network subnet */
+  subnet?: string
+  /** Gateway address */
+  gateway?: string
+  /** DNS servers */
+  dns?: string[]
+  /** Network status */
+  status?: 'active' | 'inactive' | 'error'
+  /** IP address assigned to container */
+  ipAddress?: string
+  /** MAC address */
+  macAddress?: string
+}
+
 export interface KubeconfigAuth {
   kubeconfig: string
 }
@@ -11,11 +93,13 @@ export interface APIClientConfig {
   baseUrl?: string
   timeout?: number
   retries?: number
+  /** Allow self-signed certificates (ONLY for development/testing, NOT recommended for production) */
+  rejectUnauthorized?: boolean
 }
 
 export interface DevboxCreateRequest {
   name: string
-  runtime: string
+  runtime: DevboxRuntime
   resource: {
     cpu: number
     memory: number
@@ -37,7 +121,7 @@ export interface DevboxSSHInfoResponse {
   }
   podIP?: string
   status: string
-  runtime: string
+  runtime: DevboxRuntime
   resources: {
     cpu: number
     memory: number
@@ -51,7 +135,7 @@ export interface DevboxCreateResponse {
   userName: string
   workingDir: string
   domain: string
-  ports: any[]
+  ports: PortConfiguration[]
   summary: {
     totalPorts: number
     successfulPorts: number
@@ -61,16 +145,21 @@ export interface DevboxCreateResponse {
 
 export interface DevboxGetResponse {
   name: string
-  iconId: string
-  status: {
+  iconId?: string  // 可能不存在
+  runtime?: string  // 实际 API 响应中包含它
+  status: string | {  // 可能是字符串或对象
     value: string
     label: string
   }
-  cpu: number // in millicores
-  memory: number // in MB
-  sshPort: number
-  networks: any[]
-  [key: string]: any // other fields we don't care about
+  cpu?: number // in millicores (可能不存在，使用 resources 代替)
+  memory?: number // in MB (可能不存在，使用 resources 代替)
+  resources?: {  // 实际 API 响应中使用这个字段
+    cpu: number
+    memory: number
+  }
+  sshPort?: number
+  networks?: NetworkConfiguration[]
+  [key: string]: unknown // other fields we don't care about
 }
 
 export interface DevboxListResponse {
@@ -97,17 +186,27 @@ export interface MonitorDataPoint {
   timestamp: number
 }
 
-export interface APIResponse<T = any> {
+export interface APIResponse<T = unknown> {
   data: T
   status: number
   statusText: string
   headers: Record<string, string>
 }
 
+/**
+ * Error detail information
+ */
+export interface ErrorDetail {
+  field?: string
+  reason?: string
+  value?: unknown
+  additionalInfo?: Record<string, unknown>
+}
+
 export interface APIError {
   code: string
   message: string
-  details?: any
+  details?: ErrorDetail | ErrorDetail[] | Record<string, unknown>
   timestamp: number
 }
 
@@ -150,7 +249,7 @@ export interface EnvVar {
  */
 export interface CreateDevboxRequest {
   name: string
-  runtime: string
+  runtime: DevboxRuntime
   resource: {
     cpu: number // 0.1, 0.2, 0.5, 1, 2, 4, 8, 16
     memory: number // 0.1, 0.5, 1, 2, 4, 8, 16, 32
@@ -178,7 +277,7 @@ export interface DevboxListItem {
   name: string
   uid: string
   resourceType: 'devbox'
-  runtime: string
+  runtime: DevboxRuntime
   status: string
   resources: {
     cpu: number
@@ -200,7 +299,7 @@ export interface DevboxDetail {
   name: string
   uid: string
   resourceType: 'devbox'
-  runtime: string
+  runtime: string | DevboxRuntime  // API 返回字符串，但类型定义支持枚举
   image: string
   status: string
   resources: {
@@ -259,7 +358,7 @@ export interface TemplateConfig {
   templateUid: string
   templateName: string
   runtimeUid: string
-  runtime: string | null
+  runtime: DevboxRuntime | null
   config: {
     appPorts?: Array<{
       name: string

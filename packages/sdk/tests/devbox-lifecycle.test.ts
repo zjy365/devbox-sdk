@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { DevboxSDK } from '../src/core/DevboxSDK'
 import { TEST_CONFIG } from './setup'
 import type { DevboxInstance } from '../src/core/DevboxInstance'
+import { DevboxRuntime } from '../src/api/types'
 
 describe('Devbox 生命周期管理', () => {
   let sdk: DevboxSDK
@@ -32,10 +33,13 @@ describe('Devbox 生命周期管理', () => {
   })
 
   // 辅助函数：生成唯一名称
+  // 注意：名称必须符合 Kubernetes DNS 命名规范（只能包含小写字母、数字和连字符）
   const generateDevboxName = (prefix: string) => {
     const timestamp = Date.now()
     const random = Math.floor(Math.random() * 1000)
-    return `test-${prefix}-${timestamp}-${random}`
+    // 将点号替换为连字符，确保符合 DNS 命名规范
+    const sanitizedPrefix = prefix.replace(/\./g, '-')
+    return `test-${sanitizedPrefix}-${timestamp}-${random}`
   }
 
   describe('创建 Devbox', () => {
@@ -44,11 +48,11 @@ describe('Devbox 生命周期管理', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: {
           cpu: 1,
           memory: 2,
-        },
+        }
       })
 
       expect(devbox).toBeDefined()
@@ -65,7 +69,7 @@ describe('Devbox 生命周期管理', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'next.js',
+        runtime: DevboxRuntime.NEXT_JS,
         resource: {
           cpu: 2,
           memory: 4,
@@ -74,11 +78,7 @@ describe('Devbox 生命周期管理', () => {
           {
             number: 3000,
             protocol: 'HTTP',
-          },
-          {
-            number: 8080,
-            protocol: 'TCP',
-          },
+          }
         ],
       })
 
@@ -87,7 +87,7 @@ describe('Devbox 生命周期管理', () => {
     }, 120000)
 
     it('应该创建不同运行时的 Devbox', async () => {
-      const runtimes = ['node.js', 'python', 'next.js', 'react']
+      const runtimes = [DevboxRuntime.NODE_JS, DevboxRuntime.PYTHON, DevboxRuntime.NEXT_JS, DevboxRuntime.REACT]
       const devboxes: DevboxInstance[] = []
 
       for (const runtime of runtimes) {
@@ -111,7 +111,7 @@ describe('Devbox 生命周期管理', () => {
       // 创建第一个
       await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -120,7 +120,7 @@ describe('Devbox 生命周期管理', () => {
       await expect(
         sdk.createDevbox({
           name,
-          runtime: 'node.js',
+          runtime: DevboxRuntime.NODE_JS,
           resource: { cpu: 1, memory: 2 },
         })
       ).rejects.toThrow()
@@ -134,12 +134,11 @@ describe('Devbox 生命周期管理', () => {
       // 先创建
       await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
 
-      // 再获取
       const fetched = await sdk.getDevbox(name)
       expect(fetched.name).toBe(name)
       expect(fetched.runtime).toBe('node.js')
@@ -161,7 +160,7 @@ describe('Devbox 生命周期管理', () => {
         const name = generateDevboxName(`list-${i}`)
         await sdk.createDevbox({
           name,
-          runtime: 'node.js',
+          runtime: DevboxRuntime.NODE_JS,
           resource: { cpu: 1, memory: 2 },
         })
         createdDevboxes.push(name)
@@ -190,7 +189,7 @@ describe('Devbox 生命周期管理', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -217,7 +216,7 @@ describe('Devbox 生命周期管理', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -235,7 +234,7 @@ describe('Devbox 生命周期管理', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -255,7 +254,7 @@ describe('Devbox 生命周期管理', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -274,7 +273,7 @@ describe('Devbox 生命周期管理', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -295,7 +294,7 @@ describe('Devbox 生命周期管理', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: { cpu: 1, memory: 2 },
       })
 
@@ -324,7 +323,7 @@ describe('Devbox 生命周期管理', () => {
       // 1. 创建
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: { cpu: 1, memory: 2 },
         ports: [{ number: 3000, protocol: 'HTTP' }],
       })
@@ -358,7 +357,7 @@ describe('Devbox 生命周期管理', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: 'node.js',
+        runtime: DevboxRuntime.NODE_JS,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)

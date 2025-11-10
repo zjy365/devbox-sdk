@@ -557,11 +557,6 @@ API_ENDPOINTS = {
     MONITOR: '/api/v1/devbox/{name}/monitor'
   }
 }
-
-SUPPORTED_RUNTIMES = [
-  'node.js', 'python', 'go', 'java',
-  'react', 'vue', 'angular', 'docker', 'bash'
-]
 ```
 
 ---

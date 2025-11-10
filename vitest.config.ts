@@ -1,19 +1,29 @@
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'node:path'
 import { config as loadEnv } from 'dotenv'
+import { existsSync } from 'node:fs'
 
-// 加载 .env 文件
-loadEnv()
+ 
+const envPath = resolve(__dirname, '.env')
+if (existsSync(envPath)) {
+  loadEnv({ path: envPath, override: true })
+  console.log('[vitest] Loaded environment variables from .env')
+} else {
+  console.warn('[vitest] Warning: .env file not found at', envPath)
+}
+
+const currentEnv = { ...process.env }
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    silent: false, // 显示 console 输出
+    silent: false,  
     include: ['packages/**/tests/**/*.{test,bench}.ts'],
     exclude: ['node_modules', 'dist', '**/*.d.ts'],
-    testTimeout: 300000, // 5 minutes for complex tests
-    hookTimeout: 180000, // 3 minutes for setup/teardown
+    testTimeout: 300000, 
+    hookTimeout: 180000, 
+    env: currentEnv,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
@@ -41,7 +51,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@sdk': resolve(__dirname, 'packages/sdk/src'),
-      '@server': resolve(__dirname, 'packages/server/src'),
       '@shared': resolve(__dirname, 'packages/shared/src')
     }
   }

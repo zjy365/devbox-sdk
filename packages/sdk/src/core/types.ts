@@ -35,13 +35,17 @@ export interface HttpClientConfig {
   retries?: number
   /** Proxy configuration */
   proxy?: string
+  /** Allow self-signed certificates (ONLY for development/testing, NOT recommended for production) */
+  rejectUnauthorized?: boolean
 }
+
+import type { DevboxRuntime } from '../api/types'
 
 export interface DevboxCreateConfig {
   /** Name of the Devbox instance */
   name: string
   /** Runtime environment (node.js, python, go, etc.) */
-  runtime: string
+  runtime: DevboxRuntime
   /** Resource allocation */
   resource: ResourceInfo
   /** Port configurations */
@@ -70,7 +74,7 @@ export interface DevboxInfo {
   /** Current status */
   status: string
   /** Runtime environment */
-  runtime: string
+  runtime: DevboxRuntime
   /** Resource information */
   resources: ResourceInfo
   /** Pod IP address */
@@ -165,6 +169,37 @@ export interface FileChangeEvent {
   path: string
   /** Event timestamp */
   timestamp: number
+}
+
+/**
+ * WebSocket watch request message
+ */
+export interface WatchRequest {
+  type: 'watch'
+  path: string
+  recursive?: boolean
+}
+
+/**
+ * WebSocket message for file watching
+ */
+export interface WebSocketMessage {
+  type: 'watch' | 'unwatch' | 'ping' | 'pong'
+  path?: string
+  data?: unknown
+}
+
+/**
+ * File watch WebSocket interface
+ */
+export interface FileWatchWebSocket {
+  onopen: () => void
+  onmessage: (event: MessageEvent<FileChangeEvent>) => void
+  onerror: (error: Event) => void
+  onclose: (event: CloseEvent) => void
+  send(data: string): void
+  close(code?: number, reason?: string): void
+  readyState: number
 }
 
 export interface TimeRange {

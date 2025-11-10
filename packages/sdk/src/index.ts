@@ -32,7 +32,6 @@ export {
   DEFAULT_CONFIG,
   API_ENDPOINTS,
   ERROR_CODES,
-  SUPPORTED_RUNTIMES,
   HTTP_STATUS,
 } from './core/constants'
 
@@ -61,7 +60,8 @@ export type {
   HttpClientConfig,
 } from './core/types'
 
-// Export API types
+// Export API types and enums
+export { DevboxRuntime } from './api/types'
 export type {
   APIResponse,
   CreateDevboxRequest,

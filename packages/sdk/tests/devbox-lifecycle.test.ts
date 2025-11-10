@@ -145,6 +145,28 @@ describe('Devbox 生命周期管理', () => {
       expect(fetched.status).toBeDefined()
     }, 120000)
 
+    it('应该能够通过 getDevbox 获取 Devbox 实例', async () => {
+      const name = generateDevboxName('get-devbox')
+
+      // 创建 Devbox
+      const created = await sdk.createDevbox({
+        name,
+        runtime: DevboxRuntime.NODE_JS,
+        resource: { cpu: 1, memory: 2 },
+      })
+      createdDevboxes.push(name)
+
+      // 通过 getDevbox 获取
+      const fetched = await sdk.getDevbox(name)
+
+      // 验证基本信息
+      expect(fetched.name).toBe(name)
+      expect(fetched.name).toBe(created.name)
+      expect(fetched.runtime).toBe(created.runtime)
+      expect(fetched.status).toBeDefined()
+      expect(fetched.resources).toBeDefined()
+    }, 120000)
+
     it('获取不存在的 Devbox 应该抛出错误', async () => {
       const nonExistentName = 'non-existent-devbox-999'
 

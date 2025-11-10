@@ -35,6 +35,8 @@ export class DevboxSDK {
       rejectUnauthorized: config.http?.rejectUnauthorized,
     })
     this.connectionManager = new ConnectionManager(config)
+    // 设置 API client 以便 ConnectionManager 可以获取 Devbox 信息
+    this.connectionManager.setAPIClient(this.apiClient)
   }
 
   /**

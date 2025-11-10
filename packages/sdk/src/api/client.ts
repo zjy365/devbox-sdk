@@ -564,12 +564,21 @@ export class DevboxAPI {
       privateKey: detail.ssh.privateKey,
     } : undefined
 
+    // 提取 podIP（从 pods 数组中获取，如果存在）
+    let podIP: string | undefined
+    if (detail.pods && detail.pods.length > 0) {
+      // 尝试从 pods 中提取 IP，这里可能需要根据实际 API 返回结构调整
+      // 如果 API 返回的 pods 包含 IP 信息，可以在这里提取
+    }
+
     return {
       name: detail.name,
       status: detail.status,
       runtime,
       resources: detail.resources,
+      podIP,
       ssh,
+      ports: detail.ports,
     }
   }
 

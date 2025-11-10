@@ -81,6 +81,19 @@ export interface DevboxInfo {
   podIP?: string
   /** SSH connection information */
   ssh?: SSHInfo
+  /** Port configurations */
+  ports?: Array<{
+    number: number
+    portName: string
+    protocol: string
+    serviceName: string
+    privateAddress: string
+    privateHost: string
+    networkName: string
+    publicHost?: string
+    publicAddress?: string
+    customDomain?: string
+  }>
 }
 
 export interface SSHInfo {

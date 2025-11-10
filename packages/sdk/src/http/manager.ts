@@ -2,7 +2,7 @@
  * Connection manager for handling HTTP connections to Devbox containers
  */
 
-import type { DevboxSDKConfig } from '../core/types'
+import type { DevboxSDKConfig, DevboxInfo } from '../core/types'
 import { DevboxSDKError, ERROR_CODES } from '../utils/error'
 import { ConnectionPool } from './pool'
 import type { HTTPResponse, IHTTPClient, PoolStats } from './types'
@@ -11,7 +11,7 @@ import type { HTTPResponse, IHTTPClient, PoolStats } from './types'
  * Interface for Devbox API client
  */
 interface IDevboxAPIClient {
-  getDevbox(name: string): Promise<{ host: string; port: number }>
+  getDevbox(name: string): Promise<DevboxInfo>
 }
 
 export class ConnectionManager {
@@ -80,7 +80,7 @@ export class ConnectionManager {
 
     // Check cache first
     const cached = this.getFromCache(`url:${devboxName}`)
-    if (cached) {
+    if (cached && typeof cached === 'string') {
       return cached
     }
 
@@ -94,19 +94,21 @@ export class ConnectionManager {
       // Try to get URL from ports (publicAddress or privateAddress)
       if (devboxInfo.ports && devboxInfo.ports.length > 0) {
         const port = devboxInfo.ports[0]
+        
+        if (port) {
+          // Prefer public address
+          if (port.publicAddress) {
+            const url = port.publicAddress
+            this.setCache(`url:${devboxName}`, url)
+            return url
+          }
 
-        // Prefer public address
-        if (port.publicAddress) {
-          const url = port.publicAddress
-          this.setCache(`url:${devboxName}`, url)
-          return url
-        }
-
-        // Fallback to private address
-        if (port.privateAddress) {
-          const url = port.privateAddress
-          this.setCache(`url:${devboxName}`, url)
-          return url
+          // Fallback to private address
+          if (port.privateAddress) {
+            const url = port.privateAddress
+            this.setCache(`url:${devboxName}`, url)
+            return url
+          }
         }
       }
 
@@ -136,11 +138,11 @@ export class ConnectionManager {
   /**
    * Get Devbox info with caching
    */
-  private async getDevboxInfo(devboxName: string): Promise<{ host: string; port: number } | null> {
+  private async getDevboxInfo(devboxName: string): Promise<DevboxInfo | null> {
     // Check cache
     const cached = this.getFromCache(`devbox:${devboxName}`)
     if (cached) {
-      return cached
+      return cached as DevboxInfo
     }
 
     try {
@@ -227,7 +229,7 @@ export class ConnectionManager {
       const serverUrl = await this.getServerUrl(devboxName)
       const client = await this.pool.getConnection(devboxName, serverUrl)
 
-      const response = await client.get('/health')
+      const response = await client.get<{ status?: string }>('/health')
       return response.data?.status === 'healthy'
     } catch (error) {
       return false

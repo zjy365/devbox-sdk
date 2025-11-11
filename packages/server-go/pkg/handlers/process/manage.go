@@ -3,7 +3,6 @@ package process
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/labring/devbox-sdk-server/pkg/errors"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
@@ -15,7 +14,7 @@ type GetProcessStatusResponse struct {
 	ProcessID string `json:"processId"`
 	PID       int    `json:"pid"`
 	Status    string `json:"status"`
-	StartAt   string `json:"startAt"`
+	StartedAt int64  `json:"startedAt"`
 }
 
 type ListProcessesResponse struct {
@@ -62,7 +61,7 @@ func (h *ProcessHandler) GetProcessStatus(w http.ResponseWriter, r *http.Request
 		ProcessID: processID,
 		PID:       processInfo.Cmd.Process.Pid,
 		Status:    processInfo.Status,
-		StartAt:   processInfo.StartAt.Truncate(time.Second).Format(time.RFC3339),
+		StartedAt: processInfo.StartAt.Unix(),
 	})
 }
 

@@ -11,6 +11,7 @@ info:
     - **Session Management**: Create and manage interactive shell sessions
     - **Real-time Communication**: WebSocket connections for live log streaming
     - **Health Monitoring**: Health check and readiness endpoints
+    - **Port Monitoring**: Monitor listening ports on the system
 
     ## Authentication
     All API endpoints (except health checks) require Bearer token authentication:
@@ -53,6 +54,8 @@ tags:
     description: Process execution and management
   - name: Sessions
     description: Interactive shell session management
+  - name: Ports
+    description: Port monitoring and management
   - name: WebSocket
     description: Real-time communication and streaming
 
@@ -1149,6 +1152,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/ports:
+    get:
+      tags:
+        - Ports
+      summary: Get listening ports
+      description: |
+        Returns TCP ports currently listening on 0.0.0.0 or * (all interfaces).
+
+        **Security:** Only returns ports in the range 3000-9999 to exclude privileged ports and system services.
+      security:
+        - bearerAuth: []
+      operationId: getPorts
+      responses:
+        '200':
+          description: List of listening ports (filtered to 3000-9999 range)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortsResponse'
+              example:
+                success: true
+                ports: [3000, 8080, 9757]
+                lastUpdatedAt: 1699999999
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /ws:
     get:
       tags:
@@ -1798,11 +1829,11 @@ components:
               type: string
               description: Process status
               example: "running"
-            startAt:
-              type: string
-              format: date-time
-              description: Process start time
-              example: "2024-01-01T12:00:00Z"
+            startedAt:
+              type: integer
+              format: int64
+              description: Process start time (Unix timestamp)
+              example: 1699999999
       required:
         - success
         - processId
@@ -2026,6 +2057,29 @@ components:
         - success
         - sessionId
         - logs
+
+    PortsResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            ports:
+              type: array
+              items:
+                type: integer
+                minimum: 3000
+                maximum: 9999
+              description: List of listening port numbers (filtered to 3000-9999 range for security)
+              example: [3000, 8080, 9757]
+            lastUpdatedAt:
+              type: integer
+              format: int64
+              description: Unix timestamp of last port scan
+              example: 1699999999
+      required:
+        - success
+        - ports
+        - lastUpdated
 
     # WebSocket and Log Schemas
     LogEntry:

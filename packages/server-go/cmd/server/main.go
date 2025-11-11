@@ -91,6 +91,7 @@ func (app *Application) Start() error {
 
 		if err := app.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("Server failed to start", slog.String("error", err.Error()))
+			app.Shutdown()
 		}
 	}()
 

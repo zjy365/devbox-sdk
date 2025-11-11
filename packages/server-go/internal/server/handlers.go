@@ -6,6 +6,7 @@ import (
 
 	"github.com/labring/devbox-sdk-server/pkg/handlers"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/file"
+	"github.com/labring/devbox-sdk-server/pkg/handlers/port"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/process"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/session"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/websocket"
@@ -26,6 +27,7 @@ func (s *Server) registerRoutes(r *router.Router, middlewareChain func(http.Hand
 	processHandler := process.NewProcessHandler()
 	sessionHandler := session.NewSessionHandler()
 	healthHandler := handlers.NewHealthHandler()
+	portHandler := port.NewPortHandler()
 	websocketHandler := websocket.NewWebSocketHandlerWithDeps(processHandler, sessionHandler, nil)
 
 	routes := []routeConfig{
@@ -61,6 +63,9 @@ func (s *Server) registerRoutes(r *router.Router, middlewareChain func(http.Hand
 		{"POST", "/api/v1/sessions/:id/cd", sessionHandler.SessionCd},
 		{"POST", "/api/v1/sessions/:id/terminate", sessionHandler.TerminateSession},
 		{"GET", "/api/v1/sessions/:id/logs", sessionHandler.GetSessionLogsWithParams},
+
+		// Port monitoring
+		{"GET", "/api/v1/ports", portHandler.GetPorts},
 
 		// WebSocket endpoint
 		{"GET", "/ws", websocketHandler.HandleWebSocket},

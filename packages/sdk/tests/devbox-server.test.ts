@@ -1,6 +1,36 @@
 /**
- * Devbox 内部 Server 操作测试
- * 测试对已存在的 Devbox 实例的文件操作
+ * Devbox SDK 端到端集成测试
+ *
+ * 测试目的：
+ * 本测试文件用于验证 Devbox SDK 的核心功能，包括：
+ * 1. Devbox 实例的生命周期管理（创建、启动、等待就绪）
+ * 2. 通过 Go Server API 操作 Devbox 实例的完整流程
+ * 3. SDK 的数据转换逻辑（Buffer ↔ base64 ↔ JSON）
+ * 4. SDK 与 Go Server 的集成兼容性
+ *
+ * 测试架构：
+ * - Devbox SDK → Devbox API (Kubernetes) → 创建/管理 Devbox 实例
+ * - Devbox SDK → Go Server API → 操作实例中的文件/进程/会话
+ *
+ * 为什么使用 mockServerUrl：
+ * 当前 Go Server 尚未内置到 Devbox 实例中，因此使用 mockServerUrl 指向本地运行的 Go Server
+ * 进行端到端测试。当 Go Server 内置后，ConnectionManager 会自动从 Devbox 实例的 ports 信息中
+ * 获取真实的 Server URL，测试无需修改即可适配。
+ *
+ * 测试覆盖范围：
+ * - 文件基础操作（读写、编码处理）
+ * - 文件删除操作
+ * - 目录操作
+ * - 批量文件操作
+ * - 文件元数据
+ * - 并发操作
+ * - 安全与错误处理
+ * - 性能测试
+ *
+ * 注意事项：
+ * - 所有测试都需要真实的 Devbox 实例（通过 Kubernetes API 创建）
+ * - 测试使用 mockServerUrl 连接到本地 Go Server（通过 DEVBOX_SERVER_URL 环境变量配置）
+ * - 测试会创建和删除 Devbox 实例，确保测试环境有足够的资源
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -10,7 +40,6 @@ import { TEST_CONFIG } from './setup'
 import type { WriteOptions, DevboxCreateConfig } from '../src/core/types'
 import { DevboxRuntime } from '../src/api/types'
 
-// Utility function to wait for Devbox to be ready
 async function waitForDevboxReady(devbox: DevboxInstance, timeout = 120000): Promise<void> {
   const startTime = Date.now()
 
@@ -31,13 +60,13 @@ async function waitForDevboxReady(devbox: DevboxInstance, timeout = 120000): Pro
   throw new Error(`Devbox ${devbox.name} did not become ready within ${timeout}ms`)
 }
 
-describe('Devbox Server Operations', () => {
+describe('Devbox SDK 端到端集成测试', () => {
   let sdk: DevboxSDK
   let devboxInstance: DevboxInstance
   const TEST_DEVBOX_NAME = `test-server-ops-${Date.now()}`
 
-  // 测试文件路径和内容
-  const TEST_FILE_PATH = '/test/test-file.txt'
+  // 测试文件路径和内容常量
+  const TEST_FILE_PATH = './test/test-file.txt'
   const TEST_FILE_CONTENT = 'Hello, Devbox Server!'
   const TEST_UNICODE_CONTENT = '你好，Devbox 服务器！🚀'
   const TEST_BINARY_CONTENT = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) // PNG header
@@ -49,8 +78,8 @@ describe('Devbox Server Operations', () => {
       name: TEST_DEVBOX_NAME,
       runtime: DevboxRuntime.NODE_JS,
       resource: {
-        cpu: 0.5,
-        memory: 512,
+        cpu: 1,
+        memory: 2,
       },
     }
 
@@ -76,7 +105,7 @@ describe('Devbox Server Operations', () => {
   describe('文件基础操作', () => {
     it('应该能够写入文件', async () => {
       const options: WriteOptions = {
-        encoding: 'base64',
+        encoding: 'utf-8',
         mode: 0o644,
       }
 
@@ -86,10 +115,7 @@ describe('Devbox Server Operations', () => {
     }, 10000)
 
     it('应该能够读取文件', async () => {
-      // 先写入文件
       await devboxInstance.writeFile(TEST_FILE_PATH, TEST_FILE_CONTENT)
-
-      // 读取文件
       const content = await devboxInstance.readFile(TEST_FILE_PATH)
       expect(content.toString()).toBe(TEST_FILE_CONTENT)
     }, 10000)
@@ -108,12 +134,10 @@ describe('Devbox Server Operations', () => {
     it('应该能够处理二进制文件', async () => {
       const binaryFilePath = '/test/binary-test.png'
 
-      // 写入二进制内容
       await devboxInstance.writeFile(binaryFilePath, TEST_BINARY_CONTENT)
 
-      // 读取并验证
-      const content = await devboxInstance.readFile(binaryFilePath)
-      expect(Buffer.from(content)).toEqual(TEST_BINARY_CONTENT)
+      const content = await devboxInstance.readFile(binaryFilePath, { encoding: 'base64' })
+      expect(content).toEqual(TEST_BINARY_CONTENT)
     }, 10000)
 
     it('读取不存在的文件应该抛出错误', async () => {
@@ -133,7 +157,7 @@ describe('Devbox Server Operations', () => {
       expect(content.toString()).toBe(TEST_FILE_CONTENT)
 
       // 删除文件
-      await sdk.deleteFile(devboxInstance.name, TEST_FILE_PATH)
+      await devboxInstance.deleteFile(TEST_FILE_PATH)
 
       // 验证文件已删除
       await expect(devboxInstance.readFile(TEST_FILE_PATH)).rejects.toThrow()
@@ -142,7 +166,7 @@ describe('Devbox Server Operations', () => {
     it('删除不存在的文件应该抛出错误', async () => {
       const nonExistentPath = '/test/non-existent-delete.txt'
 
-      await expect(sdk.deleteFile(devboxInstance.name, nonExistentPath)).rejects.toThrow()
+      await expect(devboxInstance.deleteFile(nonExistentPath)).rejects.toThrow()
     }, 5000)
   })
 
@@ -159,27 +183,25 @@ describe('Devbox Server Operations', () => {
     })
 
     it('应该能够列出目录内容', async () => {
-      const fileList = await sdk.listFiles(devboxInstance.name, TEST_DIR)
+      const fileList = await devboxInstance.listFiles(TEST_DIR)
 
       expect(fileList).toHaveProperty('files')
-      expect(fileList.files).toHaveLength(2) // file1.txt, file2.txt
-      expect(fileList.files.some((f: any) => f.name === 'file1.txt')).toBe(true)
-      expect(fileList.files.some((f: any) => f.name === 'file2.txt')).toBe(true)
-      expect(fileList.files.some((f: any) => f.type === 'directory' && f.name === 'subdir')).toBe(
-        true
-      )
+      expect(fileList.files).toHaveLength(3) // file1.txt, file2.txt, subdir
+      expect(fileList.files.some((f) => f.name === 'file1.txt')).toBe(true)
+      expect(fileList.files.some((f) => f.name === 'file2.txt')).toBe(true)
+      expect(fileList.files.some((f) => f.isDir === true && f.name === 'subdir')).toBe(true)
     }, 10000)
 
     it('应该能够列出子目录内容', async () => {
-      const fileList = await sdk.listFiles(devboxInstance.name, SUB_DIR)
+      const fileList = await devboxInstance.listFiles(SUB_DIR)
 
       expect(fileList.files).toHaveLength(1)
       expect(fileList.files[0].name).toBe('file3.txt')
-      expect(fileList.files[0].type).toBe('file')
+      expect(fileList.files[0].isDir).toBe(false)
     }, 10000)
 
     it('应该能够列出根目录', async () => {
-      const rootList = await sdk.listFiles(devboxInstance.name, '/')
+      const rootList = await devboxInstance.listFiles('/')
       expect(rootList.files).toBeDefined()
       expect(Array.isArray(rootList.files)).toBe(true)
     }, 10000)
@@ -187,7 +209,7 @@ describe('Devbox Server Operations', () => {
     it('列出不存在的目录应该抛出错误', async () => {
       const nonExistentDir = '/non-existent-directory'
 
-      await expect(sdk.listFiles(devboxInstance.name, nonExistentDir)).rejects.toThrow()
+      await expect(devboxInstance.listFiles(nonExistentDir)).rejects.toThrow()
     }, 5000)
   })
 
@@ -200,7 +222,7 @@ describe('Devbox Server Operations', () => {
     }
 
     it('应该能够批量上传文件', async () => {
-      const result = await sdk.uploadFiles(devboxInstance.name, FILES)
+      const result = await devboxInstance.uploadFiles(FILES)
 
       expect(result.success).toBe(true)
       expect(result.total).toBe(Object.keys(FILES).length)
@@ -220,7 +242,7 @@ describe('Devbox Server Operations', () => {
         '/invalid/path/file.txt': 'This should fail',
       }
 
-      const result = await sdk.uploadFiles(devboxInstance.name, mixedFiles)
+      const result = await devboxInstance.uploadFiles(mixedFiles)
 
       expect(result.success).toBe(true) // 部分成功
       expect(result.total).toBe(Object.keys(mixedFiles).length)
@@ -237,7 +259,7 @@ describe('Devbox Server Operations', () => {
         largeFiles[`/large/file${i}.txt`] = largeContent
       }
 
-      const result = await sdk.uploadFiles(devboxInstance.name, largeFiles)
+      const result = await devboxInstance.uploadFiles(largeFiles)
 
       expect(result.success).toBe(true)
       expect(result.processed).toBe(Object.keys(largeFiles).length)
@@ -250,7 +272,7 @@ describe('Devbox Server Operations', () => {
     }, 30000)
   })
 
-  describe('文件元数据操作', () => {
+  describe('文件元数据', () => {
     it('应该能够获取文件信息', async () => {
       const filePath = '/metadata/test.txt'
       const content = 'Test content for metadata'
@@ -258,24 +280,24 @@ describe('Devbox Server Operations', () => {
       await devboxInstance.writeFile(filePath, content)
 
       // 列出目录获取文件信息
-      const dirInfo = await sdk.listFiles(devboxInstance.name, '/metadata')
-      const fileInfo = dirInfo.files.find((f: any) => f.name === 'test.txt')
+      const dirInfo = await devboxInstance.listFiles('/metadata')
+      const fileInfo = dirInfo.files.find((f) => f.name === 'test.txt')
 
       expect(fileInfo).toBeDefined()
-      expect(fileInfo?.type).toBe('file')
+      expect(fileInfo?.isDir).toBe(false)
       expect(fileInfo?.size).toBe(content.length)
-      expect(fileInfo?.modified).toBeDefined()
+      expect(fileInfo?.modTime).toBeDefined()
     }, 10000)
 
     it('应该能够区分文件和目录', async () => {
       await devboxInstance.writeFile('/meta/file.txt', 'content')
 
-      const rootList = await sdk.listFiles(devboxInstance.name, '/')
-      const fileEntry = rootList.files.find((f: any) => f.name === 'meta')
-      const metaList = await sdk.listFiles(devboxInstance.name, '/meta')
+      const rootList = await devboxInstance.listFiles('/')
+      const fileEntry = rootList.files.find((f) => f.name === 'meta')
+      const metaList = await devboxInstance.listFiles('/meta')
 
-      expect(fileEntry?.type).toBe('directory')
-      expect(metaList.files.some((f: any) => f.name === 'file.txt' && f.type === 'file')).toBe(true)
+      expect(fileEntry?.isDir).toBe(true)
+      expect(metaList.files.some((f) => f.name === 'file.txt' && f.isDir === false)).toBe(true)
     }, 10000)
   })
 
@@ -317,7 +339,7 @@ describe('Devbox Server Operations', () => {
     }, 15000)
   })
 
-  describe('错误处理', () => {
+  describe('安全与错误处理', () => {
     it('应该处理路径遍历攻击', async () => {
       const maliciousPaths = ['../../../etc/passwd', '/../../../etc/hosts', '../root/.ssh/id_rsa']
 
@@ -327,7 +349,7 @@ describe('Devbox Server Operations', () => {
     }, 5000)
 
     it('应该处理过长的文件路径', async () => {
-      const longPath = '/' + 'a'.repeat(3000) + '.txt'
+      const longPath = `/${'a'.repeat(3000)}.txt`
 
       await expect(devboxInstance.writeFile(longPath, 'content')).rejects.toThrow()
     }, 5000)
@@ -364,7 +386,7 @@ describe('Devbox Server Operations', () => {
       }
 
       const startTime = Date.now()
-      const result = await sdk.uploadFiles(devboxInstance.name, files)
+      const result = await devboxInstance.uploadFiles(files)
       const endTime = Date.now()
 
       expect(result.processed).toBe(FILE_COUNT)

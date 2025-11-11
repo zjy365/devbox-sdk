@@ -26,11 +26,11 @@ describe('DevboxSDK', () => {
       expect(sdk.createDevbox).toBeDefined()
       expect(sdk.getDevbox).toBeDefined()
       expect(sdk.listDevboxes).toBeDefined()
-      expect(sdk.writeFile).toBeDefined()
-      expect(sdk.readFile).toBeDefined()
+      expect(sdk.getMonitorData).toBeDefined()
+      expect(sdk.close).toBeDefined()
     })
 
-    it('应该验证配置参数 - 缺少 apiEndpoint', () => {
+    it('应该验证配置参数 - 缺少 kubeconfig', () => {
       expect(() => {
         new DevboxSDK({} as DevboxSDKConfig)
       }).toThrow()
@@ -38,8 +38,8 @@ describe('DevboxSDK', () => {
 
     it('应该接受有效的配置', () => {
       const validConfig: DevboxSDKConfig = {
-        baseUrl: 'http://localhost:3000',
         kubeconfig: 'test-kubeconfig',
+        baseUrl: 'http://localhost:3000',
         http: {
           timeout: 10000,
         },
@@ -53,8 +53,8 @@ describe('DevboxSDK', () => {
   describe('配置管理', () => {
     it('应该使用默认超时值', () => {
       const config: DevboxSDKConfig = {
-        baseUrl: 'http://localhost:3000',
         kubeconfig: 'test',
+        baseUrl: 'http://localhost:3000',
       }
       
       const testSdk = new DevboxSDK(config)
@@ -64,8 +64,8 @@ describe('DevboxSDK', () => {
 
     it('应该使用自定义超时值', () => {
       const config: DevboxSDKConfig = {
-        baseUrl: 'http://localhost:3000',
         kubeconfig: 'test',
+        baseUrl: 'http://localhost:3000',
         http: {
           timeout: 60000,
         },
@@ -117,9 +117,9 @@ describe('DevboxSDK', () => {
       expect(apiClient).toBeDefined()
     })
 
-    it('应该提供连接管理器访问', () => {
-      const connManager = sdk.getConnectionManager()
-      expect(connManager).toBeDefined()
+    it('应该提供 URL 解析器访问', () => {
+      const urlResolver = sdk.getUrlResolver()
+      expect(urlResolver).toBeDefined()
     })
   })
 })

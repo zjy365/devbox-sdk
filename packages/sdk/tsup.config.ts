@@ -6,7 +6,7 @@ export default defineConfig({
 
   // Output formats
   format: ['esm', 'cjs'],
-  dts: false, // Temporarily disabled due to tsconfig issues, will generate separately
+  dts: true,
 
   // Output configuration
   outDir: 'dist',

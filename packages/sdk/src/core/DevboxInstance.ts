@@ -2,7 +2,8 @@
  * Devbox instance class for managing individual Devbox containers
  */
 
-import type { ListFilesResponse } from '@sealos/devbox-shared'
+import type { ListFilesResponse } from '@sealos/devbox-shared/types'
+import FormData from 'form-data'
 import type { DevboxSDK } from '../core/DevboxSDK'
 import type {
   BatchUploadOptions,
@@ -17,6 +18,7 @@ import type {
   ResourceInfo,
   TimeRange,
   TransferResult,
+  WatchRequest,
   WriteOptions,
 } from '../core/types'
 import type { DevboxRuntime } from '../api/types'
@@ -93,17 +95,58 @@ export class DevboxInstance {
     this.info = await apiClient.getDevbox(this.name)
   }
 
-  // File operations (instance methods)
   async writeFile(path: string, content: string | Buffer, options?: WriteOptions): Promise<void> {
-    // Validate path to prevent directory traversal
     this.validatePath(path)
-    return await this.sdk.writeFile(this.name, path, content, options)
+    const urlResolver = this.sdk.getUrlResolver();
+    console.log(await urlResolver.getServerUrl(this.name));
+    await urlResolver.executeWithConnection(this.name, async client => {
+      let contentString: string
+      let encoding: string
+      
+      if (Buffer.isBuffer(content)) {
+        encoding = options?.encoding || 'base64'
+        contentString = encoding === 'base64' ? content.toString('base64') : content.toString('utf-8')
+      } else {
+        encoding = options?.encoding || 'utf-8'
+        contentString = encoding === 'base64' ? Buffer.from(content, 'utf-8').toString('base64') : content
+      }
+      
+      await client.post('/api/v1/files/write', {
+        body: {
+          path,
+          content: contentString,
+          encoding,
+          ...options,
+        },
+      })
+    })
   }
 
   async readFile(path: string, options?: ReadOptions): Promise<Buffer> {
-    // Validate path to prevent directory traversal
     this.validatePath(path)
-    return await this.sdk.readFile(this.name, path, options)
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const response = await client.post<{
+        success: boolean
+        path: string
+        content: string
+        size: number
+        encoding?: string
+      }>('/api/v1/files/read', {
+        body: { path, ...options },
+      })
+
+      const responseData = response.data
+      if (!responseData.success || !responseData.content) {
+        throw new Error('Failed to read file: invalid response')
+      }
+
+      const encoding = options?.encoding || responseData.encoding || 'utf-8'
+      if (encoding === 'base64') {
+        return Buffer.from(responseData.content, 'base64')
+      }
+      return Buffer.from(responseData.content, 'utf-8')
+    })
   }
 
   /**
@@ -129,17 +172,54 @@ export class DevboxInstance {
   async deleteFile(path: string): Promise<void> {
     // Validate path to prevent directory traversal
     this.validatePath(path)
-    return await this.sdk.deleteFile(this.name, path)
+    const urlResolver = this.sdk.getUrlResolver()
+    await urlResolver.executeWithConnection(this.name, async client => {
+      await client.post('/api/v1/files/delete', {
+        body: { path },
+      })
+    })
   }
 
   async listFiles(path: string): Promise<ListFilesResponse> {
     // Validate path to prevent directory traversal
     this.validatePath(path)
-    return await this.sdk.listFiles(this.name, path)
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const response = await client.get<ListFilesResponse>('/api/v1/files/list', {
+        params: { path },
+      })
+      return response.data
+    })
   }
 
-  async uploadFiles(files: FileMap, options?: BatchUploadOptions): Promise<TransferResult> {
-    return await this.sdk.uploadFiles(this.name, files, options)
+  async uploadFiles(files: FileMap, options?: BatchUploadOptions & { targetDir?: string }): Promise<TransferResult> {
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      // Create FormData for multipart/form-data upload
+      const formData = new FormData()
+
+      // Add targetDir (required by OpenAPI spec)
+      const targetDir = options?.targetDir || '/'
+      formData.append('targetDir', targetDir)
+
+      // Add files as binary data
+      // Note: OpenAPI spec expects files array, but form-data typically uses
+      // the same field name for multiple files
+      for (const [filePath, content] of Object.entries(files)) {
+        const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content)
+        // Use the file path as the filename, and append to 'files' field
+        formData.append('files', buffer, {
+          filename: filePath.split('/').pop() || 'file',
+          // Store the full path in a custom header or use a different approach
+          // For now, we'll use the filename and let the server handle path reconstruction
+        })
+      }
+
+      const response = await client.post<TransferResult>('/api/v1/files/batch-upload', {
+        body: formData as unknown as FormData,
+      })
+      return response.data
+    })
   }
 
   // File watching (instance method)
@@ -147,16 +227,38 @@ export class DevboxInstance {
     path: string,
     callback: (event: FileChangeEvent) => void
   ): Promise<FileWatchWebSocket> {
-    return await this.sdk.watchFiles(this.name, path, callback)
+    const urlResolver = this.sdk.getUrlResolver()
+      const serverUrl = await urlResolver.getServerUrl(this.name)
+    const { default: WebSocket } = await import('ws')
+    const ws = new WebSocket(`ws://${serverUrl.replace('http://', '')}/ws`) as unknown as FileWatchWebSocket
+
+    ws.onopen = () => {
+      const watchRequest: WatchRequest = { type: 'watch', path }
+      ws.send(JSON.stringify(watchRequest))
+    }
+
+    ws.onmessage = (event: any) => {
+      try {
+        const data = typeof event.data === 'string' ? event.data : event.data?.toString() || ''
+        const fileEvent = JSON.parse(data) as FileChangeEvent
+        callback(fileEvent)
+      } catch (error) {
+        console.error('Failed to parse file watch event:', error)
+      }
+    }
+
+    return ws
   }
 
-  // Process execution (HTTP API)
+  // Process execution
   async executeCommand(command: string): Promise<CommandResult> {
-    const connectionManager = this.sdk.getConnectionManager()
-    return await connectionManager.executeWithConnection(this.name, async client => {
-      const response = await client.post('/process/exec', {
-        command,
-        shell: '/bin/bash',
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const response = await client.post<CommandResult>('/api/v1/process/exec', {
+        body: {
+          command,
+          shell: '/bin/bash',
+        },
       })
       return response.data
     })
@@ -164,9 +266,9 @@ export class DevboxInstance {
 
   // Get process status
   async getProcessStatus(pid: number): Promise<ProcessStatus> {
-    const connectionManager = this.sdk.getConnectionManager()
-    return await connectionManager.executeWithConnection(this.name, async client => {
-      const response = await client.get(`/process/status/${pid}`)
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const response = await client.get<ProcessStatus>(`/api/v1/process/status/${pid}`)
       return response.data
     })
   }
@@ -179,8 +281,8 @@ export class DevboxInstance {
   // Health check
   async isHealthy(): Promise<boolean> {
     try {
-      const connectionManager = this.sdk.getConnectionManager()
-      return await connectionManager.checkDevboxHealth(this.name)
+      const urlResolver = this.sdk.getUrlResolver()
+      return await urlResolver.checkDevboxHealth(this.name)
     } catch (error) {
       return false
     }

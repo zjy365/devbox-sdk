@@ -9,14 +9,12 @@
   "scripts": {
     "build": "turbo run build",
     "build:sdk": "turbo run build --filter=@sealos/devbox-sdk",
-    "build:server": "turbo run build --filter=@sealos/devbox-server",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
-    "dev": "turbo run dev --filter=@sealos/devbox-server",
     "version": "changeset version",
     "release": "changeset publish"
   },

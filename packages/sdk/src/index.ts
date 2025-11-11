@@ -13,9 +13,8 @@ export { DevboxInstance } from './core/DevboxInstance'
 // Export API client
 export { DevboxAPI } from './api/client'
 
-// Export connection management
-export { ConnectionManager } from './http/manager'
-export { ConnectionPool } from './http/pool'
+export { ContainerUrlResolver } from './http/manager'
+export { DevboxContainerClient } from './http/client'
 
 // Export error handling
 export {
@@ -56,7 +55,6 @@ export type {
   MonitorData,
   TimeRange,
   ResourceInfo,
-  ConnectionPoolConfig,
   HttpClientConfig,
 } from './core/types'
 

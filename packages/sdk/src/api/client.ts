@@ -23,9 +23,10 @@ import type {
 import { DevboxRuntime } from './types'
 
 /**
- * Simple HTTP client implementation
+ * HTTP client for Sealos API server communication
+ * Used for Devbox lifecycle management (create, start, stop, etc.)
  */
-class SimpleHTTPClient {
+class SealosAPIClient {
   private baseUrl: string
   private timeout: number
   private retries: number
@@ -87,7 +88,7 @@ class SimpleHTTPClient {
           signal: controller.signal,
         })
 
-        console.log('response.url',url.toString(),fetchOptions)
+        // console.log('response.url',url.toString(),fetchOptions)
 
         clearTimeout(timeoutId)
 
@@ -105,7 +106,7 @@ class SimpleHTTPClient {
           ? await response.json()
           : await response.text()
         
-        console.log('response.data',data)
+        // console.log('response.data',data)
 
         return {
           data,
@@ -189,12 +190,12 @@ class SimpleHTTPClient {
 }
 
 export class DevboxAPI {
-  private httpClient: SimpleHTTPClient
+  private httpClient: SealosAPIClient
   private authenticator: KubeconfigAuthenticator
   private endpoints: APIEndpoints
 
   constructor(config: APIClientConfig) {
-    this.httpClient = new SimpleHTTPClient({
+    this.httpClient = new SealosAPIClient({
       baseUrl: config.baseUrl,
       timeout: config.timeout,
       retries: config.retries,

@@ -29,6 +29,7 @@ export default defineConfig({
   // Output file extensions
   outExtension(ctx) {
     return {
+      dts: ctx.format === 'cjs' ? '.d.cts' : '.d.ts',
       js: ctx.format === 'cjs' ? '.cjs' : '.js'
     }
   },

@@ -15,14 +15,6 @@ export const DEFAULT_CONFIG = {
     ENV_VAR: 'MOCK_SERVER_URL',
   },
 
-  /** Default connection pool settings */
-  CONNECTION_POOL: {
-    MAX_SIZE: 15,
-    CONNECTION_TIMEOUT: 30000, // 30 seconds
-    KEEP_ALIVE_INTERVAL: 60000, // 1 minute
-    HEALTH_CHECK_INTERVAL: 60000, // 1 minute
-  },
-
   /** Default HTTP client settings */
   HTTP_CLIENT: {
     TIMEOUT: 30000, // 30 seconds
@@ -69,16 +61,16 @@ export const API_ENDPOINTS = {
     },
   },
 
-  /** Container HTTP server endpoints */
+  /** Container server endpoints */
   CONTAINER: {
     HEALTH: '/health',
     FILES: {
-      WRITE: '/files/write',
-      READ: '/files/read',
-      LIST: '/files/list',
-      DELETE: '/files/delete',
-      BATCH_UPLOAD: '/files/batch-upload',
-      BATCH_DOWNLOAD: '/files/batch-download',
+      WRITE: '/api/v1/files/write',
+      READ: '/api/v1/files/read',
+      LIST: '/api/v1/files/list',
+      DELETE: '/api/v1/files/delete',
+      BATCH_UPLOAD: '/api/v1/files/batch-upload',
+      BATCH_DOWNLOAD: '/api/v1/files/batch-download',
     },
     PROCESS: {
       EXEC: '/process/exec',
@@ -96,7 +88,6 @@ export const ERROR_CODES = {
   /** Connection errors */
   CONNECTION_FAILED: 'CONNECTION_FAILED',
   CONNECTION_TIMEOUT: 'CONNECTION_TIMEOUT',
-  CONNECTION_POOL_EXHAUSTED: 'CONNECTION_POOL_EXHAUSTED',
 
   /** Devbox errors */
   DEVBOX_NOT_FOUND: 'DEVBOX_NOT_FOUND',

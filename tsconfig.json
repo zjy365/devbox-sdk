@@ -32,9 +32,6 @@
     },
     {
       "path": "./packages/sdk"
-    },
-    {
-      "path": "./packages/server"
     }
   ]
 }

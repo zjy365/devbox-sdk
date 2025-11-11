@@ -11,21 +11,8 @@ export interface DevboxSDKConfig {
   mockServerUrl?: string
   /** Optional devbox sandbox server URL for container communication */
   devboxServerUrl?: string
-  /** Connection pool configuration */
-  connectionPool?: ConnectionPoolConfig
   /** HTTP client configuration */
   http?: HttpClientConfig
-}
-
-export interface ConnectionPoolConfig {
-  /** Maximum number of connections in the pool */
-  maxSize?: number
-  /** Connection timeout in milliseconds */
-  connectionTimeout?: number
-  /** Keep-alive interval in milliseconds */
-  keepAliveInterval?: number
-  /** Health check interval in milliseconds */
-  healthCheckInterval?: number
 }
 
 export interface HttpClientConfig {
@@ -207,9 +194,9 @@ export interface WebSocketMessage {
  */
 export interface FileWatchWebSocket {
   onopen: () => void
-  onmessage: (event: MessageEvent<FileChangeEvent>) => void
+  onmessage: (event: { data: string | Buffer | ArrayBuffer }) => void
   onerror: (error: Event) => void
-  onclose: (event: CloseEvent) => void
+  onclose: (event: { code?: number; reason?: string; wasClean?: boolean }) => void
   send(data: string): void
   close(code?: number, reason?: string): void
   readyState: number

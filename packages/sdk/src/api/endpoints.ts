@@ -102,7 +102,6 @@ export class APIEndpoints {
     return this.constructUrl(API_ENDPOINTS.DEVBOX.RELEASE.DEPLOY, { name, tag })
   }
 
-  // Container HTTP server endpoints
   containerHealth(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.HEALTH}`
   }

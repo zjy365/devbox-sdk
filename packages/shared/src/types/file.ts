@@ -11,13 +11,11 @@ export type FileEncoding = 'utf8' | 'base64' | 'binary' | 'hex'
  * File metadata
  */
 export interface FileMetadata {
+  name: string
   path: string
   size: number
-  mimeType?: string
-  permissions?: string
-  created?: Date
-  modified?: Date
-  isDirectory: boolean
+  isDir: boolean
+  modTime: string
 }
 
 /**
@@ -71,8 +69,9 @@ export interface ListFilesRequest {
  * List files response
  */
 export interface ListFilesResponse {
+  success: boolean
   files: FileMetadata[]
-  totalCount: number
+  count: number
 }
 
 /**

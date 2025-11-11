@@ -2,6 +2,7 @@ package file
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -110,6 +111,7 @@ func TestWriteFile(t *testing.T) {
 
 		reqBody, _ := json.Marshal(req)
 		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)
@@ -139,6 +141,7 @@ func TestWriteFile(t *testing.T) {
 
 		reqBody, _ := json.Marshal(req)
 		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)
@@ -155,6 +158,7 @@ func TestWriteFile(t *testing.T) {
 
 	t.Run("invalid JSON", func(t *testing.T) {
 		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", strings.NewReader("invalid json"))
+		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)
@@ -170,6 +174,59 @@ func TestWriteFile(t *testing.T) {
 
 		reqBody, _ := json.Marshal(req)
 		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("write file with base64 encoding", func(t *testing.T) {
+		// Create binary data (PNG header)
+		binaryData := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+		base64Content := base64.StdEncoding.EncodeToString(binaryData)
+		encoding := "base64"
+
+		req := WriteFileRequest{
+			Path:     "test_image.png",
+			Content:  base64Content,
+			Encoding: &encoding,
+		}
+
+		reqBody, _ := json.Marshal(req)
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response WriteFileResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.True(t, response.Success)
+		assert.Equal(t, int64(len(binaryData)), response.Size)
+
+		// Verify file content is decoded binary data
+		content, err := os.ReadFile(response.Path)
+		require.NoError(t, err)
+		assert.Equal(t, binaryData, content)
+	})
+
+	t.Run("write file with invalid base64", func(t *testing.T) {
+		encoding := "base64"
+		req := WriteFileRequest{
+			Path:     "test.txt",
+			Content:  "this is not valid base64!!!",
+			Encoding: &encoding,
+		}
+
+		reqBody, _ := json.Marshal(req)
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)
@@ -194,6 +251,7 @@ func TestWriteFile(t *testing.T) {
 
 		reqBody, _ := json.Marshal(req)
 		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		smallHandler.WriteFile(w, httpReq)
@@ -209,11 +267,313 @@ func TestWriteFile(t *testing.T) {
 
 		reqBody, _ := json.Marshal(req)
 		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("binary upload via query parameter", func(t *testing.T) {
+		binaryData := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D}
+
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write?path=binary_image.png", bytes.NewReader(binaryData))
+		httpReq.Header.Set("Content-Type", "application/octet-stream")
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response WriteFileResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.True(t, response.Success)
+		assert.Equal(t, int64(len(binaryData)), response.Size)
+
+		// Verify file content
+		content, err := os.ReadFile(response.Path)
+		require.NoError(t, err)
+		assert.Equal(t, binaryData, content)
+	})
+
+	t.Run("binary upload via header", func(t *testing.T) {
+		binaryData := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46}
+
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(binaryData))
+		httpReq.Header.Set("Content-Type", "image/jpeg")
+		httpReq.Header.Set("X-File-Path", "photo.jpg")
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response WriteFileResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.True(t, response.Success)
+		assert.Contains(t, response.Path, "photo.jpg")
+
+		// Verify file content
+		content, err := os.ReadFile(response.Path)
+		require.NoError(t, err)
+		assert.Equal(t, binaryData, content)
+	})
+
+	t.Run("binary upload via base64 path", func(t *testing.T) {
+		binaryData := []byte{0x50, 0x4B, 0x03, 0x04}
+		path := "/tmp/test.zip"
+		pathBase64 := base64.StdEncoding.EncodeToString([]byte(path))
+
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write?path_base64="+pathBase64, bytes.NewReader(binaryData))
+		httpReq.Header.Set("Content-Type", "application/zip")
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response WriteFileResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.True(t, response.Success)
+	})
+
+	t.Run("binary upload missing path", func(t *testing.T) {
+		binaryData := []byte{0x01, 0x02, 0x03}
+
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(binaryData))
+		httpReq.Header.Set("Content-Type", "application/octet-stream")
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("binary upload large file", func(t *testing.T) {
+		binaryData := make([]byte, 1024*1024) // 1MB
+
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write?path=large_binary.bin", bytes.NewReader(binaryData))
+		httpReq.Header.Set("Content-Type", "application/octet-stream")
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response WriteFileResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.True(t, response.Success)
+		assert.Equal(t, int64(1024*1024), response.Size)
+	})
+
+	t.Run("multipart upload with file field", func(t *testing.T) {
+		// Create multipart form data
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+
+		// Add file field
+		fileContent := []byte("Hello from multipart!")
+		part, err := writer.CreateFormFile("file", "multipart_test.txt")
+		require.NoError(t, err)
+		_, err = part.Write(fileContent)
+		require.NoError(t, err)
+
+		// Add path field (optional)
+		err = writer.WriteField("path", "uploaded_multipart.txt")
+		require.NoError(t, err)
+
+		err = writer.Close()
+		require.NoError(t, err)
+
+		// Create request
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
+		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response WriteFileResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.True(t, response.Success)
+		assert.Contains(t, response.Path, "uploaded_multipart.txt")
+		assert.Equal(t, int64(len(fileContent)), response.Size)
+
+		// Verify file content
+		content, err := os.ReadFile(response.Path)
+		require.NoError(t, err)
+		assert.Equal(t, fileContent, content)
+	})
+
+	t.Run("multipart upload with files field", func(t *testing.T) {
+		// Create multipart form data
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+
+		// Add files field (batch upload format)
+		fileContent := []byte("Batch upload content")
+		part, err := writer.CreateFormFile("files", "batch_test.txt")
+		require.NoError(t, err)
+		_, err = part.Write(fileContent)
+		require.NoError(t, err)
+
+		err = writer.Close()
+		require.NoError(t, err)
+
+		// Create request
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
+		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response WriteFileResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.True(t, response.Success)
+		assert.Contains(t, response.Path, "batch_test.txt")
+	})
+
+	t.Run("multipart upload without path defaults to filename", func(t *testing.T) {
+		// Create multipart form data
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+
+		// Add file field without path
+		fileContent := []byte("File content")
+		part, err := writer.CreateFormFile("file", "default_name.txt")
+		require.NoError(t, err)
+		_, err = part.Write(fileContent)
+		require.NoError(t, err)
+
+		err = writer.Close()
+		require.NoError(t, err)
+
+		// Create request
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
+		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response WriteFileResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.True(t, response.Success)
+		assert.Contains(t, response.Path, "default_name.txt")
+	})
+
+	t.Run("multipart upload with binary data", func(t *testing.T) {
+		// Create multipart form data
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+
+		// Add binary file (PNG header)
+		binaryData := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+		part, err := writer.CreateFormFile("file", "multipart_image.png")
+		require.NoError(t, err)
+		_, err = part.Write(binaryData)
+		require.NoError(t, err)
+
+		err = writer.Close()
+		require.NoError(t, err)
+
+		// Create request
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
+		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response WriteFileResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.True(t, response.Success)
+		assert.Equal(t, int64(len(binaryData)), response.Size)
+
+		// Verify binary content
+		content, err := os.ReadFile(response.Path)
+		require.NoError(t, err)
+		assert.Equal(t, binaryData, content)
+	})
+
+	t.Run("multipart upload missing file field", func(t *testing.T) {
+		// Create multipart form data without file field
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+
+		// Add only a text field
+		err := writer.WriteField("path", "test.txt")
+		require.NoError(t, err)
+
+		err = writer.Close()
+		require.NoError(t, err)
+
+		// Create request
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
+		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("multipart upload large file", func(t *testing.T) {
+		// Create multipart form data
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+
+		// Add large file (1MB)
+		largeData := make([]byte, 1024*1024)
+		for i := range largeData {
+			largeData[i] = byte(i % 256)
+		}
+
+		part, err := writer.CreateFormFile("file", "large_multipart.bin")
+		require.NoError(t, err)
+		_, err = part.Write(largeData)
+		require.NoError(t, err)
+
+		err = writer.Close()
+		require.NoError(t, err)
+
+		// Create request
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
+		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response WriteFileResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.True(t, response.Success)
+		assert.Equal(t, int64(1024*1024), response.Size)
 	})
 }
 
@@ -792,6 +1152,7 @@ func TestFileHandlerIntegration(t *testing.T) {
 
 		reqBody, _ := json.Marshal(writeReq)
 		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)
@@ -874,6 +1235,7 @@ func TestEdgeCases(t *testing.T) {
 
 		reqBody, _ := json.Marshal(req)
 		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)
@@ -894,6 +1256,7 @@ func TestEdgeCases(t *testing.T) {
 
 		reqBody, _ := json.Marshal(req)
 		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)
@@ -915,6 +1278,7 @@ func TestEdgeCases(t *testing.T) {
 
 		reqBody, _ := json.Marshal(req)
 		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)

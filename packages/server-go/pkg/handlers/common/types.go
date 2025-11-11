@@ -3,14 +3,14 @@ package common
 
 // LogEntry structured log entry
 type LogEntry struct {
-	Level      string `json:"level"`                // "stdout", "stderr", "system"
-	Content    string `json:"content"`              // Log content
-	Timestamp  int64  `json:"timestamp"`            // Unix second timestamp
-	Sequence   int64  `json:"sequence"`             // Sequence number (optional)
-	Source     string `json:"source,omitempty"`     // Log source
-	TargetID   string `json:"target_id,omitempty"`  // Target ID
+	Level      string `json:"level"`                 // "stdout", "stderr", "system"
+	Content    string `json:"content"`               // Log content
+	Timestamp  int64  `json:"timestamp"`             // Unix second timestamp
+	Sequence   int64  `json:"sequence"`              // Sequence number (optional)
+	Source     string `json:"source,omitempty"`      // Log source
+	TargetID   string `json:"target_id,omitempty"`   // Target ID
 	TargetType string `json:"target_type,omitempty"` // Target type (process/session)
-	Message    string `json:"message,omitempty"`    // Message content
+	Message    string `json:"message,omitempty"`     // Message content
 }
 
 // LogMessage log message structure

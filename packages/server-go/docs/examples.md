@@ -17,15 +17,17 @@ export BASE_URL="http://localhost:9757"  # Default port, configurable via ADDR e
 
 ### 1. Write a File
 
+The file write endpoint supports multiple modes via Content-Type routing:
+
+#### Mode 1: JSON - Plain Text
+
 ```bash
 curl -X POST "$BASE_URL/api/v1/files/write" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "path": "/tmp/example.txt",
-    "content": "Hello, World!\nThis is a test file.",
-    "encoding": "utf-8",
-    "permissions": "0644"
+    "content": "Hello, World!\nThis is a test file."
   }'
 ```
 
@@ -38,6 +40,91 @@ curl -X POST "$BASE_URL/api/v1/files/write" \
   "timestamp": "2024-01-01T12:00:00Z"
 }
 ```
+
+#### Mode 2: JSON - Base64 Encoded
+
+Best for small binary files (< 1MB):
+
+```bash
+# Encode file to base64
+base64_content=$(base64 -w 0 image.png)
+
+curl -X POST "$BASE_URL/api/v1/files/write" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"path\": \"/tmp/image.png\",
+    \"content\": \"$base64_content\",
+    \"encoding\": \"base64\"
+  }"
+```
+
+#### Mode 3: Binary Upload via Query Parameter
+
+Best for large files and media (> 1MB). ~25% less bandwidth than base64:
+
+```bash
+curl -X POST "$BASE_URL/api/v1/files/write?path=/tmp/photo.jpg" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: image/jpeg" \
+  --data-binary @photo.jpg
+```
+
+#### Mode 5: Binary Upload with Special Characters in Path
+
+Use base64-encoded path for filenames with spaces or special characters:
+
+```bash
+# Encode path to base64
+path_base64=$(echo -n "/tmp/file with spaces.png" | base64)
+
+curl -X POST "$BASE_URL/api/v1/files/write?path_base64=$path_base64" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: image/png" \
+  --data-binary @"file with spaces.png"
+```
+
+#### Mode 6: Multipart FormData Upload
+
+Standard browser-compatible upload using FormData (best for web applications):
+
+```bash
+# Using curl with multipart form
+curl -X POST "$BASE_URL/api/v1/files/write" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@document.pdf" \
+  -F "path=/tmp/uploaded_document.pdf"
+
+# Without path parameter (uses original filename)
+curl -X POST "$BASE_URL/api/v1/files/write" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@photo.jpg"
+```
+
+**JavaScript FormData example:**
+
+```javascript
+const formData = new FormData();
+formData.append('file', fileBlob, 'example.png');
+formData.append('path', '/tmp/example.png');
+
+fetch('http://localhost:9757/api/v1/files/write', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN'
+  },
+  body: formData
+});
+```
+
+**Performance Comparison:**
+
+| Mode | File Size | Bandwidth | CPU | Best For |
+|------|-----------|-----------|-----|----------|
+| JSON Text | < 100KB | 1.0x | Low | Config files |
+| JSON Base64 | < 1MB | 1.33x | Medium | Small binaries |
+| Binary Upload | Any | 1.0x | Low | Large files, media |
+| Multipart FormData | Any | 1.10-1.15x | Low | Web browsers, standard tools |
 
 ### 2. Read a File
 

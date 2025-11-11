@@ -1,8 +1,12 @@
 package file
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -49,15 +53,31 @@ type DeleteFileResponse struct {
 }
 
 type FileInfo struct {
-	Name    string `json:"name"`
-	Path    string `json:"path"`
-	Size    int64  `json:"size"`
-	IsDir   bool   `json:"is_dir"`
-	ModTime string `json:"mod_time"`
+	Name        string  `json:"name"`
+	Path        string  `json:"path"`
+	Size        int64   `json:"size"`
+	IsDir       bool    `json:"is_dir"`
+	MimeType    *string `json:"mime_type,omitempty"`
+	Permissions *string `json:"permissions,omitempty"`
+	Modified    *string `json:"modified,omitempty"`
 }
 
-// WriteFile handles file write operations
+// WriteFile handles file write operations with smart routing based on Content-Type
 func (h *FileHandler) WriteFile(w http.ResponseWriter, r *http.Request) {
+	contentType := r.Header.Get("Content-Type")
+
+	// Route based on Content-Type
+	if strings.HasPrefix(contentType, "application/json") {
+		h.writeFileJSON(w, r)
+	} else if strings.HasPrefix(contentType, "multipart/form-data") {
+		h.writeFileMultipart(w, r)
+	} else {
+		h.writeFileBinary(w, r)
+	}
+}
+
+// writeFileJSON handles JSON-based file write (with optional base64 encoding)
+func (h *FileHandler) writeFileJSON(w http.ResponseWriter, r *http.Request) {
 	var req WriteFileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Invalid JSON body"))
@@ -71,36 +91,134 @@ func (h *FileHandler) WriteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check file size limit
-	content := []byte(req.Content)
-	if int64(len(content)) > h.config.MaxFileSize {
+	// Handle content encoding
+	var reader io.Reader
+	var size int64
+	if req.Encoding != nil && *req.Encoding == "base64" {
+		decoded, err := base64.StdEncoding.DecodeString(req.Content)
+		if err != nil {
+			errors.WriteErrorResponse(w, errors.NewInvalidRequestError(fmt.Sprintf("Failed to decode base64 content: %v", err)))
+			return
+		}
+		reader = bytes.NewReader(decoded)
+		size = int64(len(decoded))
+	} else {
+		reader = strings.NewReader(req.Content)
+		size = int64(len(req.Content))
+	}
+
+	h.writeFileCommon(w, path, reader, size)
+}
+
+// writeFileBinary handles binary file write (direct upload)
+func (h *FileHandler) writeFileBinary(w http.ResponseWriter, r *http.Request) {
+	// Get path from multiple sources (priority order)
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Path parameter is required (use ?path=... or X-File-Path header)"))
+		return
+	}
+
+	// Validate path
+	validatedPath, err := h.validatePath(path)
+	if err != nil {
+		errors.WriteErrorResponse(w, errors.NewInvalidRequestError(err.Error()))
+		return
+	}
+
+	size := max(r.ContentLength, 0)
+
+	h.writeFileCommon(w, validatedPath, r.Body, size)
+}
+
+// writeFileMultipart handles multipart/form-data file upload
+func (h *FileHandler) writeFileMultipart(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		errors.WriteErrorResponse(w, errors.NewInvalidRequestError(fmt.Sprintf("Failed to parse multipart form: %v", err)))
+		return
+	}
+
+	targetPath := r.FormValue("path")
+
+	var fileHeader *multipart.FileHeader
+	var fileName string
+
+	if files := r.MultipartForm.File["file"]; len(files) > 0 {
+		fileHeader = files[0]
+		fileName = fileHeader.Filename
+	} else if files := r.MultipartForm.File["files"]; len(files) > 0 {
+		fileHeader = files[0]
+		fileName = fileHeader.Filename
+	} else {
+		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("No file found in multipart form (expected 'file' or 'files' field)"))
+		return
+	}
+
+	if targetPath == "" {
+		targetPath = filepath.Join(h.config.WorkspacePath, fileName)
+	}
+
+	validatedPath, err := h.validatePath(targetPath)
+	if err != nil {
+		errors.WriteErrorResponse(w, errors.NewInvalidRequestError(err.Error()))
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		errors.WriteErrorResponse(w, errors.NewFileOperationError(fmt.Sprintf("Failed to open uploaded file: %v", err)))
+		return
+	}
+	defer file.Close()
+
+	h.writeFileCommon(w, validatedPath, file, fileHeader.Size)
+}
+
+// writeFileCommon handles the common file writing logic with streaming
+func (h *FileHandler) writeFileCommon(w http.ResponseWriter, path string, reader io.Reader, size int64) {
+	if size == 0 {
+		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("File size is zero"))
+		return
+	}
+	if size > h.config.MaxFileSize {
 		errors.WriteErrorResponse(w, errors.NewInvalidRequestError(fmt.Sprintf("File size exceeds maximum allowed size of %d bytes", h.config.MaxFileSize)))
 		return
 	}
 
-	// Ensure directory exists
-	if err = h.ensureDirectory(path); err != nil {
+	if err := h.ensureDirectory(path); err != nil {
 		errors.WriteErrorResponse(w, errors.NewFileOperationError(fmt.Sprintf("Failed to create directory: %v", err)))
 		return
 	}
 
-	// Write file
-	if err = os.WriteFile(path, content, 0644); err != nil {
+	outFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		errors.WriteErrorResponse(w, errors.NewFileOperationError(fmt.Sprintf("Failed to create file: %v", err)))
+		return
+	}
+	defer outFile.Close()
+
+	var limitedReader io.Reader = reader
+	if h.config.MaxFileSize > 0 {
+		limitedReader = io.LimitReader(reader, h.config.MaxFileSize+1)
+	}
+
+	written, err := io.Copy(outFile, limitedReader)
+	if err != nil {
 		errors.WriteErrorResponse(w, errors.NewFileOperationError(fmt.Sprintf("Failed to write file: %v", err)))
 		return
 	}
 
-	// Get file info
-	info, err := os.Stat(path)
-	if err != nil {
-		errors.WriteErrorResponse(w, errors.NewFileOperationError(fmt.Sprintf("Failed to get file info: %v", err)))
+	if h.config.MaxFileSize > 0 && written > h.config.MaxFileSize {
+		outFile.Close()
+		os.Remove(path)
+		errors.WriteErrorResponse(w, errors.NewInvalidRequestError(fmt.Sprintf("File size exceeds maximum allowed size of %d bytes", h.config.MaxFileSize)))
 		return
 	}
 
 	common.WriteJSONResponse(w, WriteFileResponse{
 		Success:   true,
 		Path:      path,
-		Size:      info.Size(),
+		Size:      written,
 		Timestamp: time.Now().Truncate(time.Second).Format(time.RFC3339),
 	})
 }
@@ -264,12 +382,36 @@ func (h *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		// Optional fields
+		var mimeType *string
+		// Best-effort MIME detection based on extension
+		if !entry.IsDir() {
+			ext := filepath.Ext(name)
+			if ext != "" {
+				mt := mimeFromExt(ext)
+				if mt != "" {
+					mimeType = &mt
+				}
+			}
+		}
+
+		var permissions *string
+		if sys := info.Mode().Perm(); sys != 0 {
+			perm := fmt.Sprintf("%#o", sys)
+			permissions = &perm
+		}
+
+		modifiedStr := info.ModTime().Truncate(time.Second).Format(time.RFC3339)
+		ms := modifiedStr
+
 		files = append(files, FileInfo{
-			Name:    name,
-			Path:    filepath.Join(validatedPath, name),
-			Size:    info.Size(),
-			IsDir:   entry.IsDir(),
-			ModTime: info.ModTime().Truncate(time.Second).Format(time.RFC3339),
+			Name:        name,
+			Path:        filepath.Join(validatedPath, name),
+			Size:        info.Size(),
+			IsDir:       entry.IsDir(),
+			MimeType:    mimeType,
+			Permissions: permissions,
+			Modified:    &ms,
 		})
 	}
 

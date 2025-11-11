@@ -146,22 +146,93 @@ paths:
     post:
       tags:
         - Files
-      summary: Write file
-      description: Write content to a file with support for encoding and permissions
+      summary: Write file (Smart Routing)
+      description: |
+        Write content to a file with smart routing based on Content-Type header.
+
+        **Supported Modes:**
+
+        1. **JSON Mode** (`Content-Type: application/json`):
+           - Plain text content: Set `content` field with string data
+           - Base64 encoded: Set `content` field with base64 data and `encoding: "base64"`
+           - Path specified in request body
+
+        2. **Binary Mode** (any other Content-Type except multipart/form-data):
+           - Direct binary upload with zero encoding overhead
+           - Path specified via query parameter, custom header, or base64-encoded query
+           - Suitable for large files, images, videos, etc.
+
+        3. **Multipart Mode** (`Content-Type: multipart/form-data`):
+           - Standard FormData upload (browser-compatible)
+           - File sent via `file` or `files` field
+           - Optional `path` form field to specify target path
+           - If no path provided, uses uploaded filename
+
+        **Path Sources:**
+        - JSON mode: `path` field in JSON body
+        - Binary mode (priority order):
+          1. Query parameter: `?path=/tmp/file.png`
+        - Multipart mode: `path` form field or defaults to uploaded filename
       security:
         - bearerAuth: []
       operationId: writeFile
+      parameters:
+        - name: path
+          in: query
+          description: File path (used in binary mode)
+          required: false
+          schema:
+            type: string
+            example: "/tmp/image.png"
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/WriteFileRequest'
-            example:
-              path: "/tmp/example.txt"
-              content: "Hello, World!"
-              encoding: "utf-8"
-              permissions: "0644"
+            examples:
+              plainText:
+                summary: Plain text file
+                value:
+                  path: "/tmp/example.txt"
+                  content: "Hello, World!"
+              base64Image:
+                summary: Base64-encoded image
+                value:
+                  path: "/tmp/image.png"
+                  content: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+                  encoding: "base64"
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+            description: Raw binary data for direct upload
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload (use 'file' or 'files' field name)
+                path:
+                  type: string
+                  description: Optional target path. If not provided, uses uploaded filename
+              required:
+                - file
+            encoding:
+              file:
+                contentType: application/octet-stream, image/*, video/*, application/pdf
+            examples:
+              singleFile:
+                summary: Upload single file with custom path
+                value:
+                  file: "[binary file data]"
+                  path: "/tmp/uploaded_file.txt"
+              defaultFilename:
+                summary: Upload file using original filename
+                value:
+                  file: "[binary file data]"
       responses:
         '200':
           description: File written successfully
@@ -169,6 +240,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WriteFileResponse'
+              example:
+                success: true
+                path: "/tmp/image.png"
+                size: 2048576
+                timestamp: "2025-11-11T10:30:00Z"
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -179,6 +255,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "File size exceeds maximum allowed size of 104857600 bytes"
+                error_type: "invalid_request"
 
   /api/v1/files/read:
     post:
@@ -1185,7 +1265,15 @@ components:
           type: boolean
           description: Whether this is a directory
           example: false
-        mod_time:
+        mimeType:
+          type: string
+          description: Best-effort MIME type
+          example: "text/plain"
+        permissions:
+          type: string
+          description: File permissions in octal format
+          example: "0644"
+        modified:
           type: string
           format: date-time
           description: Last modification time
@@ -1195,7 +1283,6 @@ components:
         - path
         - size
         - isDir
-        - mod_time
 
     ListFilesResponse:
       type: object

@@ -39,10 +39,10 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
 
 servers:
-  - url: http://localhost:8080
-    description: Development server
-  - url: https://api.devbox.io
-    description: Production server
+  - url: http://localhost:9757
+    description: Development server (default port, configurable via ADDR env or -addr flag)
+  - url: https://your-server.example.com
+    description: Production server (replace with your actual server URL)
 
 tags:
   - name: Health
@@ -97,6 +97,38 @@ paths:
                 timestamp: "2024-01-01T12:00:00Z"
                 checks:
                   filesystem: true
+        '503':
+          description: Server is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              example:
+                status: "not_ready"
+                ready: false
+                timestamp: "2024-01-01T12:00:00Z"
+                checks:
+                  filesystem: false
+
+  /health/live:
+    get:
+      tags:
+        - Health
+      summary: Liveness check
+      description: Returns liveness status. Always returns healthy if server is running. Used by Kubernetes liveness probes.
+      operationId: livenessCheck
+      responses:
+        '200':
+          description: Server is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "alive"
+                timestamp: "2024-01-01T12:00:00Z"
+                uptime: 3600
+                version: "1.0.0"
         '503':
           description: Server is not ready
           content:

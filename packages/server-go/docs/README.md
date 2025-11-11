@@ -24,21 +24,23 @@ The DevBox SDK Server provides a comprehensive HTTP API for managing processes, 
 
 ### Basic Usage
 
+**Note**: The default port is `:9757`, which can be changed via the `ADDR` environment variable or `-addr` flag.
+
 1. **Health Check** (No authentication required):
    ```bash
-   curl -X GET http://localhost:8080/health
+   curl -X GET http://localhost:9757/health
    ```
 
 2. **File Operations** (With authentication):
    ```bash
    # Write a file
-   curl -X POST http://localhost:8080/api/v1/files/write \
+   curl -X POST http://localhost:9757/api/v1/files/write \
      -H "Authorization: Bearer YOUR_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"path": "/tmp/hello.txt", "content": "Hello, World!"}'
 
    # Read a file
-   curl -X POST http://localhost:8080/api/v1/files/read \
+   curl -X POST http://localhost:9757/api/v1/files/read \
      -H "Authorization: Bearer YOUR_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"path": "/tmp/hello.txt"}'
@@ -47,7 +49,7 @@ The DevBox SDK Server provides a comprehensive HTTP API for managing processes, 
 3. **Process Management**:
    ```bash
    # Execute a command asynchronously
-   curl -X POST http://localhost:8080/api/v1/process/exec \
+   curl -X POST http://localhost:9757/api/v1/process/exec \
      -H "Authorization: Bearer YOUR_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"command": "ls", "args": ["-la", "/tmp"]}'
@@ -56,7 +58,7 @@ The DevBox SDK Server provides a comprehensive HTTP API for managing processes, 
 4. **Session Management**:
    ```bash
    # Create a session
-   curl -X POST http://localhost:8080/api/v1/sessions/create \
+   curl -X POST http://localhost:9757/api/v1/sessions/create \
      -H "Authorization: Bearer YOUR_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"workingDir": "/home/user", "shell": "/bin/bash"}'

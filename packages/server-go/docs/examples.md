@@ -8,8 +8,10 @@ All examples (except health checks) require authentication. Replace `YOUR_TOKEN`
 
 ```bash
 export TOKEN="YOUR_TOKEN"
-export BASE_URL="http://localhost:8080"
+export BASE_URL="http://localhost:9757"  # Default port, configurable via ADDR env or -addr flag
 ```
+
+**Note**: The default port is `:9757`. You can change it using the `ADDR` environment variable or `-addr` command-line flag.
 
 ## File Operations
 
@@ -424,6 +426,8 @@ curl -X POST "$BASE_URL/api/v1/sessions/550e8400-e29b-41d4-a716-446655440000/ter
 
 ## Health Checks
 
+**Note**: Health check endpoints do not require authentication and can be accessed directly.
+
 ### 1. Basic Health Check
 
 ```bash
@@ -444,6 +448,22 @@ curl -X GET "$BASE_URL/health"
 
 ```bash
 curl -X GET "$BASE_URL/health/ready"
+```
+
+### 3. Liveness Check
+
+```bash
+curl -X GET "$BASE_URL/health/live"
+```
+
+**Response:**
+```json
+{
+  "status": "alive",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "uptime": 3600,
+  "version": "1.0.0"
+}
 ```
 
 **Response (Ready):**
@@ -481,7 +501,7 @@ curl -X GET "$BASE_URL/health/ready"
 
 2. **Connect to WebSocket:**
    ```bash
-   wscat -c "ws://localhost:8080/ws" -H "Authorization: Bearer $TOKEN"
+   wscat -c "ws://localhost:9757/ws" -H "Authorization: Bearer $TOKEN"
    ```
 
 3. **Subscribe to process logs:**

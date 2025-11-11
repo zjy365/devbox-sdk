@@ -16,8 +16,10 @@ The WebSocket endpoint (`/ws`) enables real-time communication between clients a
 ### Endpoint URL
 
 ```
-ws://localhost:8080/ws
+ws://localhost:9757/ws
 ```
+
+**Note**: The default port is `:9757`, which can be changed via the `ADDR` environment variable or `-addr` flag.
 
 ### Authentication
 
@@ -31,7 +33,7 @@ Authorization: Bearer <your-token>
 
 **Using JavaScript:**
 ```javascript
-const ws = new WebSocket('ws://localhost:8080/ws', [], {
+const ws = new WebSocket('ws://localhost:9757/ws', [], {
   headers: {
     'Authorization': 'Bearer ' + token
   }
@@ -49,7 +51,7 @@ ws.onmessage = function(event) {
 
 **Using wscat (CLI):**
 ```bash
-wscat -c "ws://localhost:8080/ws" -H "Authorization: Bearer YOUR_TOKEN"
+wscat -c "ws://localhost:9757/ws" -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ## Message Protocol
@@ -249,7 +251,7 @@ Connection status notifications.
 ### Basic Log Streaming
 
 ```javascript
-const ws = new WebSocket('ws://localhost:8080/ws', [], {
+const ws = new WebSocket('ws://localhost:9757/ws', [], {
   headers: {
     'Authorization': 'Bearer ' + token
   }
@@ -361,7 +363,7 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 5000; // 5 seconds
 
 function connectWebSocket() {
-  const ws = new WebSocket('ws://localhost:8080/ws', [], {
+  const ws = new WebSocket('ws://localhost:9757/ws', [], {
     headers: {
       'Authorization': 'Bearer ' + token
     }
@@ -464,7 +466,7 @@ function LogViewer({ processId, token }) {
   const wsRef = useRef(null);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8080/ws', [], {
+    const ws = new WebSocket('ws://localhost:9757/ws', [], {
       headers: {
         'Authorization': `Bearer ${token}`
       }

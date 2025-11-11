@@ -116,28 +116,25 @@ The server supports flexible configuration through command-line flags and enviro
 ```bash
 # Using environment variables
 export LOG_LEVEL=DEBUG
-export ADDR=:8080
+export ADDR=:9757
 ./devbox-server
 
 # Using command-line flags
-./devbox-server -log_level=DEBUG -addr=:8080 -workspace_path=/my/workspace
+./devbox-server -log_level=DEBUG -addr=:9757 -workspace_path=/my/workspace
 
 # Mixed approach (flags take precedence)
-LOG_LEVEL=INFO ./devbox-server -log_level=DEBUG -addr=:8080
+LOG_LEVEL=INFO ./devbox-server -log_level=DEBUG -addr=:9757
 ```
 
 ## 🔐 Authentication
 
-All API routes require Bearer token authentication:
-
-```bash
-curl -H "Authorization: Bearer your-token" http://localhost:9757/health
-```
+Most API routes require Bearer token authentication. Health check endpoints are exempt from authentication for Kubernetes probe compatibility.
 
 **Token Management**:
 - If no token is provided, a secure random token is auto-generated
 - The auto-generated token is logged once at server startup for development use
-- Health endpoints also require authentication
+- Health check endpoints (`/health`, `/health/ready`, `/health/live`) do **not** require authentication (for Kubernetes probes)
+- All other endpoints require Bearer token authentication
 - Configure via `TOKEN` environment variable or `-token` flag
 
 ## 🛡️ Security Features
@@ -154,9 +151,9 @@ Base URL: `http://localhost:9757`
 API Prefix: `/api/v1`
 
 ### Health Check Endpoints
-- `GET /health` - Basic health status with uptime and version
-- `GET /health/ready` - Readiness probe with filesystem validation
-- `GET /health/live` - Liveness probe
+- `GET /health` - Basic health status with uptime and version (no authentication required)
+- `GET /health/ready` - Readiness probe with filesystem validation (no authentication required)
+- `GET /health/live` - Liveness probe for Kubernetes (no authentication required)
 
 ### File Management (`/api/v1/files/`)
 - `POST /api/v1/files/write` - Write file with path validation and size limits

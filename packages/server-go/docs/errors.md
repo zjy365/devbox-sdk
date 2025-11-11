@@ -246,7 +246,7 @@ async function retryableRequest(url, options, maxRetries = 3) {
 #### 4. WebSocket Error Handling
 
 ```javascript
-const ws = new WebSocket('ws://localhost:8080/ws', [], {
+const ws = new WebSocket('ws://localhost:9757/ws', [], {
   headers: { 'Authorization': `Bearer ${token}` }
 });
 

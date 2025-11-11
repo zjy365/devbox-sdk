@@ -37,6 +37,9 @@ func (s *Server) registerRoutes(r *router.Router, middlewareChain func(http.Hand
 		{"POST", "/api/v1/files/write", fileHandler.WriteFile},
 		{"POST", "/api/v1/files/read", fileHandler.ReadFile},
 		{"POST", "/api/v1/files/delete", fileHandler.DeleteFile},
+		{"POST", "/api/v1/files/move", fileHandler.MoveFile},
+		{"POST", "/api/v1/files/rename", fileHandler.RenameFile},
+		{"POST", "/api/v1/files/download", fileHandler.DownloadFiles},
 		{"POST", "/api/v1/files/batch-upload", fileHandler.BatchUpload},
 		{"GET", "/api/v1/files/list", fileHandler.ListFiles},
 

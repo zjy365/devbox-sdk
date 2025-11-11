@@ -56,8 +56,8 @@ type FileInfo struct {
 	Name        string  `json:"name"`
 	Path        string  `json:"path"`
 	Size        int64   `json:"size"`
-	IsDir       bool    `json:"is_dir"`
-	MimeType    *string `json:"mime_type,omitempty"`
+	IsDir       bool    `json:"isDir"`
+	MimeType    *string `json:"mimeType,omitempty"`
 	Permissions *string `json:"permissions,omitempty"`
 	Modified    *string `json:"modified,omitempty"`
 }

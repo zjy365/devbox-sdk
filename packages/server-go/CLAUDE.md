@@ -29,7 +29,7 @@ HTTP Response
 - Do not write comments that are obvious from the code itself; focus on explaining why something is done, not what it does
 - Seriously, do not write comments that are obvious from the code itself.
 - Do not write one-line functions
-- when wrting any code and/or doc, always output english
+- when writing any code and/or doc, always output english
 
 # Workflow
 
@@ -41,6 +41,7 @@ HTTP Response
 - Do not run any write operations with `git`
 - Make a tmp directory (`mktemp`) for testing things out if needed and don't forget to cleaning it up
 - if changed any route or handler, update the OpenAPI spec accordingly
+- if works down, output simple summary
 
 # Test
 - Unit tests should cover all business logic and edge cases

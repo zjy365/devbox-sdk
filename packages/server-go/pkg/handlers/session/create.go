@@ -14,7 +14,7 @@ import (
 
 // Session operation request types
 type CreateSessionRequest struct {
-	WorkingDir *string           `json:"working_dir,omitempty"`
+	WorkingDir *string           `json:"workingDir,omitempty"`
 	Env        map[string]string `json:"env,omitempty"`
 	Shell      *string           `json:"shell,omitempty"`
 }
@@ -22,7 +22,7 @@ type CreateSessionRequest struct {
 // Session operation response types
 type CreateSessionResponse struct {
 	Success   bool   `json:"success"`
-	SessionID string `json:"session_id"`
+	SessionID string `json:"sessionId"`
 	Shell     string `json:"shell"`
 	Cwd       string `json:"cwd"`
 	Status    string `json:"status"`

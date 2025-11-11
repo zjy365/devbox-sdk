@@ -132,7 +132,7 @@ The API uses standard HTTP status codes to indicate success or failure of reques
 | Code | HTTP Status | Description | Example |
 |------|-------------|-------------|---------|
 | `WEBSOCKET_CONNECTION_FAILED` | 500 | WebSocket connection failed | `"Failed to establish WebSocket connection"` |
-| `INVALID_SUBSCRIPTION` | 400 | Invalid subscription request | `"Invalid subscription: missing target_id"` |
+| `INVALID_SUBSCRIPTION` | 400 | Invalid subscription request | `"Invalid subscription: missing targetId"` |
 | `TARGET_NOT_SUBSCRIBABLE` | 400 | Target cannot be subscribed to | `"Cannot subscribe to terminated process"` |
 
 ### System Errors

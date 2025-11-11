@@ -68,7 +68,7 @@ Subscribe to real-time log streaming from a process or session.
 {
   "action": "subscribe",
   "type": "process|session",
-  "target_id": "target-process-or-session-id",
+  "targetId": "target-process-or-session-id",
   "options": {
     "levels": ["stdout", "stderr", "system"],
     "tail": 100,
@@ -81,7 +81,7 @@ Subscribe to real-time log streaming from a process or session.
 **Fields:**
 - `action` (string, required): `"subscribe"`
 - `type` (string, required): `"process"` or `"session"`
-- `target_id` (string, required): Process or session ID to subscribe to
+- `targetId` (string, required): Process or session ID to subscribe to
 - `options` (object, optional): Subscription options
 
 **Subscription Options:**
@@ -95,7 +95,7 @@ Subscribe to real-time log streaming from a process or session.
 {
   "action": "subscribe",
   "type": "process",
-  "target_id": "550e8400-e29b-41d4-a716-446655440000",
+  "targetId": "550e8400-e29b-41d4-a716-446655440000",
   "options": {
     "levels": ["stdout", "stderr"],
     "tail": 50,
@@ -112,7 +112,7 @@ Unsubscribe from log streaming for a specific target.
 {
   "action": "unsubscribe",
   "type": "process|session",
-  "target_id": "target-process-or-session-id"
+  "targetId": "target-process-or-session-id"
 }
 ```
 
@@ -121,7 +121,7 @@ Unsubscribe from log streaming for a specific target.
 {
   "action": "unsubscribe",
   "type": "process",
-  "target_id": "550e8400-e29b-41d4-a716-446655440000"
+  "targetId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -142,7 +142,7 @@ Get a list of all active subscriptions for the current connection.
   "subscriptions": [
     {
       "type": "process",
-      "target_id": "550e8400-e29b-41d4-a716-446655440000",
+      "targetId": "550e8400-e29b-41d4-a716-446655440000",
       "options": {
         "levels": ["stdout", "stderr"],
         "follow": true
@@ -162,14 +162,14 @@ Real-time log entry from a subscribed process or session.
 {
   "type": "log",
   "dataType": "process|session",
-  "target_id": "target-id",
+  "targetId": "target-id",
   "log": {
     "level": "stdout|stderr|system",
     "content": "log content",
     "timestamp": 1640995200000,
     "sequence": 1,
     "source": "process|session",
-    "target_id": "target-id",
+    "targetId": "target-id",
     "targetType": "process|session",
     "message": "optional message"
   },
@@ -181,7 +181,7 @@ Real-time log entry from a subscribed process or session.
 **Fields:**
 - `type` (string): `"log"`
 - `dataType` (string): `"process"` or `"session"`
-- `target_id` (string): Process or session ID
+- `targetId` (string): Process or session ID
 - `log` (object): Log entry details
 - `sequence` (number): Message sequence number
 - `isHistory` (boolean): Whether this is a historical log entry
@@ -192,7 +192,7 @@ Real-time log entry from a subscribed process or session.
 - `timestamp` (number): Unix timestamp in milliseconds
 - `sequence` (number): Log entry sequence number
 - `source` (string): Log source
-- `target_id` (string): Target ID
+- `targetId` (string): Target ID
 - `targetType` (string): Target type
 - `message` (string, optional): Additional message
 
@@ -205,7 +205,7 @@ Confirmation of successful subscription or unsubscription.
   "type": "subscription_result",
   "action": "subscribed|unsubscribed",
   "dataType": "process|session",
-  "target_id": "target-id",
+  "targetId": "target-id",
   "levels": {
     "stdout": true,
     "stderr": true,
@@ -228,7 +228,7 @@ Error notification for failed operations.
   "timestamp": 1640995200000,
   "context": {
     "action": "subscribe",
-    "target_id": "target-id"
+    "targetId": "target-id"
   }
 }
 ```
@@ -262,7 +262,7 @@ ws.onopen = function(event) {
   ws.send(JSON.stringify({
     action: 'subscribe',
     type: 'process',
-    target_id: '550e8400-e29b-41d4-a716-446655440000',
+    targetId: '550e8400-e29b-41d4-a716-446655440000',
     options: {
       levels: ['stdout', 'stderr'],
       tail: 10,
@@ -280,7 +280,7 @@ ws.onmessage = function(event) {
       break;
 
     case 'subscription_result':
-      console.log(`Subscription ${message.action} for ${message.dataType}:${message.target_id}`);
+      console.log(`Subscription ${message.action} for ${message.dataType}:${message.targetId}`);
       break;
 
     case 'error':
@@ -297,12 +297,12 @@ ws.onmessage = function(event) {
 const subscriptions = [
   {
     type: 'process',
-    target_id: 'process-id-1',
+    targetId: 'process-id-1',
     options: { levels: ['stdout'], tail: 20, follow: true }
   },
   {
     type: 'session',
-    target_id: 'session-id-1',
+    targetId: 'session-id-1',
     options: { levels: ['stdout', 'stderr'], tail: 50, follow: true }
   }
 ];
@@ -330,7 +330,7 @@ ws.onmessage = function(event) {
       timestamp: message.log.timestamp,
       level: message.log.level,
       content: message.log.content,
-      target_id: message.target_id
+      targetId: message.targetId
     });
 
     // Maintain buffer size
@@ -431,7 +431,7 @@ function resubscribeAll() {
   "timestamp": 1640995200000,
   "context": {
     "action": "subscribe",
-    "target_id": "non-existent-id"
+    "targetId": "non-existent-id"
   }
 }
 ```
@@ -477,7 +477,7 @@ function LogViewer({ processId, token }) {
       ws.send(JSON.stringify({
         action: 'subscribe',
         type: 'process',
-        target_id: processId,
+        targetId: processId,
         options: {
           levels: ['stdout', 'stderr'],
           tail: 50,

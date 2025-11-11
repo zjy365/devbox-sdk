@@ -482,7 +482,7 @@ curl -X GET "$BASE_URL/api/v1/sessions/550e8400-e29b-41d4-a716-446655440000/logs
       "content": "Session started",
       "timestamp": 1640995200000,
       "sequence": 1,
-      "target_id": "550e8400-e29b-41d4-a716-446655440000",
+      "targetId": "550e8400-e29b-41d4-a716-446655440000",
       "targetType": "session"
     },
     {
@@ -490,7 +490,7 @@ curl -X GET "$BASE_URL/api/v1/sessions/550e8400-e29b-41d4-a716-446655440000/logs
       "content": "/home/user",
       "timestamp": 1640995201000,
       "sequence": 2,
-      "target_id": "550e8400-e29b-41d4-a716-446655440000",
+      "targetId": "550e8400-e29b-41d4-a716-446655440000",
       "targetType": "session"
     }
   ]
@@ -596,7 +596,7 @@ curl -X GET "$BASE_URL/health/live"
    {
      "action": "subscribe",
      "type": "process",
-     "target_id": "550e8400-e29b-41d4-a716-446655440000",
+     "targetId": "550e8400-e29b-41d4-a716-446655440000",
      "options": {
        "levels": ["stdout", "stderr"],
        "tail": 50,
@@ -610,7 +610,7 @@ curl -X GET "$BASE_URL/health/live"
    {
      "type": "log",
      "dataType": "process",
-     "target_id": "550e8400-e29b-41d4-a716-446655440000",
+     "targetId": "550e8400-e29b-41d4-a716-446655440000",
      "log": {
        "level": "stdout",
        "content": "Process output line",
@@ -627,7 +627,7 @@ curl -X GET "$BASE_URL/health/live"
    {
      "action": "unsubscribe",
      "type": "process",
-     "target_id": "550e8400-e29b-41d4-a716-446655440000"
+     "targetId": "550e8400-e29b-41d4-a716-446655440000"
    }
    ```
 

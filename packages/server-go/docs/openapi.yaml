@@ -564,7 +564,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /api/v1/process/{process_id}/status:
+  /api/v1/process/{processId}/status:
     get:
       tags:
         - Processes
@@ -574,7 +574,7 @@ paths:
         - bearerAuth: []
       operationId: getProcessStatus
       parameters:
-        - name: process_id
+        - name: processId
           in: path
           description: Process ID
           required: true
@@ -598,7 +598,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/process/{process_id}/kill:
+  /api/v1/process/{processId}/kill:
     post:
       tags:
         - Processes
@@ -608,7 +608,7 @@ paths:
         - bearerAuth: []
       operationId: killProcess
       parameters:
-        - name: process_id
+        - name: processId
           in: path
           description: Process ID
           required: true
@@ -646,7 +646,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/process/{process_id}/logs:
+  /api/v1/process/{processId}/logs:
     get:
       tags:
         - Processes
@@ -656,7 +656,7 @@ paths:
         - bearerAuth: []
       operationId: getProcessLogs
       parameters:
-        - name: process_id
+        - name: processId
           in: path
           description: Process ID
           required: true
@@ -722,7 +722,7 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateSessionRequest'
             example:
-              working_dir: "/home/user"
+              workingDir: "/home/user"
               env:
                 PATH: "/usr/bin:/bin"
                 DEBUG: "true"
@@ -739,7 +739,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /api/v1/sessions/{session_id}:
+  /api/v1/sessions/{sessionId}:
     get:
       tags:
         - Sessions
@@ -749,7 +749,7 @@ paths:
         - bearerAuth: []
       operationId: getSession
       parameters:
-        - name: session_id
+        - name: sessionId
           in: path
           description: Session ID
           required: true
@@ -773,7 +773,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/sessions/{session_id}/env:
+  /api/v1/sessions/{sessionId}/env:
     post:
       tags:
         - Sessions
@@ -783,7 +783,7 @@ paths:
         - bearerAuth: []
       operationId: updateSessionEnv
       parameters:
-        - name: session_id
+        - name: sessionId
           in: path
           description: Session ID
           required: true
@@ -818,7 +818,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/sessions/{session_id}/exec:
+  /api/v1/sessions/{sessionId}/exec:
     post:
       tags:
         - Sessions
@@ -828,7 +828,7 @@ paths:
         - bearerAuth: []
       operationId: sessionExec
       parameters:
-        - name: session_id
+        - name: sessionId
           in: path
           description: Session ID
           required: true
@@ -860,7 +860,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/sessions/{session_id}/cd:
+  /api/v1/sessions/{sessionId}/cd:
     post:
       tags:
         - Sessions
@@ -870,7 +870,7 @@ paths:
         - bearerAuth: []
       operationId: sessionCd
       parameters:
-        - name: session_id
+        - name: sessionId
           in: path
           description: Session ID
           required: true
@@ -902,7 +902,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/sessions/{session_id}/terminate:
+  /api/v1/sessions/{sessionId}/terminate:
     post:
       tags:
         - Sessions
@@ -912,7 +912,7 @@ paths:
         - bearerAuth: []
       operationId: terminateSession
       parameters:
-        - name: session_id
+        - name: sessionId
           in: path
           description: Session ID
           required: true
@@ -936,7 +936,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/sessions/{session_id}/logs:
+  /api/v1/sessions/{sessionId}/logs:
     get:
       tags:
         - Sessions
@@ -946,7 +946,7 @@ paths:
         - bearerAuth: []
       operationId: getSessionLogs
       parameters:
-        - name: session_id
+        - name: sessionId
           in: path
           description: Session ID
           required: true
@@ -1003,12 +1003,12 @@ paths:
         {
           "action": "subscribe",
           "type": "process|session",
-          "target_id": "process-or-session-id",
+          "targetId": "process-or-session-id",
           "options": {
             "levels": ["stdout", "stderr"],
             "tail": 100,
             "follow": true,
-            "start_time": 1640995200000
+            "startTime": 1640995200000
           }
         }
         ```
@@ -1017,8 +1017,8 @@ paths:
         ```json
         {
           "type": "log",
-          "data_type": "process|session",
-          "target_id": "target-id",
+          "dataType": "process|session",
+          "targetId": "target-id",
           "log": {
             "level": "stdout",
             "content": "output content",
@@ -1026,7 +1026,7 @@ paths:
             "sequence": 1
           },
           "sequence": 1,
-          "is_history": false
+          "isHistory": false
         }
         ```
       security:
@@ -1365,7 +1365,7 @@ components:
         - $ref: '#/components/schemas/Response'
         - type: object
           properties:
-            process_id:
+            processId:
               type: string
               description: Generated process ID
               example: "550e8400-e29b-41d4-a716-446655440000"
@@ -1377,13 +1377,13 @@ components:
               type: string
               description: Process status
               example: "running"
-            exit_code:
+            exitCode:
               type: integer
               description: Exit code (if completed)
               example: 0
       required:
         - success
-        - process_id
+        - processId
         - pid
         - status
 
@@ -1435,7 +1435,7 @@ components:
               type: string
               description: Standard error
               example: ""
-            exit_code:
+            exitCode:
               type: integer
               description: Process exit code
               example: 0
@@ -1444,12 +1444,12 @@ components:
               format: int64
               description: Execution duration in milliseconds
               example: 150
-            start_time:
+            startTime:
               type: integer
               format: int64
               description: Start timestamp (Unix)
               example: 1640995200
-            end_time:
+            endTime:
               type: integer
               format: int64
               description: End timestamp (Unix)
@@ -1459,8 +1459,8 @@ components:
         - stdout
         - stderr
         - duration
-        - start_time
-        - end_time
+        - startTime
+        - endTime
 
     ProcessInfoResponse:
       type: object
@@ -1481,17 +1481,17 @@ components:
           type: string
           description: Current process status
           example: "running"
-        start_time:
+        startTime:
           type: integer
           format: int64
           description: Start timestamp (Unix)
           example: 1640995200
-        end_time:
+        endTime:
           type: integer
           format: int64
           description: End timestamp (Unix)
           example: 1640995260
-        exit_code:
+        exitCode:
           type: integer
           description: Process exit code
           example: 0
@@ -1500,7 +1500,7 @@ components:
         - pid
         - command
         - status
-        - start_time
+        - startTime
 
     ListProcessesResponse:
       allOf:
@@ -1520,7 +1520,7 @@ components:
         - $ref: '#/components/schemas/Response'
         - type: object
           properties:
-            process_id:
+            processId:
               type: string
               description: Process ID
               example: "550e8400-e29b-41d4-a716-446655440000"
@@ -1532,24 +1532,24 @@ components:
               type: string
               description: Process status
               example: "running"
-            start_at:
+            startAt:
               type: string
               format: date-time
               description: Process start time
               example: "2024-01-01T12:00:00Z"
       required:
         - success
-        - process_id
+        - processId
         - pid
         - status
-        - start_at
+        - startAt
 
     GetProcessLogsResponse:
       allOf:
         - $ref: '#/components/schemas/Response'
         - type: object
           properties:
-            process_id:
+            processId:
               type: string
               description: Process ID
               example: "550e8400-e29b-41d4-a716-446655440000"
@@ -1561,14 +1561,14 @@ components:
               example: ["output line 1", "output line 2"]
       required:
         - success
-        - process_id
+        - processId
         - logs
 
     # Session Schemas
     CreateSessionRequest:
       type: object
       properties:
-        working_dir:
+        workingDir:
           type: string
           description: Initial working directory
           example: "/home/user"
@@ -1593,7 +1593,7 @@ components:
         success:
           type: boolean
           example: true
-        session_id:
+        sessionId:
           type: string
           description: Generated session ID
           example: "550e8400-e29b-41d4-a716-446655440000"
@@ -1611,7 +1611,7 @@ components:
           example: "active"
       required:
         - success
-        - session_id
+        - sessionId
         - shell
         - cwd
         - status
@@ -1639,12 +1639,12 @@ components:
           example:
             PATH: "/usr/bin:/bin"
             DEBUG: "true"
-        created_at:
+        createdAt:
           type: string
           format: date-time
           description: Session creation time
           example: "2024-01-01T12:00:00Z"
-        last_used_at:
+        lastUsedAt:
           type: string
           format: date-time
           description: Last activity time
@@ -1657,8 +1657,8 @@ components:
         - id
         - shell
         - cwd
-        - created_at
-        - last_used_at
+        - createdAt
+        - lastUsedAt
         - status
 
     GetAllSessionsResponse:
@@ -1723,7 +1723,7 @@ components:
               type: string
               description: Error output
               example: ""
-            exit_code:
+            exitCode:
               type: integer
               description: Command exit code
               example: 0
@@ -1731,7 +1731,7 @@ components:
         - success
         - stdout
         - stderr
-        - exit_code
+        - exitCode
 
     SessionCdRequest:
       type: object
@@ -1748,7 +1748,7 @@ components:
         - $ref: '#/components/schemas/Response'
         - type: object
           properties:
-            session_id:
+            sessionId:
               type: string
               description: Session ID
               example: "550e8400-e29b-41d4-a716-446655440000"
@@ -1758,7 +1758,7 @@ components:
                 $ref: '#/components/schemas/LogEntry'
       required:
         - success
-        - session_id
+        - sessionId
         - logs
 
     # WebSocket and Log Schemas
@@ -1788,11 +1788,11 @@ components:
           type: string
           description: Log source
           example: "process"
-        target_id:
+        targetId:
           type: string
           description: Target process/session ID
           example: "550e8400-e29b-41d4-a716-446655440000"
-        target_type:
+        targetType:
           type: string
           enum: ["process", "session"]
           description: Target type
@@ -1819,7 +1819,7 @@ components:
           enum: ["process", "session"]
           description: Subscription type
           example: "process"
-        target_id:
+        targetId:
           type: string
           description: Target process or session ID
           example: "550e8400-e29b-41d4-a716-446655440000"
@@ -1848,7 +1848,7 @@ components:
           description: Whether to follow new logs
           default: true
           example: true
-        start_time:
+        startTime:
           type: integer
           format: int64
           description: Start timestamp filter
@@ -1863,12 +1863,12 @@ components:
           type: string
           description: Message type
           example: "log"
-        data_type:
+        dataType:
           type: string
           enum: ["process", "session"]
           description: Data type
           example: "process"
-        target_id:
+        targetId:
           type: string
           description: Target ID
           example: "550e8400-e29b-41d4-a716-446655440000"
@@ -1878,15 +1878,15 @@ components:
           type: integer
           description: Message sequence
           example: 1
-        is_history:
+        isHistory:
           type: boolean
           description: Whether this is a historical log entry
           default: false
           example: false
       required:
         - type
-        - data_type
-        - target_id
+        - dataType
+        - targetId
         - log
         - sequence
 

@@ -129,7 +129,7 @@ run_test() {
     local test_passed=true
     if [ "$expected_success" = "true" ]; then
         # Expect success: check for success indicators
-        if echo "$response_body" | grep -q '"success":true\|"status":"healthy"\|"status":"ready"\|"ready":true\|"files":\[\|"process_id":"\|"status":"running\|"status":"completed\|"status":"terminated"\|"logs":\[\|"status":"exited"'; then
+        if echo "$response_body" | grep -q '"success":true\|"status":"healthy"\|"status":"ready"\|"ready":true\|"files":\[\|"processId":"\|"status":"running\|"status":"completed\|"status":"terminated"\|"logs":\[\|"status":"exited"'; then
             echo -e "${GREEN}✓ PASSED (Status: $response_code, Success confirmed)${NC}"
         elif echo "$response_body" | grep -q '"error"\|"type":".*error"'; then
             echo -e "${RED}✗ FAILED (Status: $response_code, but error in response)${NC}"
@@ -259,7 +259,7 @@ if run_test "POST" "/api/v1/process/sync-stream" '{"command":"echo","args":["str
 ((TOTAL_TESTS++))
 
 # Extract process ID from exec response for further tests
-PROCESS_ID=$(cat test/response.tmp 2>/dev/null | grep -o '"process_id":"[^"]*"' | cut -d'"' -f4 | head -1)
+PROCESS_ID=$(cat test/response.tmp 2>/dev/null | grep -o '"processId":"[^"]*"' | cut -d'"' -f4 | head -1)
 # Save process ID to temp file to avoid being overwritten
 echo "$PROCESS_ID" > test/process_id.tmp
 
@@ -295,15 +295,15 @@ if run_test "GET" "/api/v1/process/nonexistent/logs" "" "404" "Get Process Logs 
 
 # Test Session Operations
 echo -e "\n${YELLOW}=== Session Operations ===${NC}"
-if run_test "POST" "/api/v1/sessions/create" '{"working_dir":"/tmp"}' "200" "Create Session" "true"; then ((PASSED_TESTS++)); fi
+if run_test "POST" "/api/v1/sessions/create" '{"workingDir":"/tmp"}' "200" "Create Session" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
 if run_test "GET" "/api/v1/sessions" "" "200" "Get All Sessions" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
 # Get session ID from previous response for subsequent tests
-# Try both "session_id" and "id" patterns to handle different API responses
-SESSION_ID=$(cat test/response.tmp 2>/dev/null | grep -o '"session_id":"[^"]*"' | cut -d'"' -f4 | head -1)
+# Try both "sessionId" and "id" patterns to handle different API responses
+SESSION_ID=$(cat test/response.tmp 2>/dev/null | grep -o '"sessionId":"[^"]*"' | cut -d'"' -f4 | head -1)
 if [ -z "$SESSION_ID" ]; then
     SESSION_ID=$(cat test/response.tmp 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4 | head -1)
 fi

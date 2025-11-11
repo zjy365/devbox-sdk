@@ -12,10 +12,10 @@ import (
 // Process operation response types
 type GetProcessStatusResponse struct {
 	common.Response
-	ProcessID string `json:"process_id"`
+	ProcessID string `json:"processId"`
 	PID       int    `json:"pid"`
 	Status    string `json:"status"`
-	StartAt   string `json:"start_at"`
+	StartAt   string `json:"startAt"`
 }
 
 type ListProcessesResponse struct {
@@ -25,7 +25,7 @@ type ListProcessesResponse struct {
 
 type GetProcessLogsResponse struct {
 	common.Response
-	ProcessID string   `json:"process_id"`
+	ProcessID string   `json:"processId"`
 	Logs      []string `json:"logs"`
 }
 
@@ -34,9 +34,9 @@ type ProcessInfoResponse struct {
 	PID       int    `json:"pid"`
 	Command   string `json:"command"`
 	Status    string `json:"status"`
-	StartTime int64  `json:"start_time"`
-	EndTime   *int64 `json:"end_time,omitempty"`
-	ExitCode  *int   `json:"exit_code,omitempty"`
+	StartTime int64  `json:"startTime"`
+	EndTime   *int64 `json:"endTime,omitempty"`
+	ExitCode  *int   `json:"exitCode,omitempty"`
 }
 
 // GetProcessStatus handles process status queries

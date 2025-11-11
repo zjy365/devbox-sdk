@@ -27,10 +27,10 @@ type ProcessExecRequest struct {
 // Process operation response types
 type ProcessExecResponse struct {
 	common.Response
-	ProcessID string  `json:"process_id"`
+	ProcessID string  `json:"processId"`
 	PID       int     `json:"pid"`
 	Status    string  `json:"status"`
-	ExitCode  *int    `json:"exit_code,omitempty"`
+	ExitCode  *int    `json:"exitCode,omitempty"`
 	Stdout    *string `json:"stdout,omitempty"`
 	Stderr    *string `json:"stderr,omitempty"`
 }

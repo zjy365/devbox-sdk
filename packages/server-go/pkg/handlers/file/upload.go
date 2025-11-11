@@ -22,8 +22,8 @@ type BatchUploadResult struct {
 type BatchUploadResponse struct {
 	Success      bool                `json:"success"`
 	Results      []BatchUploadResult `json:"results"`
-	TotalFiles   int                 `json:"total_files"`
-	SuccessCount int                 `json:"success_count"`
+	TotalFiles   int                 `json:"totalFiles"`
+	SuccessCount int                 `json:"successCount"`
 }
 
 type UploadedFile struct {

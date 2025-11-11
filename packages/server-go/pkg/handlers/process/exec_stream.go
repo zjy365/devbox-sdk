@@ -36,7 +36,7 @@ type SyncStreamOutputEvent struct {
 
 // SyncStreamCompleteEvent Complete event
 type SyncStreamCompleteEvent struct {
-	ExitCode  *int  `json:"exit_code"`
+	ExitCode  *int  `json:"exitCode"`
 	Duration  int64 `json:"duration"` // Execution time (milliseconds)
 	Timestamp int64 `json:"timestamp"`
 }
@@ -44,8 +44,8 @@ type SyncStreamCompleteEvent struct {
 // SyncStreamErrorEvent Error event
 type SyncStreamErrorEvent struct {
 	Error      string `json:"error"`
-	ExitCode   *int   `json:"exit_code,omitempty"`
-	DurationMS int64  `json:"duration_ms"`
+	ExitCode   *int   `json:"exitCode,omitempty"`
+	DurationMS int64  `json:"durationMs"`
 	Timestamp  int64  `json:"timestamp"`
 }
 

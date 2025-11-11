@@ -7,20 +7,33 @@ import FormData from 'form-data'
 import type { DevboxSDK } from '../core/DevboxSDK'
 import type {
   BatchUploadOptions,
-  CommandResult,
   DevboxInfo,
   FileChangeEvent,
   FileMap,
   FileWatchWebSocket,
+  GetProcessLogsResponse,
+  GetProcessStatusResponse,
+  GitAuth,
+  GitBranchInfo,
+  GitCloneOptions,
+  GitCommitOptions,
+  GitPullOptions,
+  GitPushOptions,
+  GitStatus,
+  KillProcessOptions,
+  ListProcessesResponse,
   MonitorData,
-  ProcessStatus,
+  ProcessExecOptions,
+  ProcessExecResponse,
   ReadOptions,
   ResourceInfo,
+  SyncExecutionResponse,
   TimeRange,
   TransferResult,
   WatchRequest,
   WriteOptions,
 } from '../core/types'
+import { API_ENDPOINTS } from './constants'
 import type { DevboxRuntime } from '../api/types'
 
 export class DevboxInstance {
@@ -251,24 +264,146 @@ export class DevboxInstance {
   }
 
   // Process execution
-  async executeCommand(command: string): Promise<CommandResult> {
+  /**
+   * Execute a process asynchronously
+   * @param options Process execution options
+   * @returns Process execution response with process_id and pid
+   */
+  async executeCommand(options: ProcessExecOptions): Promise<ProcessExecResponse> {
     const urlResolver = this.sdk.getUrlResolver()
     return await urlResolver.executeWithConnection(this.name, async client => {
-      const response = await client.post<CommandResult>('/api/v1/process/exec', {
+      const response = await client.post<ProcessExecResponse>(API_ENDPOINTS.CONTAINER.PROCESS.EXEC, {
         body: {
-          command,
-          shell: '/bin/bash',
+          command: options.command,
+          args: options.args,
+          cwd: options.cwd,
+          env: options.env,
+          shell: options.shell,
+          timeout: options.timeout,
         },
       })
       return response.data
     })
   }
 
-  // Get process status
-  async getProcessStatus(pid: number): Promise<ProcessStatus> {
+  /**
+   * Execute a process synchronously and wait for completion
+   * @param options Process execution options
+   * @returns Synchronous execution response with stdout, stderr, and exit code
+   */
+  async execSync(options: ProcessExecOptions): Promise<SyncExecutionResponse> {
     const urlResolver = this.sdk.getUrlResolver()
     return await urlResolver.executeWithConnection(this.name, async client => {
-      const response = await client.get<ProcessStatus>(`/api/v1/process/status/${pid}`)
+      const response = await client.post<SyncExecutionResponse>(
+        API_ENDPOINTS.CONTAINER.PROCESS.EXEC_SYNC,
+        {
+          body: {
+            command: options.command,
+            args: options.args,
+            cwd: options.cwd,
+            env: options.env,
+            shell: options.shell,
+            timeout: options.timeout,
+          },
+        }
+      )
+      return response.data
+    })
+  }
+
+  /**
+   * Execute a process synchronously with streaming output (SSE)
+   * @param options Process execution options
+   * @returns ReadableStream for Server-Sent Events
+   */
+  async execSyncStream(options: ProcessExecOptions): Promise<ReadableStream> {
+    const urlResolver = this.sdk.getUrlResolver()
+    const serverUrl = await urlResolver.getServerUrl(this.name)
+    const endpoint = API_ENDPOINTS.CONTAINER.PROCESS.EXEC_SYNC_STREAM
+    const url = `${serverUrl}${endpoint}`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        Authorization: 'Bearer 1234', // TODO: remove this
+      },
+      body: JSON.stringify({
+        command: options.command,
+        args: options.args,
+        cwd: options.cwd,
+        env: options.env,
+        shell: options.shell,
+        timeout: options.timeout,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    if (!response.body) {
+      throw new Error('Response body is null')
+    }
+
+    return response.body
+  }
+
+  /**
+   * List all processes
+   * @returns List of all processes with their metadata
+   */
+  async listProcesses(): Promise<ListProcessesResponse> {
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const response = await client.get<ListProcessesResponse>(API_ENDPOINTS.CONTAINER.PROCESS.LIST)
+      return response.data
+    })
+  }
+
+  /**
+   * Get process status by process_id
+   * @param processId Process ID (string)
+   * @returns Process status response
+   */
+  async getProcessStatus(processId: string): Promise<GetProcessStatusResponse> {
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const endpoint = API_ENDPOINTS.CONTAINER.PROCESS.STATUS.replace('{process_id}', processId)
+      const response = await client.get<GetProcessStatusResponse>(endpoint)
+      return response.data
+    })
+  }
+
+  /**
+   * Kill a process by process_id
+   * @param processId Process ID (string)
+   * @param options Optional kill options (signal)
+   */
+  async killProcess(processId: string, options?: KillProcessOptions): Promise<void> {
+    const urlResolver = this.sdk.getUrlResolver()
+    await urlResolver.executeWithConnection(this.name, async client => {
+      const endpoint = API_ENDPOINTS.CONTAINER.PROCESS.KILL.replace('{process_id}', processId)
+      await client.post(endpoint, {
+        params: options?.signal ? { signal: options.signal } : undefined,
+      })
+    })
+  }
+
+  /**
+   * Get process logs by process_id
+   * @param processId Process ID (string)
+   * @param stream Enable log streaming (default: false)
+   * @returns Process logs response
+   */
+  async getProcessLogs(processId: string, stream = false): Promise<GetProcessLogsResponse> {
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const endpoint = API_ENDPOINTS.CONTAINER.PROCESS.LOGS.replace('{process_id}', processId)
+      const response = await client.get<GetProcessLogsResponse>(endpoint, {
+        params: { stream },
+      })
       return response.data
     })
   }
@@ -335,5 +470,440 @@ export class DevboxInstance {
   async getDetailedInfo(): Promise<DevboxInfo> {
     await this.refreshInfo()
     return { ...this.info }
+  }
+
+  // Git helper functions
+  /**
+   * Build Git URL with authentication
+   */
+  private buildAuthUrl(url: string, auth?: GitAuth): string {
+    if (!auth) return url
+
+    // Handle token authentication
+    if (auth.token) {
+      // Extract host from URL
+      const urlMatch = url.match(/^(https?:\/\/)([^@]+@)?([^\/]+)(\/.+)?$/)
+      if (urlMatch) {
+        const [, protocol, , host, path] = urlMatch
+        return `${protocol}${auth.token}@${host}${path || ''}`
+      }
+    }
+
+    // Handle username/password authentication
+    if (auth.username && (auth.password || auth.token)) {
+      const urlMatch = url.match(/^(https?:\/\/)([^\/]+)(\/.+)?$/)
+      if (urlMatch) {
+        const [, protocol, host, path] = urlMatch
+        const password = auth.password || auth.token || ''
+        return `${protocol}${auth.username}:${password}@${host}${path || ''}`
+      }
+    }
+
+    return url
+  }
+
+  /**
+   * Setup Git authentication environment variables
+   */
+  private setupGitAuth(env: Record<string, string> = {}, auth?: GitAuth): Record<string, string> {
+    const gitEnv = { ...env }
+
+    if (auth?.username) {
+      gitEnv.GIT_USERNAME = auth.username
+    }
+
+    if (auth?.password) {
+      gitEnv.GIT_PASSWORD = auth.password
+    } else if (auth?.token) {
+      gitEnv.GIT_PASSWORD = auth.token
+    }
+
+    return gitEnv
+  }
+
+  /**
+   * Parse Git branch list output
+   */
+  private parseGitBranches(stdout: string, currentBranch: string): GitBranchInfo[] {
+    const lines = stdout.split('\n').filter(Boolean)
+    const branches: GitBranchInfo[] = []
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+
+      const isCurrent = trimmed.startsWith('*')
+      const isRemote = trimmed.includes('remotes/')
+      let name = trimmed.replace(/^\*\s*/, '').trim()
+
+      if (isRemote) {
+        // Extract branch name from remotes/origin/branch-name
+        const match = name.match(/^remotes\/[^/]+\/(.+)$/)
+        if (match?.[1]) {
+          name = match[1]
+        } else {
+          continue
+        }
+      }
+
+      // Get commit hash
+      // This would require additional git command, simplified here
+      branches.push({
+        name,
+        isCurrent: name === currentBranch || isCurrent,
+        isRemote,
+        commit: '', // Will be filled by additional git command if needed
+      })
+    }
+
+    return branches
+  }
+
+  /**
+   * Parse Git status output
+   */
+  private parseGitStatus(stdout: string, branchLine: string): GitStatus {
+    const lines = stdout.split('\n').filter(Boolean)
+    const staged: string[] = []
+    const modified: string[] = []
+    const untracked: string[] = []
+    const deleted: string[] = []
+
+    // Parse porcelain status
+    for (const line of lines) {
+      if (line.length < 3) continue
+
+      const status = line.substring(0, 2)
+      const file = line.substring(3).trim()
+
+      if (status[0] === 'A' || status[0] === 'M' || status[0] === 'R' || status[0] === 'C') {
+        staged.push(file)
+      }
+      if (status[1] === 'M' || status[1] === 'D') {
+        modified.push(file)
+      }
+      if (status === '??') {
+        untracked.push(file)
+      }
+      if (status[0] === 'D' || status[1] === 'D') {
+        deleted.push(file)
+      }
+    }
+
+    // Parse branch line: ## branch-name...origin/branch-name [ahead 1, behind 2]
+    let currentBranch = 'main'
+    let ahead = 0
+    let behind = 0
+
+    if (branchLine) {
+      const branchMatch = branchLine.match(/^##\s+([^.]+)/)
+      if (branchMatch?.[1]) {
+        currentBranch = branchMatch[1]
+      }
+
+      const aheadMatch = branchLine.match(/ahead\s+(\d+)/)
+      if (aheadMatch?.[1]) {
+        ahead = Number.parseInt(aheadMatch[1], 10)
+      }
+
+      const behindMatch = branchLine.match(/behind\s+(\d+)/)
+      if (behindMatch?.[1]) {
+        behind = Number.parseInt(behindMatch[1], 10)
+      }
+    }
+
+    const isClean = staged.length === 0 && modified.length === 0 && untracked.length === 0 && deleted.length === 0
+
+    return {
+      currentBranch,
+      isClean,
+      ahead,
+      behind,
+      staged,
+      modified,
+      untracked,
+      deleted,
+    }
+  }
+
+  // Git operations
+  /**
+   * Clone a Git repository
+   */
+  async clone(options: GitCloneOptions): Promise<void> {
+    const args: string[] = ['clone']
+    if (options.branch) {
+      args.push('-b', options.branch)
+    }
+    if (options.depth) {
+      args.push('--depth', String(options.depth))
+    }
+    if (options.commit) {
+      args.push('--single-branch')
+    }
+    const authUrl = this.buildAuthUrl(options.url, options.auth)
+    args.push(authUrl)
+    if (options.targetDir) {
+      args.push(options.targetDir)
+    }
+
+    const env = this.setupGitAuth({}, options.auth)
+    const result = await this.execSync({
+      command: 'git',
+      args,
+      env,
+      timeout: 300, // 5 minutes timeout for clone
+    })
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Git clone failed: ${result.stderr || result.stdout}`)
+    }
+
+    // If specific commit is requested, checkout that commit
+    if (options.commit && options.targetDir) {
+      await this.execSync({
+        command: 'git',
+        args: ['checkout', options.commit],
+        cwd: options.targetDir,
+      })
+    }
+  }
+
+  /**
+   * Pull changes from remote repository
+   */
+  async pull(repoPath: string, options?: GitPullOptions): Promise<void> {
+    const args: string[] = ['pull']
+    const remote = options?.remote || 'origin'
+    if (options?.branch) {
+      args.push(remote, options.branch)
+    }
+
+    const env = this.setupGitAuth({}, options?.auth)
+    const result = await this.execSync({
+      command: 'git',
+      args,
+      cwd: repoPath,
+      env,
+      timeout: 120, // 2 minutes timeout
+    })
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Git pull failed: ${result.stderr || result.stdout}`)
+    }
+  }
+
+  /**
+   * Push changes to remote repository
+   */
+  async push(repoPath: string, options?: GitPushOptions): Promise<void> {
+    const args: string[] = ['push']
+    const remote = options?.remote || 'origin'
+    if (options?.force) {
+      args.push('--force')
+    }
+    if (options?.branch) {
+      args.push(remote, options.branch)
+    } else {
+      args.push(remote)
+    }
+
+    const env = this.setupGitAuth({}, options?.auth)
+    const result = await this.execSync({
+      command: 'git',
+      args,
+      cwd: repoPath,
+      env,
+      timeout: 120, // 2 minutes timeout
+    })
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Git push failed: ${result.stderr || result.stdout}`)
+    }
+  }
+
+  /**
+   * List all branches
+   */
+  async branches(repoPath: string): Promise<GitBranchInfo[]> {
+    // Get current branch
+    const currentBranchResult = await this.execSync({
+      command: 'git',
+      args: ['rev-parse', '--abbrev-ref', 'HEAD'],
+      cwd: repoPath,
+    })
+
+    const currentBranch = currentBranchResult.stdout.trim()
+
+    // Get all branches
+    const branchesResult = await this.execSync({
+      command: 'git',
+      args: ['branch', '-a'],
+      cwd: repoPath,
+    })
+
+    if (branchesResult.exitCode !== 0) {
+      throw new Error(`Git branches failed: ${branchesResult.stderr || branchesResult.stdout}`)
+    }
+
+    const branches = this.parseGitBranches(branchesResult.stdout, currentBranch)
+
+    // Get commit hashes for each branch
+    for (const branch of branches) {
+      try {
+        const commitResult = await this.execSync({
+          command: 'git',
+          args: ['rev-parse', branch.isRemote ? `origin/${branch.name}` : branch.name],
+          cwd: repoPath,
+        })
+        if (commitResult.exitCode === 0) {
+          branch.commit = commitResult.stdout.trim()
+        }
+      } catch {
+        // Ignore errors for branches that don't exist
+      }
+    }
+
+    return branches
+  }
+
+  /**
+   * Create a new branch
+   */
+  async createBranch(repoPath: string, branchName: string, checkout = false): Promise<void> {
+    const args = checkout ? ['checkout', '-b', branchName] : ['branch', branchName]
+
+    const result = await this.execSync({
+      command: 'git',
+      args,
+      cwd: repoPath,
+    })
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Git create branch failed: ${result.stderr || result.stdout}`)
+    }
+  }
+
+  /**
+   * Delete a branch
+   */
+  async deleteBranch(repoPath: string, branchName: string, force = false, remote = false): Promise<void> {
+    if (remote) {
+      const result = await this.execSync({
+        command: 'git',
+        args: ['push', 'origin', '--delete', branchName],
+        cwd: repoPath,
+      })
+
+      if (result.exitCode !== 0) {
+        throw new Error(`Git delete remote branch failed: ${result.stderr || result.stdout}`)
+      }
+    } else {
+      const args = force ? ['branch', '-D', branchName] : ['branch', '-d', branchName]
+
+      const result = await this.execSync({
+        command: 'git',
+        args,
+        cwd: repoPath,
+      })
+
+      if (result.exitCode !== 0) {
+        throw new Error(`Git delete branch failed: ${result.stderr || result.stdout}`)
+      }
+    }
+  }
+
+  /**
+   * Checkout a branch
+   */
+  async checkoutBranch(repoPath: string, branchName: string, create = false): Promise<void> {
+    const args = create ? ['checkout', '-b', branchName] : ['checkout', branchName]
+
+    const result = await this.execSync({
+      command: 'git',
+      args,
+      cwd: repoPath,
+    })
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Git checkout failed: ${result.stderr || result.stdout}`)
+    }
+  }
+
+  /**
+   * Stage files for commit
+   */
+  async add(repoPath: string, files?: string | string[]): Promise<void> {
+    const args: string[] = ['add']
+    if (!files || (Array.isArray(files) && files.length === 0)) {
+      args.push('.')
+    } else if (typeof files === 'string') {
+      args.push(files)
+    } else {
+      args.push(...files)
+    }
+
+    const result = await this.execSync({
+      command: 'git',
+      args,
+      cwd: repoPath,
+    })
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Git add failed: ${result.stderr || result.stdout}`)
+    }
+  }
+
+  /**
+   * Commit changes
+   */
+  async commit(repoPath: string, options: GitCommitOptions): Promise<void> {
+    const args: string[] = ['commit']
+    if (options.all) {
+      args.push('-a')
+    }
+    if (options.allowEmpty) {
+      args.push('--allow-empty')
+    }
+    if (options.author) {
+      args.push('--author', `${options.author.name} <${options.author.email}>`)
+    }
+    args.push('-m', options.message)
+
+    const result = await this.execSync({
+      command: 'git',
+      args,
+      cwd: repoPath,
+    })
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Git commit failed: ${result.stderr || result.stdout}`)
+    }
+  }
+
+  /**
+   * Get repository status
+   */
+  async gitStatus(repoPath: string): Promise<GitStatus> {
+    // Get porcelain status
+    const porcelainResult = await this.execSync({
+      command: 'git',
+      args: ['status', '--porcelain'],
+      cwd: repoPath,
+    })
+
+    // Get branch status
+    const branchResult = await this.execSync({
+      command: 'git',
+      args: ['status', '-sb'],
+      cwd: repoPath,
+    })
+
+    if (porcelainResult.exitCode !== 0 || branchResult.exitCode !== 0) {
+      throw new Error(`Git status failed: ${branchResult.stderr || branchResult.stdout}`)
+    }
+
+    const branchLine = branchResult.stdout.split('\n')[0] || ''
+    return this.parseGitStatus(porcelainResult.stdout, branchLine)
   }
 }

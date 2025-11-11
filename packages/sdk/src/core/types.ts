@@ -234,6 +234,81 @@ export interface MonitorData {
   timestamp: number
 }
 
+// Process execution request options
+export interface ProcessExecOptions {
+  /** Command to execute */
+  command: string
+  /** Command arguments */
+  args?: string[]
+  /** Working directory */
+  cwd?: string
+  /** Environment variables */
+  env?: Record<string, string>
+  /** Shell to use for execution */
+  shell?: string
+  /** Timeout in seconds */
+  timeout?: number
+}
+
+// Asynchronous execution response
+export interface ProcessExecResponse {
+  success: boolean
+  processId: string
+  pid: number
+  status: string
+  exitCode?: number
+}
+
+// Synchronous execution response
+export interface SyncExecutionResponse {
+  success: boolean
+  stdout: string
+  stderr: string
+  exitCode?: number
+  durationMs: number
+  startTime: number
+  endTime: number
+}
+
+// Process information
+export interface ProcessInfo {
+  id: string
+  pid: number
+  command: string
+  status: string
+  startTime: number
+  endTime?: number
+  exitCode?: number
+}
+
+// Process list response
+export interface ListProcessesResponse {
+  success: boolean
+  processes: ProcessInfo[]
+}
+
+// Process status response
+export interface GetProcessStatusResponse {
+  success: boolean
+  processId: string
+  pid: number
+  status: string
+  startAt: string // ISO 8601 date-time
+}
+
+// Process logs response
+export interface GetProcessLogsResponse {
+  success: boolean
+  processId: string
+  logs: string[]
+}
+
+// Kill process options
+export interface KillProcessOptions {
+  signal?: 'SIGTERM' | 'SIGKILL' | 'SIGINT'
+}
+
+// Legacy types (deprecated, kept for backward compatibility during migration)
 export interface CommandResult {
   /** Command exit code */
   exitCode: number
@@ -265,3 +340,104 @@ export interface ProcessStatus {
 }
 
 export type DevboxStatus = 'Creating' | 'Running' | 'Stopped' | 'Error' | 'Deleting' | 'Unknown'
+
+// Git authentication options
+export interface GitAuth {
+  /** Username for authentication */
+  username?: string
+  /** Password for authentication */
+  password?: string
+  /** Personal access token or API token */
+  token?: string
+  /** SSH key path (for SSH authentication) */
+  sshKey?: string
+}
+
+// Git clone options
+export interface GitCloneOptions {
+  /** Repository URL */
+  url: string
+  /** Target directory to clone into */
+  targetDir?: string
+  /** Branch to clone */
+  branch?: string
+  /** Specific commit to checkout */
+  commit?: string
+  /** Shallow clone depth */
+  depth?: number
+  /** Authentication options */
+  auth?: GitAuth
+}
+
+// Git pull options
+export interface GitPullOptions {
+  /** Remote name (default: origin) */
+  remote?: string
+  /** Branch to pull (default: current branch) */
+  branch?: string
+  /** Authentication options */
+  auth?: GitAuth
+}
+
+// Git push options
+export interface GitPushOptions {
+  /** Remote name (default: origin) */
+  remote?: string
+  /** Branch to push (default: current branch) */
+  branch?: string
+  /** Authentication options */
+  auth?: GitAuth
+  /** Force push */
+  force?: boolean
+}
+
+// Git branch information
+export interface GitBranchInfo {
+  /** Branch name */
+  name: string
+  /** Whether this is the current branch */
+  isCurrent: boolean
+  /** Whether this is a remote branch */
+  isRemote: boolean
+  /** Latest commit hash */
+  commit: string
+  /** Number of commits ahead of remote */
+  ahead?: number
+  /** Number of commits behind remote */
+  behind?: number
+}
+
+// Git repository status
+export interface GitStatus {
+  /** Current branch name */
+  currentBranch: string
+  /** Whether working directory is clean */
+  isClean: boolean
+  /** Number of commits ahead of remote */
+  ahead: number
+  /** Number of commits behind remote */
+  behind: number
+  /** Staged files */
+  staged: string[]
+  /** Modified files */
+  modified: string[]
+  /** Untracked files */
+  untracked: string[]
+  /** Deleted files */
+  deleted: string[]
+}
+
+// Git commit options
+export interface GitCommitOptions {
+  /** Commit message */
+  message: string
+  /** Author information */
+  author?: {
+    name: string
+    email: string
+  }
+  /** Allow empty commit */
+  allowEmpty?: boolean
+  /** Stage all modified files before commit */
+  all?: boolean
+}

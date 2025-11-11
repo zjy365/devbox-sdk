@@ -56,6 +56,21 @@ export type {
   TimeRange,
   ResourceInfo,
   HttpClientConfig,
+  ProcessExecOptions,
+  ProcessExecResponse,
+  SyncExecutionResponse,
+  ProcessInfo,
+  ListProcessesResponse,
+  GetProcessStatusResponse,
+  GetProcessLogsResponse,
+  KillProcessOptions,
+  GitAuth,
+  GitCloneOptions,
+  GitPullOptions,
+  GitPushOptions,
+  GitBranchInfo,
+  GitStatus,
+  GitCommitOptions,
 } from './core/types'
 
 // Export API types and enums

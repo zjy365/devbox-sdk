@@ -111,8 +111,8 @@ func TestGetAllSessions(t *testing.T) {
 
 		// Verify session information
 		for _, s := range response.Data.Sessions {
-			assert.NotEmpty(t, s.ID)
-			assert.Equal(t, "active", s.Status)
+			assert.NotEmpty(t, s.SessionID)
+			assert.Equal(t, "active", s.SessionStatus)
 			assert.NotEmpty(t, s.Shell)
 			assert.NotZero(t, s.CreatedAt)
 			assert.NotZero(t, s.LastUsedAt)
@@ -169,7 +169,7 @@ func TestGetAllSessions(t *testing.T) {
 		// Verify we have both active and terminated sessions
 		var activeCount, terminatedCount int
 		for _, s := range response.Data.Sessions {
-			switch s.Status {
+			switch s.SessionStatus {
 			case "active":
 				activeCount++
 			case "terminated", "failed", "completed":

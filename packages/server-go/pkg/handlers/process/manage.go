@@ -3,7 +3,6 @@ package process
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/labring/devbox-sdk-server/pkg/errors"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
@@ -12,10 +11,10 @@ import (
 // Process operation response types
 type GetProcessStatusResponse struct {
 	common.Response
-	ProcessID string `json:"process_id"`
+	ProcessID string `json:"processId"`
 	PID       int    `json:"pid"`
 	Status    string `json:"status"`
-	StartAt   string `json:"start_at"`
+	StartedAt int64  `json:"startedAt"`
 }
 
 type ListProcessesResponse struct {
@@ -25,7 +24,7 @@ type ListProcessesResponse struct {
 
 type GetProcessLogsResponse struct {
 	common.Response
-	ProcessID string   `json:"process_id"`
+	ProcessID string   `json:"processId"`
 	Logs      []string `json:"logs"`
 }
 
@@ -34,9 +33,9 @@ type ProcessInfoResponse struct {
 	PID       int    `json:"pid"`
 	Command   string `json:"command"`
 	Status    string `json:"status"`
-	StartTime int64  `json:"start_time"`
-	EndTime   *int64 `json:"end_time,omitempty"`
-	ExitCode  *int   `json:"exit_code,omitempty"`
+	StartTime int64  `json:"startTime"`
+	EndTime   *int64 `json:"endTime,omitempty"`
+	ExitCode  *int   `json:"exitCode,omitempty"`
 }
 
 // GetProcessStatus handles process status queries
@@ -62,7 +61,7 @@ func (h *ProcessHandler) GetProcessStatus(w http.ResponseWriter, r *http.Request
 		ProcessID: processID,
 		PID:       processInfo.Cmd.Process.Pid,
 		Status:    processInfo.Status,
-		StartAt:   processInfo.StartAt.Truncate(time.Second).Format(time.RFC3339),
+		StartedAt: processInfo.StartAt.Unix(),
 	})
 }
 

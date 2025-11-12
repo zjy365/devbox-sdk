@@ -4,12 +4,12 @@ import "time"
 
 // WebSocketConfig WebSocket Config
 type WebSocketConfig struct {
-	PingPeriod            time.Duration `json:"ping_period"`
-	WriteWait             time.Duration `json:"write_wait"`
-	MaxMessageSize        int64         `json:"max_message_size"`
-	ReadTimeout           time.Duration `json:"read_timeout"`
-	HealthCheckInterval   time.Duration `json:"health_check_interval"`
-	BufferCleanupInterval time.Duration `json:"buffer_cleanup_interval"`
+	PingPeriod            time.Duration `json:"pingPeriod"`
+	WriteWait             time.Duration `json:"writeWait"`
+	MaxMessageSize        int64         `json:"maxMessageSize"`
+	ReadTimeout           time.Duration `json:"readTimeout"`
+	HealthCheckInterval   time.Duration `json:"healthCheckInterval"`
+	BufferCleanupInterval time.Duration `json:"bufferCleanupInterval"`
 }
 
 // NewDefaultWebSocketConfig Create a default WebSocket configuration

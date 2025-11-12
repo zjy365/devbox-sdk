@@ -201,9 +201,9 @@ start_process() {
   fi
   local process_id
   if has_jq; then
-    process_id=$(printf '%s' "$body" | jq -r '.process_id' 2>/dev/null || echo "")
+    processId=$(printf '%s' "$body" | jq -r '.processId' 2>/dev/null || echo "")
   else
-    process_id=$(echo "$body" | sed -n 's/.*"process_id"\s*:\s*"\([^"]*\)".*/\1/p')
+    processId=$(echo "$body" | sed -n 's/.*"processId"\s*:\s*"\([^"]*\)".*/\1/p')
   fi
   if [ -z "$process_id" ] || [ "$process_id" = "null" ]; then
     fail "Exec $desc returned empty process_id"; printf '%s\n' "$body"; exit 1
@@ -219,7 +219,7 @@ get_status() {
   local body; body=$(extract_body "$resp")
   echo "$body" > "test/status_${pid}.json"
   show_response "status $pid" "$status" "$body"
-  expect_json_field "$body" '.process_id' "$pid"
+  expect_json_field "$body" '.processId' "$pid"
 }
 
 get_logs() {

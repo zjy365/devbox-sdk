@@ -28,13 +28,13 @@ type SessionCdRequest struct {
 // Session operation response types
 type SessionInfoResponse struct {
 	common.Response
-	SessionID  string            `json:"session_id"`
+	SessionID  string            `json:"sessionId"`
 	Shell      string            `json:"shell"`
 	Cwd        string            `json:"cwd"`
 	Env        map[string]string `json:"env"`
 	Status     string            `json:"status"`
-	CreatedAt  string            `json:"created_at"`
-	LastUsedAt string            `json:"last_used_at"`
+	CreatedAt  string            `json:"createdAt"`
+	LastUsedAt string            `json:"lastUsedAt"`
 }
 
 type SessionEnvUpdateResponse struct {
@@ -43,7 +43,7 @@ type SessionEnvUpdateResponse struct {
 
 type SessionExecResponse struct {
 	common.Response
-	ExitCode int    `json:"exit_code"`
+	ExitCode int    `json:"exitCode"`
 	Stdout   string `json:"stdout"`
 	Stderr   string `json:"stderr"`
 	Duration int64  `json:"duration"`
@@ -51,7 +51,7 @@ type SessionExecResponse struct {
 
 type SessionCdResponse struct {
 	common.Response
-	WorkingDir string `json:"working_dir"`
+	WorkingDir string `json:"workingDir"`
 }
 
 // GetSession handles session information retrieval

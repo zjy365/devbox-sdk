@@ -8,7 +8,11 @@ The DevBox SDK Server provides a comprehensive HTTP API for managing processes, 
 
 ## Key Features
 
-- **File Operations**: Complete CRUD operations for files with security constraints
+- **File Operations**: Complete CRUD operations with smart routing
+  - JSON mode for text and small files with optional base64 encoding
+  - Binary streaming mode for large files and media
+  - Multipart FormData mode for browser-native uploads
+  - Multiple upload methods: multipart, JSON, or direct binary
 - **Process Management**: Execute processes synchronously or asynchronously with comprehensive log monitoring
 - **Session Management**: Create and manage interactive shell sessions with environment and directory management
 - **Real-time Communication**: WebSocket connections for live log streaming and event subscriptions
@@ -33,11 +37,23 @@ The DevBox SDK Server provides a comprehensive HTTP API for managing processes, 
 
 2. **File Operations** (With authentication):
    ```bash
-   # Write a file
+   # Write a text file (JSON mode)
    curl -X POST http://localhost:9757/api/v1/files/write \
      -H "Authorization: Bearer YOUR_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"path": "/tmp/hello.txt", "content": "Hello, World!"}'
+
+   # Upload binary file (Binary mode - optimal for large files)
+   curl -X POST http://localhost:9757/api/v1/files/write?path=/tmp/image.png \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Content-Type: image/png" \
+     --data-binary @image.png
+
+   # Upload with FormData (Multipart mode - browser-compatible)
+   curl -X POST http://localhost:9757/api/v1/files/write \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -F "file=@document.pdf" \
+     -F "path=/tmp/document.pdf"
 
    # Read a file
    curl -X POST http://localhost:9757/api/v1/files/read \

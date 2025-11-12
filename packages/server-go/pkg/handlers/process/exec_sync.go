@@ -31,10 +31,10 @@ type SyncExecutionResponse struct {
 	common.Response
 	Stdout     string `json:"stdout"`
 	Stderr     string `json:"stderr"`
-	ExitCode   *int   `json:"exit_code"`
-	DurationMS int64  `json:"duration_ms"` // Execution time (milliseconds)
-	StartTime  int64  `json:"start_time"`
-	EndTime    int64  `json:"end_time"`
+	ExitCode   *int   `json:"exitCode"`
+	DurationMS int64  `json:"durationMs"` // Execution time (milliseconds)
+	StartTime  int64  `json:"startTime"`
+	EndTime    int64  `json:"endTime"`
 }
 
 // ExecProcessSync Handle synchronous process execution

@@ -1,0 +1,37 @@
+name: build-server-go
+
+# 手动触发构建 server-go 的二进制
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build server-go (linux/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goarch: [amd64, arm64]
+        go-version: ['1.25.x']
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: Build binary via Makefile
+        working-directory: packages/server-go
+        run: |
+          make clean
+          make build BUILD_ENV="CGO_ENABLED=0 GOOS=linux GOARCH=${{ matrix.goarch }}"
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: devbox-server-linux-${{ matrix.goarch }}
+          path: packages/server-go/build/devbox-server
+          if-no-files-found: error
+          retention-days: 7

@@ -122,7 +122,7 @@ run_structured_test() {
     local expected_status="$4"
     local description="$5"
     local expected_success="$6"
-    local expected_has_exit_code="$7"
+    local expected_has_exitCode="$7"
 
     echo -e "\n${BLUE}Testing: $description${NC}"
     echo -e "${BLUE}Request: $method $url${NC}"
@@ -152,7 +152,7 @@ run_structured_test() {
             local success_bool=$(echo "$response_body" | jq '.success')
             local success_str=$(echo "$response_body" | jq -r '.success // "null"')
             local error=$(echo "$response_body" | jq -r '.error // "null"')
-            local exit_code=$(echo "$response_body" | jq -r '.exit_code // "null"')
+            local exitCode=$(echo "$response_body" | jq -r '.exitCode // "null"')
 
             echo -e "${BLUE}Response Structure:${NC}"
             echo -e "  Success: $success_str (raw: $success_bool)"

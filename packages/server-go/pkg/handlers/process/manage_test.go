@@ -40,7 +40,7 @@ func TestGetProcessStatus(t *testing.T) {
 		assert.Equal(t, processID, response.ProcessID)
 		assert.Equal(t, execResponse.PID, response.PID)
 		assert.Equal(t, "running", response.Status)
-		assert.NotEmpty(t, response.StartAt)
+		assert.NotEmpty(t, response.StartedAt)
 	})
 
 	t.Run("get non-existent process status", func(t *testing.T) {

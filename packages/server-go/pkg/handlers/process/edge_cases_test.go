@@ -69,7 +69,7 @@ func TestEdgeCases(t *testing.T) {
 		assert.Greater(t, statusResponse.PID, 0)
 		// Status could be running or completed depending on timing
 		assert.Contains(t, []string{"running", "completed", "failed"}, statusResponse.Status)
-		assert.NotEmpty(t, statusResponse.StartAt)
+		assert.NotEmpty(t, statusResponse.StartedAt)
 	}
 
 	// Verify logs endpoint handles special characters

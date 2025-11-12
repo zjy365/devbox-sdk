@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,4 +53,19 @@ func (h *FileHandler) checkFileExists(path string) (os.FileInfo, error) {
 		return nil, errors.NewFileNotFoundError(path)
 	}
 	return info, err
+}
+
+// mimeFromExt returns a best-effort MIME type by file extension
+// Falls back to application/octet-stream when unknown
+func mimeFromExt(ext string) string {
+	if ext == "" {
+		return "application/octet-stream"
+	}
+	if !strings.HasPrefix(ext, ".") {
+		ext = "." + ext
+	}
+	if mt := mime.TypeByExtension(ext); mt != "" {
+		return mt
+	}
+	return "application/octet-stream"
 }

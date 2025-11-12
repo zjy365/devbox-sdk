@@ -33,11 +33,7 @@ export default defineConfig({
 
   // External dependencies (don't bundle these)
   external: [
-    'node-fetch',
-    'ws',
-    'p-queue',
-    'p-retry',
-    'form-data'
+    'ws'
   ],
 
   // Build hooks

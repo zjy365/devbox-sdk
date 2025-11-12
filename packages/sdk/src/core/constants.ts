@@ -69,6 +69,9 @@ export const API_ENDPOINTS = {
       READ: '/api/v1/files/read',
       LIST: '/api/v1/files/list',
       DELETE: '/api/v1/files/delete',
+      MOVE: '/api/v1/files/move',
+      RENAME: '/api/v1/files/rename',
+      DOWNLOAD: '/api/v1/files/download',
       BATCH_UPLOAD: '/api/v1/files/batch-upload',
       BATCH_DOWNLOAD: '/api/v1/files/batch-download',
     },
@@ -81,6 +84,7 @@ export const API_ENDPOINTS = {
       KILL: '/api/v1/process/{process_id}/kill',
       LOGS: '/api/v1/process/{process_id}/logs',
     },
+    PORTS: '/api/v1/ports',
     WEBSOCKET: '/ws',
   },
 } as const

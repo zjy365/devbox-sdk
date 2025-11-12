@@ -1,6 +1,6 @@
 import { DevboxAPI } from '../api/client'
 import { ContainerUrlResolver } from '../http/manager'
-import { DevboxInstance } from './DevboxInstance'
+import { DevboxInstance } from './devbox-instance'
 import type {
   DevboxCreateConfig,
   DevboxInfo,
@@ -58,4 +58,5 @@ export class DevboxSDK {
   }
 }
 
-export { DevboxInstance } from './DevboxInstance'
+export { DevboxInstance } from './devbox-instance'
+

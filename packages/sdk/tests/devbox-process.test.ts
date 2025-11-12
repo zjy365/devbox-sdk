@@ -28,8 +28,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { DevboxSDK } from '../src/core/DevboxSDK'
-import type { DevboxInstance } from '../src/core/DevboxInstance'
+import { DevboxSDK } from '../src/core/devbox-sdk'
+import type { DevboxInstance } from '../src/core/devbox-instance'
 import { TEST_CONFIG } from './setup'
 import type { DevboxCreateConfig, ProcessExecOptions } from '../src/core/types'
 import { DevboxRuntime } from '../src/api/types'
@@ -346,7 +346,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(status.processId).toBe(execResult.processId)
       expect(status.pid).toBe(execResult.pid)
       expect(status.status).toBeDefined()
-      expect(status.startAt).toBeDefined()
+      expect(status.startedAt).toBeDefined()
     }, 15000)
 
     it('应该能够处理不存在的进程ID', async () => {

@@ -4,9 +4,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { DevboxSDK } from '../src/core/DevboxSDK'
+import { DevboxSDK } from '../src/core/devbox-sdk'
 import { TEST_CONFIG } from './setup'
-import type { DevboxInstance } from '../src/core/DevboxInstance'
+import type { DevboxInstance } from '../src/core/devbox-instance'
 import { DevboxRuntime } from '../src/api/types'
 
 describe('Devbox 生命周期管理', () => {

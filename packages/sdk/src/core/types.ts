@@ -141,16 +141,17 @@ export interface TransferProgress {
 export interface TransferResult {
   /** Transfer was successful */
   success: boolean
-  /** Number of files processed */
-  processed: number
+  /** Upload results for each file */
+  results: Array<{
+    path: string
+    success: boolean
+    size?: number
+    error?: string
+  }>
   /** Total number of files */
-  total: number
-  /** Bytes transferred */
-  bytesTransferred: number
-  /** Transfer duration in milliseconds */
-  duration: number
-  /** Errors encountered during transfer */
-  errors?: TransferError[]
+  totalFiles: number
+  /** Number of successfully uploaded files */
+  successCount: number
 }
 
 export interface TransferError {
@@ -160,6 +161,46 @@ export interface TransferError {
   error: string
   /** Error code */
   code: string
+}
+
+// File move options
+export interface MoveFileOptions {
+  source: string
+  destination: string
+  overwrite?: boolean
+}
+
+// File move response
+export interface MoveFileResponse {
+  success: boolean
+  source: string
+  destination: string
+}
+
+// File rename options
+export interface RenameFileOptions {
+  oldPath: string
+  newPath: string
+}
+
+// File rename response
+export interface RenameFileResponse {
+  success: boolean
+  oldPath: string
+  newPath: string
+}
+
+// File download options
+export interface DownloadFileOptions {
+  paths: string[]
+  format?: 'tar.gz' | 'tar' | 'multipart' | 'direct'
+}
+
+// Ports response
+export interface PortsResponse {
+  success: boolean
+  ports: number[]
+  lastUpdatedAt: number
 }
 
 export interface FileChangeEvent {
@@ -307,7 +348,7 @@ export interface GetProcessStatusResponse {
   processId: string
   pid: number
   status: string
-  startAt: string // ISO 8601 date-time
+  startedAt: number // Unix timestamp (seconds)
 }
 
 // Process logs response

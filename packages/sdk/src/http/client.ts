@@ -1,19 +1,6 @@
 import { DevboxSDKError, ERROR_CODES } from '../utils/error'
 import type { HTTPResponse, RequestOptions } from './types'
 
-interface FormDataPackage {
-  getHeaders(): Record<string, string>
-}
-
-function isFormDataPackage(body: unknown): body is FormDataPackage {
-  return (
-    body !== null &&
-    typeof body === 'object' &&
-    'getHeaders' in body &&
-    typeof (body as FormDataPackage).getHeaders === 'function'
-  )
-}
-
 export class DevboxContainerClient {
   private baseUrl: string
   private timeout: number
@@ -54,11 +41,10 @@ export class DevboxContainerClient {
       }
     }
 
+    // Check for FormData (undici FormData or browser FormData)
     const isFormData =
       options?.body !== undefined &&
-      (options.body instanceof FormData ||
-        (typeof FormData !== 'undefined' && options.body instanceof FormData) ||
-        isFormDataPackage(options.body))
+      options.body instanceof FormData
 
     const fetchOptions: RequestInit = {
       method,
@@ -72,15 +58,14 @@ export class DevboxContainerClient {
 
     if (options?.body !== undefined) {
       if (isFormData) {
-        if (isFormDataPackage(options.body)) {
-          const headers = options.body.getHeaders()
-          Object.assign(fetchOptions.headers || {}, headers)
-          fetchOptions.body = options.body as unknown as RequestInit['body']
-        } else {
-          fetchOptions.body = options.body as FormData
-        }
+        // undici FormData automatically handles Content-Type with boundary
+        fetchOptions.body = options.body as FormData
       } else if (typeof options.body === 'string') {
         fetchOptions.body = options.body
+      } else if (Buffer.isBuffer(options.body) || options.body instanceof ArrayBuffer || options.body instanceof Uint8Array) {
+        // Support binary data (Buffer, ArrayBuffer, Uint8Array)
+        // fetch API natively supports these types
+        fetchOptions.body = options.body as unknown as RequestInit['body']
       } else {
         fetchOptions.body = JSON.stringify(options.body)
       }

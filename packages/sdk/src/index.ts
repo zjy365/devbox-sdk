@@ -7,8 +7,8 @@
 export const VERSION = '1.0.0'
 
 // Export core classes
-export { DevboxSDK } from './core/DevboxSDK'
-export { DevboxInstance } from './core/DevboxInstance'
+export { DevboxSDK } from './core/devbox-sdk'
+export { DevboxInstance } from './core/devbox-instance'
 
 // Export API client
 export { DevboxAPI } from './api/client'
@@ -72,6 +72,12 @@ export type {
   GitBranchInfo,
   GitStatus,
   GitCommitOptions,
+  MoveFileOptions,
+  MoveFileResponse,
+  RenameFileOptions,
+  RenameFileResponse,
+  DownloadFileOptions,
+  PortsResponse,
 } from './core/types'
 
 // Export API types and enums
@@ -90,5 +96,5 @@ export type {
 } from './api/types'
 
 // Default export for convenience
-import { DevboxSDK } from './core/DevboxSDK'
+import { DevboxSDK } from './core/devbox-sdk'
 export default DevboxSDK

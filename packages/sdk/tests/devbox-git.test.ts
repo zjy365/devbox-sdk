@@ -23,8 +23,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { DevboxSDK } from '../src/core/DevboxSDK'
-import type { DevboxInstance } from '../src/core/DevboxInstance'
+import { DevboxSDK } from '../src/core/devbox-sdk'
+import type { DevboxInstance } from '../src/core/devbox-instance'
 import { TEST_CONFIG } from './setup'
 import type { DevboxCreateConfig, GitCloneOptions, GitCommitOptions } from '../src/core/types'
 import { DevboxRuntime } from '../src/api/types'
@@ -54,7 +54,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
   let devboxInstance: DevboxInstance
   const TEST_DEVBOX_NAME = `test-git-ops-${Date.now()}`
   const TEST_REPO_URL = 'https://github.com/octocat/Hello-World.git' // Small public test repo
-  const TEST_REPO_DIR = '/tmp/test-repo'
+  const TEST_REPO_DIR = './test-git/test-repo'
 
   beforeEach(async () => {
     sdk = new DevboxSDK(TEST_CONFIG)
@@ -74,7 +74,19 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
   }, 30000)
 
   afterEach(async () => {
+    // Clean up test directories
     if (devboxInstance) {
+      try {
+        // Remove test repository directories
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', TEST_REPO_DIR, `${TEST_REPO_DIR}-branch`],
+        })
+      } catch (error) {
+        // Ignore errors if directories don't exist
+        console.warn('Failed to cleanup test directories:', error)
+      }
+
       try {
         await devboxInstance.delete()
       } catch (error) {
@@ -95,7 +107,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
         depth: 1, // Shallow clone for faster testing
       }
 
-      await expect(devboxInstance.clone(options)).resolves.not.toThrow()
+      await expect(devboxInstance.git.clone(options)).resolves.not.toThrow()
     }, 60000)
 
     it('应该能够克隆特定分支', async () => {
@@ -106,29 +118,29 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
         depth: 1,
       }
 
-      await expect(devboxInstance.clone(options)).resolves.not.toThrow()
+      await expect(devboxInstance.git.clone(options)).resolves.not.toThrow()
     }, 60000)
 
     it('应该能够拉取远程更改', async () => {
       // First clone the repo
-      await devboxInstance.clone({
+      await devboxInstance.git.clone({
         url: TEST_REPO_URL,
         targetDir: TEST_REPO_DIR,
         depth: 1,
       })
 
       // Then pull
-      await expect(devboxInstance.pull(TEST_REPO_DIR)).resolves.not.toThrow()
+      await expect(devboxInstance.git.pull(TEST_REPO_DIR)).resolves.not.toThrow()
     }, 60000)
 
     it('应该能够获取仓库状态', async () => {
-      await devboxInstance.clone({
+      await devboxInstance.git.clone({
         url: TEST_REPO_URL,
         targetDir: TEST_REPO_DIR,
         depth: 1,
       })
 
-      const status = await devboxInstance.gitStatus(TEST_REPO_DIR)
+      const status = await devboxInstance.git.status(TEST_REPO_DIR)
 
       expect(status).toBeDefined()
       expect(status.currentBranch).toBeDefined()
@@ -143,7 +155,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
   describe('分支管理', () => {
     beforeEach(async () => {
       // Clone repo before each branch test
-      await devboxInstance.clone({
+      await devboxInstance.git.clone({
         url: TEST_REPO_URL,
         targetDir: TEST_REPO_DIR,
         depth: 1,
@@ -151,7 +163,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
     })
 
     it('应该能够列出所有分支', async () => {
-      const branches = await devboxInstance.branches(TEST_REPO_DIR)
+      const branches = await devboxInstance.git.branches(TEST_REPO_DIR)
 
       expect(Array.isArray(branches)).toBe(true)
       expect(branches.length).toBeGreaterThan(0)
@@ -167,10 +179,10 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
     it('应该能够创建新分支', async () => {
       const branchName = `test-branch-${Date.now()}`
 
-      await expect(devboxInstance.createBranch(TEST_REPO_DIR, branchName)).resolves.not.toThrow()
+      await expect(devboxInstance.git.createBranch(TEST_REPO_DIR, branchName)).resolves.not.toThrow()
 
       // Verify branch exists
-      const branches = await devboxInstance.branches(TEST_REPO_DIR)
+      const branches = await devboxInstance.git.branches(TEST_REPO_DIR)
       const foundBranch = branches.find(b => b.name === branchName)
       expect(foundBranch).toBeDefined()
     }, 30000)
@@ -179,24 +191,24 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
       const branchName = `test-checkout-branch-${Date.now()}`
 
       await expect(
-        devboxInstance.createBranch(TEST_REPO_DIR, branchName, true)
+        devboxInstance.git.createBranch(TEST_REPO_DIR, branchName, true)
       ).resolves.not.toThrow()
 
       // Verify we're on the new branch
-      const status = await devboxInstance.gitStatus(TEST_REPO_DIR)
+      const status = await devboxInstance.git.status(TEST_REPO_DIR)
       expect(status.currentBranch).toBe(branchName)
     }, 30000)
 
     it('应该能够切换分支', async () => {
       // Create a new branch first
       const branchName = `test-switch-${Date.now()}`
-      await devboxInstance.createBranch(TEST_REPO_DIR, branchName)
+      await devboxInstance.git.createBranch(TEST_REPO_DIR, branchName)
 
       // Switch to it
-      await expect(devboxInstance.checkoutBranch(TEST_REPO_DIR, branchName)).resolves.not.toThrow()
+      await expect(devboxInstance.git.checkoutBranch(TEST_REPO_DIR, branchName)).resolves.not.toThrow()
 
       // Verify we're on the branch
-      const status = await devboxInstance.gitStatus(TEST_REPO_DIR)
+      const status = await devboxInstance.git.status(TEST_REPO_DIR)
       expect(status.currentBranch).toBe(branchName)
     }, 30000)
 
@@ -204,13 +216,13 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
       const branchName = `test-delete-${Date.now()}`
 
       // Create branch
-      await devboxInstance.createBranch(TEST_REPO_DIR, branchName)
+      await devboxInstance.git.createBranch(TEST_REPO_DIR, branchName)
 
       // Delete branch
-      await expect(devboxInstance.deleteBranch(TEST_REPO_DIR, branchName)).resolves.not.toThrow()
+      await expect(devboxInstance.git.deleteBranch(TEST_REPO_DIR, branchName)).resolves.not.toThrow()
 
       // Verify branch is deleted
-      const branches = await devboxInstance.branches(TEST_REPO_DIR)
+      const branches = await devboxInstance.git.branches(TEST_REPO_DIR)
       const foundBranch = branches.find(b => b.name === branchName && !b.isRemote)
       expect(foundBranch).toBeUndefined()
     }, 30000)
@@ -218,7 +230,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
 
   describe('提交操作', () => {
     beforeEach(async () => {
-      await devboxInstance.clone({
+      await devboxInstance.git.clone({
         url: TEST_REPO_URL,
         targetDir: TEST_REPO_DIR,
         depth: 1,
@@ -231,10 +243,10 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
       await devboxInstance.writeFile(testFile, 'Test content')
 
       // Stage the file
-      await expect(devboxInstance.add(TEST_REPO_DIR, testFile)).resolves.not.toThrow()
+      await expect(devboxInstance.git.add(TEST_REPO_DIR, testFile)).resolves.not.toThrow()
 
       // Verify file is staged
-      const status = await devboxInstance.gitStatus(TEST_REPO_DIR)
+      const status = await devboxInstance.git.status(TEST_REPO_DIR)
       expect(status.staged).toContain(testFile.replace(`${TEST_REPO_DIR}/`, ''))
     }, 30000)
 
@@ -244,10 +256,10 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
       await devboxInstance.writeFile(`${TEST_REPO_DIR}/file2.txt`, 'Content 2')
 
       // Stage all files
-      await expect(devboxInstance.add(TEST_REPO_DIR)).resolves.not.toThrow()
+      await expect(devboxInstance.git.add(TEST_REPO_DIR)).resolves.not.toThrow()
 
       // Verify files are staged
-      const status = await devboxInstance.gitStatus(TEST_REPO_DIR)
+      const status = await devboxInstance.git.status(TEST_REPO_DIR)
       expect(status.staged.length).toBeGreaterThan(0)
     }, 30000)
 
@@ -255,20 +267,20 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
       // Create and stage a file
       const testFile = `${TEST_REPO_DIR}/commit-test-${Date.now()}.txt`
       await devboxInstance.writeFile(testFile, 'Commit test content')
-      await devboxInstance.add(TEST_REPO_DIR, testFile)
+      await devboxInstance.git.add(TEST_REPO_DIR, testFile)
 
       // Commit
       const commitOptions: GitCommitOptions = {
         message: `Test commit ${Date.now()}`,
       }
 
-      await expect(devboxInstance.commit(TEST_REPO_DIR, commitOptions)).resolves.not.toThrow()
+      await expect(devboxInstance.git.commit(TEST_REPO_DIR, commitOptions)).resolves.not.toThrow()
     }, 30000)
 
     it('应该能够使用作者信息提交', async () => {
       const testFile = `${TEST_REPO_DIR}/author-test-${Date.now()}.txt`
       await devboxInstance.writeFile(testFile, 'Author test content')
-      await devboxInstance.add(TEST_REPO_DIR, testFile)
+      await devboxInstance.git.add(TEST_REPO_DIR, testFile)
 
       const commitOptions: GitCommitOptions = {
         message: `Test commit with author ${Date.now()}`,
@@ -278,7 +290,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
         },
       }
 
-      await expect(devboxInstance.commit(TEST_REPO_DIR, commitOptions)).resolves.not.toThrow()
+      await expect(devboxInstance.git.commit(TEST_REPO_DIR, commitOptions)).resolves.not.toThrow()
     }, 30000)
 
     it('应该能够创建空提交', async () => {
@@ -287,11 +299,11 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
         allowEmpty: true,
       }
 
-      await expect(devboxInstance.commit(TEST_REPO_DIR, commitOptions)).resolves.not.toThrow()
+      await expect(devboxInstance.git.commit(TEST_REPO_DIR, commitOptions)).resolves.not.toThrow()
     }, 30000)
 
     it('应该能够获取仓库状态', async () => {
-      const status = await devboxInstance.gitStatus(TEST_REPO_DIR)
+      const status = await devboxInstance.git.status(TEST_REPO_DIR)
 
       expect(status.currentBranch).toBeDefined()
       expect(typeof status.isClean).toBe('boolean')
@@ -307,7 +319,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
   describe('Git 工作流集成测试', () => {
     it('应该能够完成完整的 Git 工作流', async () => {
       // 1. Clone repository
-      await devboxInstance.clone({
+      await devboxInstance.git.clone({
         url: TEST_REPO_URL,
         targetDir: TEST_REPO_DIR,
         depth: 1,
@@ -315,25 +327,25 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
 
       // 2. Create a new branch
       const branchName = `feature-${Date.now()}`
-      await devboxInstance.createBranch(TEST_REPO_DIR, branchName, true)
+      await devboxInstance.git.createBranch(TEST_REPO_DIR, branchName, true)
 
       // 3. Create and stage files
       const testFile = `${TEST_REPO_DIR}/workflow-test-${Date.now()}.txt`
       await devboxInstance.writeFile(testFile, 'Workflow test content')
-      await devboxInstance.add(TEST_REPO_DIR, testFile)
+      await devboxInstance.git.add(TEST_REPO_DIR, testFile)
 
       // 4. Commit changes
-      await devboxInstance.commit(TEST_REPO_DIR, {
+      await devboxInstance.git.commit(TEST_REPO_DIR, {
         message: `Workflow test commit ${Date.now()}`,
       })
 
       // 5. Check status
-      const status = await devboxInstance.gitStatus(TEST_REPO_DIR)
+      const status = await devboxInstance.git.status(TEST_REPO_DIR)
       expect(status.currentBranch).toBe(branchName)
       expect(status.isClean).toBe(true)
 
       // 6. List branches
-      const branches = await devboxInstance.branches(TEST_REPO_DIR)
+      const branches = await devboxInstance.git.branches(TEST_REPO_DIR)
       const foundBranch = branches.find(b => b.name === branchName)
       expect(foundBranch).toBeDefined()
     }, 90000)
@@ -346,27 +358,27 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
         targetDir: '/tmp/nonexistent-repo',
       }
 
-      await expect(devboxInstance.clone(options)).rejects.toThrow()
+      await expect(devboxInstance.git.clone(options)).rejects.toThrow()
     }, 60000)
 
     it('应该处理不存在的分支', async () => {
-      await devboxInstance.clone({
+      await devboxInstance.git.clone({
         url: TEST_REPO_URL,
         targetDir: TEST_REPO_DIR,
         depth: 1,
       })
 
       await expect(
-        devboxInstance.checkoutBranch(TEST_REPO_DIR, 'nonexistent-branch-12345')
+        devboxInstance.git.checkoutBranch(TEST_REPO_DIR, 'nonexistent-branch-12345')
       ).rejects.toThrow()
     }, 30000)
 
     it('应该处理在不存在的目录中执行 Git 操作', async () => {
-      await expect(devboxInstance.gitStatus('/tmp/nonexistent-repo-12345')).rejects.toThrow()
+      await expect(devboxInstance.git.status('/tmp/nonexistent-repo-12345')).rejects.toThrow()
     }, 10000)
 
     it('应该处理提交空消息', async () => {
-      await devboxInstance.clone({
+      await devboxInstance.git.clone({
         url: TEST_REPO_URL,
         targetDir: TEST_REPO_DIR,
         depth: 1,
@@ -374,7 +386,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
 
       // Git commit requires a message, so empty message should fail
       await expect(
-        devboxInstance.commit(TEST_REPO_DIR, {
+        devboxInstance.git.commit(TEST_REPO_DIR, {
           message: '',
         })
       ).rejects.toThrow()

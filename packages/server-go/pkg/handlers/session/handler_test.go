@@ -22,7 +22,7 @@ func TestNewSessionHandler(t *testing.T) {
 		h2 := NewSessionHandler()
 
 		// Verify sessions maps are independent
-		h1.sessions["test"] = &SessionInfo{ID: "test"}
+		h1.sessions["test"] = &sessionInfo{ID: "test"}
 		assert.Empty(t, h2.sessions, "second handler's sessions map should remain empty")
 		delete(h1.sessions, "test")
 	})
@@ -99,9 +99,9 @@ func TestSessionHandler_ConcurrentAccess(t *testing.T) {
 }
 
 func TestSessionHandler_TypeAliases(t *testing.T) {
-	t.Run("SessionInfo structure is valid", func(t *testing.T) {
-		// Test that SessionInfo can be properly initialized with all fields
-		sessionInfo := &SessionInfo{
+	t.Run("sessionInfo structure is valid", func(t *testing.T) {
+		// Test that sessionInfo can be properly initialized with all fields
+		sessionInfo := &sessionInfo{
 			ID:     "test-session",
 			Shell:  "/bin/bash",
 			Cwd:    "/tmp",

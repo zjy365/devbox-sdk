@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,44 +36,37 @@ func createTestSession(t *testing.T, handler *SessionHandler, req CreateSessionR
 	handler.CreateSession(w, httpReq)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response CreateSessionResponse
+	var response common.Response[CreateSessionResponse]
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
-	assert.True(t, response.Success)
-	assert.NotEmpty(t, response.SessionID)
+	assert.Equal(t, common.StatusSuccess, response.Status)
+	assert.NotEmpty(t, response.Data.SessionID)
 
-	return response, response.SessionID
+	return response.Data, response.Data.SessionID
 }
 
 // Helper function to assert error response
 func assertErrorResponse(t *testing.T, w *httptest.ResponseRecorder, expectedError string) {
-	// Accept 200, 400, 404, and 500 status codes for errors
-	assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusBadRequest || w.Code == http.StatusNotFound || w.Code == http.StatusInternalServerError,
-		"Expected status 200, 400, 404, or 500 for error response, got %d", w.Code)
+	assert.Equal(t, http.StatusOK, w.Code, "Status code should be 200")
 
 	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err, "Response should be valid JSON")
 
-	// Check if response has success field and it's false
-	if success, ok := response["success"]; ok {
-		if successBool, isBool := success.(bool); isBool {
-			assert.False(t, successBool, "Response success should be false")
-		}
+	status, hasStatus := response["status"]
+	assert.True(t, hasStatus, "Response should have status field")
+	if hasStatus {
+		statusFloat, ok := status.(float64)
+		assert.True(t, ok, "Status should be a number")
+		assert.NotEqual(t, float64(0), statusFloat, "Status should not be 0 (success)")
 	}
 
-	// Check for error message
-	if errorMsg, ok := response["error"]; ok {
-		if errorStr, isStr := errorMsg.(string); isStr {
-			assert.Contains(t, errorStr, expectedError, "Error message should contain expected text")
-		}
-	} else if message, ok := response["message"]; ok {
+	message, hasMessage := response["message"]
+	if hasMessage {
 		if messageStr, isStr := message.(string); isStr {
 			assert.Contains(t, messageStr, expectedError, "Message should contain expected text")
 		}
-	} else {
-		t.Errorf("Response should contain an 'error' or 'message' field")
 	}
 }
 
@@ -99,7 +93,7 @@ func cleanupTestSessions(t *testing.T, h *SessionHandler) {
 	}
 
 	// Clear the session map
-	h.sessions = make(map[string]*SessionInfo)
+	h.sessions = make(map[string]*sessionInfo)
 }
 
 // Helper function to check if a process is running

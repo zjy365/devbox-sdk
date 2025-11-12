@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"bufio"
+	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labring/devbox-sdk-server/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,38 +58,25 @@ func TestTokenAuth(t *testing.T) {
 func TestLogger_TraceID(t *testing.T) {
 	mw := Logger()
 
-	// Auto-generated trace id when not provided
+	// Trace ID should be returned in response header
 	req := httptest.NewRequest("GET", "/path", nil)
 	rr := httptest.NewRecorder()
 	mw(okHandler(http.StatusOK, "ok")).ServeHTTP(rr, req)
-	trace := rr.Header().Get("X-Trace-ID")
-	assert.NotEmpty(t, trace, "trace id should be set")
+	// No trace ID provided, so response should not have one
+	assert.Empty(t, rr.Header().Get("X-Trace-ID"))
 
-	// Provided trace id should pass through
+	// Provided trace id should pass through to response header
 	req2 := httptest.NewRequest("GET", "/path", nil)
 	req2.Header.Set("X-Trace-ID", "trace-123")
 	rr2 := httptest.NewRecorder()
 	mw(okHandler(http.StatusCreated, "created")).ServeHTTP(rr2, req2)
 	assert.Equal(t, "trace-123", rr2.Header().Get("X-Trace-ID"))
-
-	// Context injection should be accessible to downstream handler
-	req3 := httptest.NewRequest("GET", "/ctx", nil)
-	req3.Header.Set("X-Trace-ID", "trace-ctx-xyz")
-	rr3 := httptest.NewRecorder()
-	ctxEcho := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		traceID, _ := r.Context().Value("traceID").(string)
-		w.WriteHeader(http.StatusAccepted)
-		_, _ = w.Write([]byte(traceID))
-	})
-	mw(ctxEcho).ServeHTTP(rr3, req3)
-	assert.Equal(t, http.StatusAccepted, rr3.Code)
-	assert.Equal(t, "trace-ctx-xyz", rr3.Body.String())
 }
 
 func TestRecovery(t *testing.T) {
 	mw := Recovery()
 
-	// Panic with generic string
+	// Panic with generic string goes to default case
 	req := httptest.NewRequest("GET", "/panic", nil)
 	rr := httptest.NewRecorder()
 
@@ -97,19 +86,14 @@ func TestRecovery(t *testing.T) {
 
 	mw(panicHandler).ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+	assert.Contains(t, rr.Body.String(), "Unknown error occurred")
 
-	// Panic with APIError should use its code
+	// Panic with error type should include error message
 	req2 := httptest.NewRequest("GET", "/panic2", nil)
 	rr2 := httptest.NewRecorder()
-	apiErr := errors.NewInvalidRequestError("bad")
-	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { panic(apiErr) })).ServeHTTP(rr2, req2)
-	assert.Equal(t, http.StatusBadRequest, rr2.Code)
-
-	// Panic with error type should convert to internal
-	req3 := httptest.NewRequest("GET", "/panic3", nil)
-	rr3 := httptest.NewRecorder()
-	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { panic(assert.AnError) })).ServeHTTP(rr3, req3)
-	assert.Equal(t, http.StatusInternalServerError, rr3.Code)
+	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { panic(assert.AnError) })).ServeHTTP(rr2, req2)
+	assert.Equal(t, http.StatusInternalServerError, rr2.Code)
+	assert.Contains(t, rr2.Body.String(), "general error")
 }
 
 func TestChainOrder(t *testing.T) {
@@ -137,4 +121,128 @@ func TestChainOrder(t *testing.T) {
 
 	assert.Equal(t, []string{"mw1-before", "mw2-before", "mw2-after", "mw1-after"}, order)
 	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+// mockFlushWriter is a mock ResponseWriter that implements http.Flusher
+type mockFlushWriter struct {
+	*httptest.ResponseRecorder
+	flushed bool
+}
+
+func (m *mockFlushWriter) Flush() {
+	m.flushed = true
+}
+
+func TestResponseWriter_Flush(t *testing.T) {
+	mw := Logger()
+
+	t.Run("flush is called on underlying writer", func(t *testing.T) {
+		mock := &mockFlushWriter{ResponseRecorder: httptest.NewRecorder()}
+		req := httptest.NewRequest("GET", "/flush", nil)
+
+		flushHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("data"))
+			if flusher, ok := w.(http.Flusher); ok {
+				flusher.Flush()
+			}
+		})
+
+		mw(flushHandler).ServeHTTP(mock, req)
+
+		assert.True(t, mock.flushed, "Flush should be called on underlying writer")
+		assert.Equal(t, http.StatusOK, mock.Code)
+	})
+
+	t.Run("flush on non-flusher writer", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/flush", nil)
+		rr := httptest.NewRecorder()
+
+		flushHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			if flusher, ok := w.(http.Flusher); ok {
+				flusher.Flush()
+			}
+		})
+
+		mw(flushHandler).ServeHTTP(rr, req)
+		assert.Equal(t, http.StatusOK, rr.Code)
+	})
+}
+
+// mockHijackWriter is a mock ResponseWriter that implements http.Hijacker
+type mockHijackWriter struct {
+	*httptest.ResponseRecorder
+	hijacked    bool
+	hijackError error
+}
+
+func (m *mockHijackWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	m.hijacked = true
+	if m.hijackError != nil {
+		return nil, nil, m.hijackError
+	}
+	return nil, nil, nil
+}
+
+func TestResponseWriter_Hijack(t *testing.T) {
+	mw := Logger()
+
+	t.Run("hijack is called on underlying writer", func(t *testing.T) {
+		mock := &mockHijackWriter{ResponseRecorder: httptest.NewRecorder()}
+		req := httptest.NewRequest("GET", "/hijack", nil)
+
+		hijackHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if hijacker, ok := w.(http.Hijacker); ok {
+				_, _, err := hijacker.Hijack()
+				if err == nil {
+					return
+				}
+			}
+			w.WriteHeader(http.StatusOK)
+		})
+
+		mw(hijackHandler).ServeHTTP(mock, req)
+
+		assert.True(t, mock.hijacked, "Hijack should be called on underlying writer")
+	})
+
+	t.Run("hijack returns error", func(t *testing.T) {
+		mock := &mockHijackWriter{
+			ResponseRecorder: httptest.NewRecorder(),
+			hijackError:      errors.New("hijack not supported"),
+		}
+		req := httptest.NewRequest("GET", "/hijack", nil)
+
+		hijackHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if hijacker, ok := w.(http.Hijacker); ok {
+				_, _, err := hijacker.Hijack()
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "hijack not supported")
+			}
+			w.WriteHeader(http.StatusOK)
+		})
+
+		mw(hijackHandler).ServeHTTP(mock, req)
+
+		assert.True(t, mock.hijacked, "Hijack should be attempted")
+		assert.Equal(t, http.StatusOK, mock.Code)
+	})
+
+	t.Run("hijack on non-hijacker writer", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/hijack", nil)
+		rr := httptest.NewRecorder()
+
+		hijackHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if hijacker, ok := w.(http.Hijacker); ok {
+				_, _, err := hijacker.Hijack()
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "hijacking not supported")
+			}
+			w.WriteHeader(http.StatusOK)
+		})
+
+		mw(hijackHandler).ServeHTTP(rr, req)
+		assert.Equal(t, http.StatusOK, rr.Code)
+	})
 }

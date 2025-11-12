@@ -7,8 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/errors"
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
 // collectLogs collects logs from stdout and stderr
@@ -168,7 +167,7 @@ func (h *ProcessHandler) monitorProcess(processID string) {
 func (h *ProcessHandler) streamLogs(w http.ResponseWriter, processID string) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		errors.WriteErrorResponse(w, errors.NewInternalError("Streaming not supported"))
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "Streaming not supported")
 		return
 	}
 

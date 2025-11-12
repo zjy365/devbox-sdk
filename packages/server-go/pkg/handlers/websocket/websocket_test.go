@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,40 +19,34 @@ func newWebSocketHandlerHelper() *WebSocketHandler {
 	return NewWebSocketHandlerWithDeps(nil, nil, NewDefaultWebSocketConfig())
 }
 
-// TestWebSocketHandler_BasicConnection tests basic WebSocket connection handling
 func TestWebSocketHandler_BasicConnection(t *testing.T) {
 	t.Run("successful connection upgrade", func(t *testing.T) {
 		handler := newWebSocketHandlerHelper()
 
-		// Create a test server with WebSocket handler
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handler.HandleWebSocket(w, r)
 		}))
 		defer server.Close()
 
-		// Connect to WebSocket
 		url := "ws" + strings.TrimPrefix(server.URL, "http")
 		conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 		require.NoError(t, err)
 		defer conn.Close()
 
-		// Verify connection is established
 		assert.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"action":"ping"}`)))
 
-		// Read response (should be an error for unknown action)
 		_, message, err := conn.ReadMessage()
 		assert.NoError(t, err)
 
-		var response map[string]interface{}
+		var response map[string]any
 		err = json.Unmarshal(message, &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response, "error")
+		assert.Contains(t, response["message"], "Unknown action")
 	})
 
 	t.Run("connection registers in client list", func(t *testing.T) {
 		handler := newWebSocketHandlerHelper()
 
-		// Should start with no clients
 		assert.Empty(t, handler.clients)
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -64,10 +58,8 @@ func TestWebSocketHandler_BasicConnection(t *testing.T) {
 		conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 		require.NoError(t, err)
 
-		// Give some time for the connection to be registered
 		time.Sleep(10 * time.Millisecond)
 
-		// Should have one client
 		assert.NotEmpty(t, handler.clients)
 
 		conn.Close()
@@ -147,11 +139,11 @@ func TestWebSocketHandler_MessageHandling(t *testing.T) {
 		_, message, err := conn.ReadMessage()
 		assert.NoError(t, err)
 
-		var response map[string]interface{}
+		var response common.Response[map[string]any]
 		err = json.Unmarshal(message, &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response, "error")
-		assert.Contains(t, response["error"], "Invalid request format")
+		assert.Equal(t, response.Status, common.StatusInvalidRequest)
+		assert.Contains(t, response.Message, "Invalid request format")
 	})
 
 	t.Run("unknown action", func(t *testing.T) {
@@ -177,77 +169,38 @@ func TestWebSocketHandler_MessageHandling(t *testing.T) {
 		_, resp, err := conn.ReadMessage()
 		assert.NoError(t, err)
 
-		var response map[string]interface{}
+		var response common.Response[map[string]any]
 		err = json.Unmarshal(resp, &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response, "error")
-		assert.Contains(t, response["error"], "Unknown action")
+		assert.Equal(t, response.Status, common.StatusInvalidRequest)
+		assert.Contains(t, response.Message, "Unknown action")
 	})
 
 }
 
-// TestWebSocketHandler_ErrorHandling tests error handling scenarios
 func TestWebSocketHandler_ErrorHandling(t *testing.T) {
 	t.Run("connection upgrade failure", func(t *testing.T) {
 		handler := newWebSocketHandlerHelper()
 
-		// Create a request that cannot be upgraded (not a WebSocket request)
 		req := httptest.NewRequest("GET", "/", nil)
 		w := httptest.NewRecorder()
 
-		// This should not panic
 		assert.NotPanics(t, func() {
 			handler.HandleWebSocket(w, req)
 		})
 	})
 
-	t.Run("malformed request URL", func(t *testing.T) {
-		handler := newWebSocketHandlerHelper()
-
-		req := httptest.NewRequest("GET", "http://invalid-url", nil)
-		w := httptest.NewRecorder()
-
-		// Should not panic
-		assert.NotPanics(t, func() {
-			handler.HandleWebSocket(w, req)
-		})
-	})
-
-	t.Run("message handling errors", func(t *testing.T) {
-		handler := newWebSocketHandlerHelper()
-
-		// Test that nil connections are handled gracefully
-		// Note: sendError and sendJSON don't check for nil, so we expect panics
-		// but we test that they return errors for invalid inputs instead
-
-		// Test that methods exist and have correct signatures
-		assert.NotNil(t, handler.sendError)
-		assert.NotNil(t, handler.sendJSON)
-
-		// Test error marshaling (the part that doesn't require connection)
-		testData := map[string]string{"error": "test", "time": "1234567890"}
-		data, err := json.Marshal(testData)
-		assert.NoError(t, err)
-		assert.NotNil(t, data)
-	})
-
-	t.Run("message parsing errors", func(t *testing.T) {
-		// Test that message parsing works correctly
-		testMessage := map[string]interface{}{
+	t.Run("message parsing", func(t *testing.T) {
+		testMessage := map[string]any{
 			"action":   "subscribe",
 			"type":     "process",
 			"targetId": "test-123",
-			"options": map[string]interface{}{
-				"levels": []string{"stdout", "stderr"},
-			},
 		}
 
 		data, err := json.Marshal(testMessage)
 		assert.NoError(t, err)
-		assert.NotNil(t, data)
 
-		// Test unmarshaling
-		var parsed common.SubscriptionRequest
+		var parsed SubscriptionRequest
 		err = json.Unmarshal(data, &parsed)
 		assert.NoError(t, err)
 		assert.Equal(t, "subscribe", parsed.Action)
@@ -255,9 +208,8 @@ func TestWebSocketHandler_ErrorHandling(t *testing.T) {
 	})
 }
 
-// TestWebSocketHelperFunctions tests helper functions
 func TestWebSocketHelperFunctions(t *testing.T) {
-	t.Run("sendError function", func(t *testing.T) {
+	t.Run("subscription message handling", func(t *testing.T) {
 		handler := newWebSocketHandlerHelper()
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -270,12 +222,11 @@ func TestWebSocketHelperFunctions(t *testing.T) {
 		require.NoError(t, err)
 		defer conn.Close()
 
-		// Send a valid subscription message
-		validMessage := map[string]interface{}{
+		validMessage := map[string]any{
 			"action":   "subscribe",
 			"type":     "process",
 			"targetId": "test-123",
-			"options": map[string]interface{}{
+			"options": map[string]any{
 				"levels": []string{"stdout"},
 			},
 		}
@@ -283,44 +234,15 @@ func TestWebSocketHelperFunctions(t *testing.T) {
 		err = conn.WriteMessage(websocket.TextMessage, data)
 		assert.NoError(t, err)
 
-		// Read the response
 		_, resp, err := conn.ReadMessage()
 		assert.NoError(t, err)
 
-		var response map[string]interface{}
+		var response map[string]any
 		err = json.Unmarshal(resp, &response)
 		assert.NoError(t, err)
 
-		// Should contain subscription result
 		assert.Contains(t, response, "action")
 		assert.Equal(t, "subscribed", response["action"])
-	})
-
-	t.Run("sendJSON function", func(t *testing.T) {
-		handler := newWebSocketHandlerHelper()
-
-		testData := map[string]interface{}{
-			"test":   "data",
-			"number": 42,
-			"bool":   true,
-		}
-
-		data, err := json.Marshal(testData)
-		assert.NoError(t, err)
-
-		// Test JSON marshaling behavior (int becomes float64)
-		decoded := make(map[string]interface{})
-		err = json.Unmarshal(data, &decoded)
-		assert.NoError(t, err)
-		assert.Equal(t, "data", decoded["test"])
-		assert.Equal(t, true, decoded["bool"])
-		// JSON numbers unmarshal as float64 by default
-		assert.Equal(t, float64(42), decoded["number"])
-
-		// Test handler structure
-		assert.NotNil(t, handler.upgrader)
-		assert.NotNil(t, handler.clients)
-		assert.NotNil(t, handler.subscriptions)
 	})
 }
 
@@ -392,11 +314,11 @@ func TestWebSocketHandler_ConcurrentAccess(t *testing.T) {
 			conns[i] = conn
 
 			// Send subscribe action
-			message := map[string]interface{}{
+			message := map[string]any{
 				"action":   "subscribe",
 				"type":     "process",
 				"targetId": fmt.Sprintf("process-%d", i),
-				"options": map[string]interface{}{
+				"options": map[string]any{
 					"levels": []string{"stdout", "stderr"},
 				},
 			}

@@ -1,15 +1,15 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
 // Minimal health response
 type HealthResponse struct {
-	Status    string `json:"status"`
 	Timestamp string `json:"timestamp"`
 	Uptime    int64  `json:"uptime"`
 	Version   string `json:"version"`
@@ -17,7 +17,6 @@ type HealthResponse struct {
 
 // Readiness response with minimal checks
 type ReadinessResponse struct {
-	Status    string          `json:"status"`
 	Ready     bool            `json:"ready"`
 	Timestamp string          `json:"timestamp"`
 	Checks    map[string]bool `json:"checks"`
@@ -38,15 +37,12 @@ func NewHealthHandler() *HealthHandler {
 // HealthCheck returns minimal health information
 func (h *HealthHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	response := HealthResponse{
-		Status:    "healthy",
 		Timestamp: time.Now().Truncate(time.Second).Format(time.RFC3339),
 		Uptime:    int64(time.Since(h.startTime).Seconds()),
 		Version:   "1.0.0",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	common.WriteSuccessResponse(w, response)
 }
 
 // ReadinessCheck performs minimal readiness checks
@@ -64,21 +60,11 @@ func (h *HealthHandler) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
 		checks["filesystem"] = true
 	}
 
-	status := "ready"
-	httpStatus := http.StatusOK
-	if !ready {
-		status = "not_ready"
-		httpStatus = http.StatusServiceUnavailable
-	}
-
 	response := ReadinessResponse{
-		Status:    status,
 		Ready:     ready,
 		Timestamp: time.Now().Truncate(time.Second).Format(time.RFC3339),
 		Checks:    checks,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(httpStatus)
-	json.NewEncoder(w).Encode(response)
+	common.WriteSuccessResponse(w, response)
 }

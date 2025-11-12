@@ -43,16 +43,8 @@ func TestPortHandler_GetPorts(t *testing.T) {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if !response.Success {
-		t.Error("expected success to be true")
-	}
-
 	if response.Ports == nil {
-		t.Error("ports should not be nil")
-	}
-
-	if response.LastUpdatedAt == 0 {
-		t.Error("lastUpdatedAt should not be zero")
+		t.Error("ports should not be nil, expected empty array")
 	}
 }
 
@@ -93,7 +85,7 @@ func TestPortHandler_ResponseStructure(t *testing.T) {
 	resp := w.Result()
 	defer resp.Body.Close()
 
-	var response map[string]interface{}
+	var response map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -116,10 +108,9 @@ func TestPortHandler_ResponseStructure(t *testing.T) {
 }
 
 func TestPortHandler_MultipleRequests(t *testing.T) {
-
 	handler := NewPortHandler()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/ports", nil)
 		w := httptest.NewRecorder()
 
@@ -135,10 +126,6 @@ func TestPortHandler_MultipleRequests(t *testing.T) {
 		var response PortsResponse
 		if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 			t.Errorf("request %d: failed to decode response: %v", i, err)
-		}
-
-		if !response.Success {
-			t.Errorf("request %d: expected success to be true", i)
 		}
 	}
 }

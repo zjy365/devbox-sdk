@@ -1,114 +1,97 @@
 package process
 
 import (
-	"fmt"
 	"net/http"
 
-	"github.com/labring/devbox-sdk-server/pkg/errors"
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
+	"github.com/labring/devbox-sdk-server/pkg/router"
 )
 
 // Process operation response types
 type GetProcessStatusResponse struct {
-	common.Response
-	ProcessID string `json:"processId"`
-	PID       int    `json:"pid"`
-	Status    string `json:"status"`
-	StartedAt int64  `json:"startedAt"`
+	ProcessID     string `json:"processId"`
+	PID           int    `json:"pid"`
+	ProcessStatus string `json:"processStatus"`
+	StartedAt     int64  `json:"startedAt"`
 }
 
 type ListProcessesResponse struct {
-	common.Response
 	Processes []ProcessInfoResponse `json:"processes"`
 }
 
 type GetProcessLogsResponse struct {
-	common.Response
 	ProcessID string   `json:"processId"`
 	Logs      []string `json:"logs"`
 }
 
 type ProcessInfoResponse struct {
-	ID        string `json:"id"`
-	PID       int    `json:"pid"`
-	Command   string `json:"command"`
-	Status    string `json:"status"`
-	StartTime int64  `json:"startTime"`
-	EndTime   *int64 `json:"endTime,omitempty"`
-	ExitCode  *int   `json:"exitCode,omitempty"`
+	ID            string `json:"id"`
+	PID           int    `json:"pid"`
+	Command       string `json:"command"`
+	ProcessStatus string `json:"processStatus"`
+	StartTime     int64  `json:"startTime"`
+	EndTime       *int64 `json:"endTime,omitempty"`
+	ExitCode      *int   `json:"exitCode,omitempty"`
 }
 
 // GetProcessStatus handles process status queries
 func (h *ProcessHandler) GetProcessStatus(w http.ResponseWriter, r *http.Request) {
-	processID := r.URL.Query().Get("id")
+	processID := router.Param(r, "id")
 	if processID == "" {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Process ID is required"))
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "Process ID is required")
 		return
 	}
 
 	processInfo, err := h.getProcess(processID)
 	if err != nil {
-		if apiErr, ok := err.(*errors.APIError); ok {
-			errors.WriteErrorResponse(w, apiErr)
-		} else {
-			errors.WriteErrorResponse(w, errors.NewInternalError(err.Error()))
-		}
+		common.WriteErrorResponse(w, common.StatusNotFound, "Process not found: %s", processID)
 		return
 	}
 
-	common.WriteJSONResponse(w, GetProcessStatusResponse{
-		Response:  common.Response{Success: true},
-		ProcessID: processID,
-		PID:       processInfo.Cmd.Process.Pid,
-		Status:    processInfo.Status,
-		StartedAt: processInfo.StartAt.Unix(),
-	})
+	response := GetProcessStatusResponse{
+		ProcessID:     processID,
+		PID:           processInfo.Cmd.Process.Pid,
+		ProcessStatus: processInfo.Status,
+		StartedAt:     processInfo.StartAt.Unix(),
+	}
+
+	common.WriteSuccessResponse(w, response)
 }
 
 // KillProcess handles process termination
 func (h *ProcessHandler) KillProcess(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
-	processID := query.Get("id")
+	processID := router.Param(r, "id")
 	if processID == "" {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Process ID is required"))
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "Process ID is required")
 		return
 	}
 
 	signalStr := query.Get("signal")
 	signal, err := h.parseSignal(signalStr)
 	if err != nil {
-		if apiErr, ok := err.(*errors.APIError); ok {
-			errors.WriteErrorResponse(w, apiErr)
-		} else {
-			errors.WriteErrorResponse(w, errors.NewInvalidRequestError(err.Error()))
-		}
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "%s", err.Error())
 		return
 	}
 
 	processInfo, err := h.getProcess(processID)
 	if err != nil {
-		if apiErr, ok := err.(*errors.APIError); ok {
-			errors.WriteErrorResponse(w, apiErr)
-		} else {
-			errors.WriteErrorResponse(w, errors.NewInternalError(err.Error()))
-		}
+		common.WriteErrorResponse(w, common.StatusNotFound, "Process not found: %s", processID)
 		return
 	}
 
 	if processInfo.Status != "running" {
-		errors.WriteErrorResponse(w, errors.NewAPIError(errors.ErrorTypeConflict, "Process is not running", http.StatusConflict))
+		common.WriteErrorResponse(w, common.StatusConflict, "Process is not running")
 		return
 	}
 
 	if err := processInfo.Cmd.Process.Signal(signal); err != nil {
-		errors.WriteErrorResponse(w, errors.NewInternalError(fmt.Sprintf("Failed to send signal: %v", err)))
+		common.WriteErrorResponse(w, common.StatusOperationError, "Failed to send signal: %v", err)
 		return
 	}
 
-	common.WriteJSONResponse(w, common.Response{
-		Success: true,
-	})
+	common.WriteSuccessResponse(w, struct{}{})
 }
 
 // ListProcesses handles process listing
@@ -117,38 +100,35 @@ func (h *ProcessHandler) ListProcesses(w http.ResponseWriter, r *http.Request) {
 	processes := make([]ProcessInfoResponse, 0, len(h.processes))
 	for id, info := range h.processes {
 		processes = append(processes, ProcessInfoResponse{
-			ID:        id,
-			PID:       info.Cmd.Process.Pid,
-			Command:   info.Cmd.Path,
-			Status:    info.Status,
-			StartTime: info.StartAt.Unix(),
+			ID:            id,
+			PID:           info.Cmd.Process.Pid,
+			Command:       info.Cmd.Path,
+			ProcessStatus: info.Status,
+			StartTime:     info.StartAt.Unix(),
 		})
 	}
 	h.mutex.RUnlock()
 
-	common.WriteJSONResponse(w, ListProcessesResponse{
-		Response:  common.Response{Success: true},
+	response := ListProcessesResponse{
 		Processes: processes,
-	})
+	}
+
+	common.WriteSuccessResponse(w, response)
 }
 
 // GetProcessLogs handles process log retrieval
 func (h *ProcessHandler) GetProcessLogs(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
-	processID := query.Get("id")
+	processID := router.Param(r, "id")
 	if processID == "" {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Process ID is required"))
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "Process ID is required")
 		return
 	}
 
 	processInfo, err := h.getProcess(processID)
 	if err != nil {
-		if apiErr, ok := err.(*errors.APIError); ok {
-			errors.WriteErrorResponse(w, apiErr)
-		} else {
-			errors.WriteErrorResponse(w, errors.NewInternalError(err.Error()))
-		}
+		common.WriteErrorResponse(w, common.StatusNotFound, "Process not found: %s", processID)
 		return
 	}
 
@@ -165,11 +145,10 @@ func (h *ProcessHandler) GetProcessLogs(w http.ResponseWriter, r *http.Request) 
 	copy(logs, processInfo.Logs)
 	processInfo.LogMux.RUnlock()
 
-	common.WriteJSONResponse(w, GetProcessLogsResponse{
-		Response: common.Response{
-			Success: true,
-		},
+	response := GetProcessLogsResponse{
 		ProcessID: processID,
 		Logs:      logs,
-	})
+	}
+
+	common.WriteSuccessResponse(w, response)
 }

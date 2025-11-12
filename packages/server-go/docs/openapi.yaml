@@ -264,38 +264,46 @@ paths:
                 error_type: "invalid_request"
 
   /api/v1/files/read:
-    post:
+    get:
       tags:
         - Files
-      summary: Read file
-      description: Read file content. Supports both query parameter and JSON body for path specification
+      summary: Read file (returns binary content)
+      description: Read file content and return as binary stream with appropriate Content-Type
       security:
         - bearerAuth: []
       operationId: readFile
       parameters:
         - name: path
           in: query
-          description: File path to read (alternative to JSON body)
-          required: false
+          description: File path to read
+          required: true
           schema:
             type: string
-      requestBody:
-        description: File path specification (alternative to query parameter)
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                path:
-                  type: string
-                  description: File path to read
+            example: "/tmp/example.txt"
       responses:
         '200':
-          description: File read successfully
+          description: File read successfully (binary content)
           content:
-            application/json:
+            application/octet-stream:
               schema:
-                $ref: '#/components/schemas/ReadFileResponse'
+                type: string
+                format: binary
+            text/plain:
+              schema:
+                type: string
+            image/*:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: Attachment filename
+            Content-Length:
+              schema:
+                type: integer
+              description: File size in bytes
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -429,31 +437,90 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /api/v1/files/download:
+    get:
+      tags:
+        - Files
+      summary: Download a single file
+      description: |
+        Download a single file as binary content with appropriate Content-Type and Content-Disposition headers.
+
+        This endpoint is for downloading individual files. For multiple files, use `/api/v1/files/batch-download`.
+      security:
+        - bearerAuth: []
+      operationId: downloadFile
+      parameters:
+        - name: path
+          in: query
+          description: File path to download
+          required: true
+          schema:
+            type: string
+            example: "/tmp/example.txt"
+      responses:
+        '200':
+          description: File downloaded successfully
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            text/plain:
+              schema:
+                type: string
+            image/*:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: Attachment with filename
+            Content-Length:
+              schema:
+                type: integer
+              description: File size in bytes
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/files/batch-download:
     post:
       tags:
         - Files
-      summary: Download one or multiple files with smart format detection
+      summary: Download multiple files with smart format detection
       description: |
         Download one or multiple files with intelligent format selection:
 
         **Format Selection Priority:**
-        1. `Accept` header detection
-        2. Default behavior based on file count
+        1. JSON body `format` field
+        2. `Accept` header detection
+        3. Default to `tar.gz`
 
         **Supported Formats:**
-        - `tar.gz`: Compressed tar archive (default for multiple files)
+        - `tar.gz`: Compressed tar archive (default)
         - `tar`: Uncompressed tar archive (no gzip command needed on client)
-        - `multipart`: HTTP multipart/mixed format (native HTTP, no extraction tools needed)
-        - Direct download for single non-directory files (when no format specified)
+        - `multipart` or `mixed`: HTTP multipart/mixed format (native HTTP, no extraction tools needed)
 
         **Accept Header Examples:**
         - `Accept: application/gzip` → tar.gz
         - `Accept: application/x-tar` → tar (no compression)
         - `Accept: multipart/mixed` → multipart format
-        - No Accept header → Smart default
+        - No Accept header → tar.gz (default)
       security:
         - bearerAuth: []
-      operationId: downloadFiles
+      operationId: batchDownloadFiles
       requestBody:
         required: true
         content:
@@ -461,23 +528,28 @@ paths:
             schema:
               $ref: '#/components/schemas/DownloadFilesRequest'
             examples:
-              single_file_direct:
-                summary: Download single file directly
+              single_file:
+                summary: Download single file
                 value:
                   paths: ["/workspace/file.txt"]
               multiple_files_default:
                 summary: Download multiple files (default tar.gz)
                 value:
                   paths: ["/workspace/file1.txt", "/workspace/file2.txt"]
+              multiple_files_tar:
+                summary: Download as uncompressed tar
+                value:
+                  paths: ["/workspace/file1.txt", "/workspace/file2.txt"]
+                  format: "tar"
+              multiple_files_multipart:
+                summary: Download as multipart
+                value:
+                  paths: ["/workspace/file1.txt", "/workspace/file2.txt"]
+                  format: "multipart"
       responses:
         '200':
           description: File(s) downloaded successfully
           content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
-                description: Single file content (direct download)
             application/gzip:
               schema:
                 type: string
@@ -487,7 +559,7 @@ paths:
               schema:
                 type: string
                 format: binary
-                description: tar archive (uncompressed, easier for clients without gzip)
+                description: tar archive (uncompressed)
             multipart/mixed:
               schema:
                 type: string
@@ -509,7 +581,7 @@ paths:
       tags:
         - Files
       summary: Batch upload files
-      description: Upload multiple files to a target directory
+      description: Upload multiple files; each file's filename can be an absolute or relative Linux path. Relative paths are resolved under the workspace.
       security:
         - bearerAuth: []
       operationId: batchUpload
@@ -520,17 +592,13 @@ paths:
             schema:
               type: object
               properties:
-                targetDir:
-                  type: string
-                  description: Target directory path
                 files:
                   type: array
                   items:
                     type: string
                     format: binary
-                  description: Files to upload
+                  description: Files to upload; filename carries desired path
               required:
-                - targetDir
                 - files
       responses:
         '200':
@@ -728,7 +796,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /api/v1/process/{processId}/status:
+  /api/v1/process/{id}/status:
     get:
       tags:
         - Processes
@@ -738,7 +806,7 @@ paths:
         - bearerAuth: []
       operationId: getProcessStatus
       parameters:
-        - name: processId
+        - name: id
           in: path
           description: Process ID
           required: true
@@ -762,7 +830,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/process/{processId}/kill:
+  /api/v1/process/{id}/kill:
     post:
       tags:
         - Processes
@@ -772,7 +840,7 @@ paths:
         - bearerAuth: []
       operationId: killProcess
       parameters:
-        - name: processId
+        - name: id
           in: path
           description: Process ID
           required: true
@@ -810,7 +878,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/process/{processId}/logs:
+  /api/v1/process/{id}/logs:
     get:
       tags:
         - Processes
@@ -820,7 +888,7 @@ paths:
         - bearerAuth: []
       operationId: getProcessLogs
       parameters:
-        - name: processId
+        - name: id
           in: path
           description: Process ID
           required: true
@@ -903,7 +971,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /api/v1/sessions/{sessionId}:
+  /api/v1/sessions/{id}:
     get:
       tags:
         - Sessions
@@ -913,7 +981,7 @@ paths:
         - bearerAuth: []
       operationId: getSession
       parameters:
-        - name: sessionId
+        - name: id
           in: path
           description: Session ID
           required: true
@@ -937,7 +1005,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/sessions/{sessionId}/env:
+  /api/v1/sessions/{id}/env:
     post:
       tags:
         - Sessions
@@ -947,7 +1015,7 @@ paths:
         - bearerAuth: []
       operationId: updateSessionEnv
       parameters:
-        - name: sessionId
+        - name: id
           in: path
           description: Session ID
           required: true
@@ -982,7 +1050,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/sessions/{sessionId}/exec:
+  /api/v1/sessions/{id}/exec:
     post:
       tags:
         - Sessions
@@ -992,7 +1060,7 @@ paths:
         - bearerAuth: []
       operationId: sessionExec
       parameters:
-        - name: sessionId
+        - name: id
           in: path
           description: Session ID
           required: true
@@ -1024,7 +1092,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/sessions/{sessionId}/cd:
+  /api/v1/sessions/{id}/cd:
     post:
       tags:
         - Sessions
@@ -1034,7 +1102,7 @@ paths:
         - bearerAuth: []
       operationId: sessionCd
       parameters:
-        - name: sessionId
+        - name: id
           in: path
           description: Session ID
           required: true
@@ -1066,7 +1134,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/sessions/{sessionId}/terminate:
+  /api/v1/sessions/{id}/terminate:
     post:
       tags:
         - Sessions
@@ -1076,7 +1144,7 @@ paths:
         - bearerAuth: []
       operationId: terminateSession
       parameters:
-        - name: sessionId
+        - name: id
           in: path
           description: Session ID
           required: true
@@ -1100,7 +1168,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/sessions/{sessionId}/logs:
+  /api/v1/sessions/{id}/logs:
     get:
       tags:
         - Sessions
@@ -1110,7 +1178,7 @@ paths:
         - bearerAuth: []
       operationId: getSessionLogs
       parameters:
-        - name: sessionId
+        - name: id
           in: path
           description: Session ID
           required: true
@@ -1378,31 +1446,6 @@ components:
         - size
         - timestamp
 
-    ReadFileResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        path:
-          type: string
-          description: File path that was read
-          example: "/tmp/example.txt"
-        content:
-          type: string
-          description: File content
-          example: "Hello, World!"
-        size:
-          type: integer
-          format: int64
-          description: File size in bytes
-          example: 13
-      required:
-        - success
-        - path
-        - content
-        - size
-
     DeleteFileRequest:
       type: object
       properties:
@@ -1532,13 +1575,13 @@ components:
           example: ["/workspace/file1.txt", "/workspace/file2.txt"]
         format:
           type: string
-          enum: [tar.gz, tar, multipart]
+          enum: [tar.gz, tar, multipart, mixed]
           description: |
-            Optional download format. If not specified, format is auto-detected from Accept header or uses smart defaults:
-            - `tar.gz`: Compressed tar archive (default for multiple files)
+            Optional download format. If not specified, format is auto-detected from Accept header or defaults to tar.gz:
+            - `tar.gz`: Compressed tar archive (default)
             - `tar`: Uncompressed tar archive (use when client doesn't have gzip)
-            - `multipart`: HTTP multipart/mixed format (no extraction tools needed)
-          example: "multipart"
+            - `multipart` or `mixed`: HTTP multipart/mixed format (no extraction tools needed)
+          example: "tar.gz"
       required:
         - paths
 

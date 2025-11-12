@@ -1,45 +1,34 @@
 package session
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"syscall"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/errors"
+	"github.com/labring/devbox-sdk-server/pkg/common"
+	"github.com/labring/devbox-sdk-server/pkg/router"
 )
-
-// Session operation request types
-type SessionTerminateRequest struct {
-	SessionID string `json:"sessionId"`
-}
 
 // Session operation response types
 type SessionTerminateResponse struct {
-	Success   bool   `json:"success"`
-	SessionID string `json:"sessionId"`
-	Status    string `json:"status"`
+	SessionID     string `json:"sessionId"`
+	SessionStatus string `json:"SessionStatus"`
 }
 
 // TerminateSession handles session termination
 func (h *SessionHandler) TerminateSession(w http.ResponseWriter, r *http.Request) {
-	var req SessionTerminateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Invalid JSON body"))
-		return
-	}
-
-	if req.SessionID == "" {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("SessionID is required"))
+	sessionID := router.Param(r, "id")
+	if sessionID == "" {
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "session id parameter is required")
 		return
 	}
 
 	h.mutex.Lock()
-	sessionInfo, exists := h.sessions[req.SessionID]
+	sessionInfo, exists := h.sessions[sessionID]
 	if !exists {
 		h.mutex.Unlock()
-		errors.WriteErrorResponse(w, errors.NewSessionNotFoundError(req.SessionID))
+		common.WriteErrorResponse(w, common.StatusNotFound, "Session not found: %s", sessionID)
 		return
 	}
 
@@ -74,28 +63,26 @@ func (h *SessionHandler) TerminateSession(w http.ResponseWriter, r *http.Request
 	}
 
 	// Remove session after delay
-	go func() {
+	go func(id string) {
 		time.Sleep(1 * time.Minute)
 		h.mutex.Lock()
-		delete(h.sessions, req.SessionID)
+		delete(h.sessions, id)
 		h.mutex.Unlock()
-	}()
+	}(sessionID)
 
 	response := SessionTerminateResponse{
-		Success:   true,
-		SessionID: req.SessionID,
-		Status:    "terminated",
+		SessionID:     sessionID,
+		SessionStatus: "terminated",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	common.WriteSuccessResponse(w, response)
 }
 
 // TerminateSessionWithParams handles session termination using path parameters
 func (h *SessionHandler) TerminateSessionWithParams(w http.ResponseWriter, r *http.Request, params map[string]string) {
 	sessionID := params["id"]
 	if sessionID == "" {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("session id parameter is required"))
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "session id parameter is required")
 		return
 	}
 
@@ -103,7 +90,7 @@ func (h *SessionHandler) TerminateSessionWithParams(w http.ResponseWriter, r *ht
 	sessionInfo, exists := h.sessions[sessionID]
 	if !exists {
 		h.mutex.Unlock()
-		errors.WriteErrorResponse(w, errors.NewSessionNotFoundError(sessionID))
+		common.WriteErrorResponse(w, common.StatusNotFound, "Session not found: %s", sessionID)
 		return
 	}
 
@@ -146,21 +133,19 @@ func (h *SessionHandler) TerminateSessionWithParams(w http.ResponseWriter, r *ht
 	}()
 
 	response := SessionTerminateResponse{
-		Success:   true,
-		SessionID: sessionID,
-		Status:    "terminated",
+		SessionID:     sessionID,
+		SessionStatus: "terminated",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	common.WriteSuccessResponse(w, response)
 }
 
 // GetSessionLogsWithParams handles session log retrieval using path parameters
 func (h *SessionHandler) GetSessionLogsWithParams(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
-	sessionID := query.Get("id")
+	sessionID := router.Param(r, "id")
 	if sessionID == "" {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("session id parameter is required"))
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "session id parameter is required")
 		return
 	}
 
@@ -178,7 +163,7 @@ func (h *SessionHandler) GetSessionLogsWithParams(w http.ResponseWriter, r *http
 	h.mutex.RUnlock()
 
 	if !exists {
-		errors.WriteErrorResponse(w, errors.NewSessionNotFoundError(sessionID))
+		common.WriteErrorResponse(w, common.StatusNotFound, "Session not found: %s", sessionID)
 		return
 	}
 
@@ -195,12 +180,9 @@ func (h *SessionHandler) GetSessionLogsWithParams(w http.ResponseWriter, r *http
 	tailedLogs := logs[startIndex:]
 
 	response := SessionLogsResponse{
-		Success:   true,
 		SessionID: sessionID,
 		Logs:      tailedLogs,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	common.WriteSuccessResponse(w, response)
 }

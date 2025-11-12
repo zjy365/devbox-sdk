@@ -5,18 +5,16 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/labring/devbox-sdk-server/pkg/errors"
 )
 
 // getProcess retrieves process info by ID
-func (h *ProcessHandler) getProcess(processID string) (*ProcessInfo, error) {
+func (h *ProcessHandler) getProcess(processID string) (*processInfo, error) {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
 	processInfo, exists := h.processes[processID]
 	if !exists {
-		return nil, errors.NewProcessNotFoundError(processID)
+		return nil, fmt.Errorf("Process not found: %s", processID)
 	}
 	return processInfo, nil
 }
@@ -35,7 +33,7 @@ func (h *ProcessHandler) parseSignal(signalStr string) (syscall.Signal, error) {
 	case "SIGTERM", "TERM":
 		return syscall.SIGTERM, nil
 	default:
-		return 0, errors.NewInvalidRequestError(fmt.Sprintf("Invalid signal: %s", signalStr))
+		return 0, fmt.Errorf("Invalid signal: %s", signalStr)
 	}
 }
 

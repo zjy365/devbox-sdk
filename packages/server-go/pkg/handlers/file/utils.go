@@ -3,56 +3,45 @@ package file
 import (
 	"fmt"
 	"mime"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/labring/devbox-sdk-server/pkg/errors"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
-// validatePath validates and sanitizes a file path to prevent path traversal attacks
+func writeFileNotFoundError(w http.ResponseWriter, err error, path string) {
+	if os.IsNotExist(err) {
+		common.WriteErrorResponse(w, common.StatusNotFound, "File not found: %s", path)
+		return
+	}
+	common.WriteErrorResponse(w, common.StatusInternalError, "File operation error: %v", err)
+}
+
 func (h *FileHandler) validatePath(path string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("path is required")
 	}
 
-	// Clean the path and remove leading slashes
 	cleanPath := filepath.Clean(path)
-	cleanPath = strings.TrimPrefix(cleanPath, "/")
-	cleanPath = strings.TrimPrefix(cleanPath, "./")
 
-	// Join with workspace and resolve to absolute path
+	if filepath.IsAbs(cleanPath) {
+		return cleanPath, nil
+	}
+
 	fullPath := filepath.Join(h.config.WorkspacePath, cleanPath)
 	absPath, err := filepath.Abs(fullPath)
 	if err != nil {
 		return "", err
 	}
 
-	absWorkspace, err := filepath.Abs(h.config.WorkspacePath)
-	if err != nil {
-		return "", err
-	}
-
-	// Ensure path stays within workspace
-	if !strings.HasPrefix(absPath, absWorkspace) {
-		return "", fmt.Errorf("path %q is outside workspace", path)
-	}
-
 	return absPath, nil
 }
 
 // ensureDirectory creates directory if it doesn't exist
-func (h *FileHandler) ensureDirectory(path string) error {
+func ensureDirectory(path string) error {
 	return os.MkdirAll(filepath.Dir(path), 0755)
-}
-
-// checkFileExists checks if file exists and returns file info
-func (h *FileHandler) checkFileExists(path string) (os.FileInfo, error) {
-	info, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return nil, errors.NewFileNotFoundError(path)
-	}
-	return info, err
 }
 
 // mimeFromExt returns a best-effort MIME type by file extension

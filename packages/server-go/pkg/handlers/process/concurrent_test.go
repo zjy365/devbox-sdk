@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labring/devbox-sdk-server/pkg/router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -109,10 +110,11 @@ func TestConcurrentProcessOperations(t *testing.T) {
 			go func() {
 				defer wg.Done()
 
-				httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/processes/status?id=%s", processID), nil)
+				httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/process/%s/status", processID), nil)
 				w := httptest.NewRecorder()
-
-				handler.GetProcessStatus(w, httpReq)
+				r := router.NewRouter()
+				r.Register("GET", "/api/v1/process/:id/status", handler.GetProcessStatus)
+				r.ServeHTTP(w, httpReq)
 
 				assert.Equal(t, http.StatusOK, w.Code)
 			}()
@@ -147,10 +149,11 @@ func TestConcurrentProcessOperations(t *testing.T) {
 			go func() {
 				defer wg.Done()
 
-				httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/processes/logs?id=%s", processID), nil)
+				httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/process/%s/logs", processID), nil)
 				w := httptest.NewRecorder()
-
-				handler.GetProcessLogs(w, httpReq)
+				r := router.NewRouter()
+				r.Register("GET", "/api/v1/process/:id/logs", handler.GetProcessLogs)
+				r.ServeHTTP(w, httpReq)
 
 				assert.Equal(t, http.StatusOK, w.Code)
 			}()

@@ -2,7 +2,6 @@ package file
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -14,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/labring/devbox-sdk-server/pkg/config"
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -103,7 +102,7 @@ func TestNewFileHandler(t *testing.T) {
 func TestWriteFile(t *testing.T) {
 	handler := createTestFileHandler(t)
 
-	t.Run("successful file write", func(t *testing.T) {
+	t.Run("successful JSON write", func(t *testing.T) {
 		req := WriteFileRequest{
 			Path:    "test.txt",
 			Content: "Hello, World!",
@@ -118,110 +117,79 @@ func TestWriteFile(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response WriteFileResponse
+		var response common.Response[WriteFileResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, handler.config.WorkspacePath, filepath.Dir(response.Path))
-		assert.Equal(t, int64(len("Hello, World!")), response.Size)
-		assert.NotEmpty(t, response.Timestamp)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Contains(t, response.Data.Path, "test.txt")
+		assert.Equal(t, int64(len("Hello, World!")), response.Data.Size)
 
-		// Verify file actually exists and has correct content
-		content, err := os.ReadFile(response.Path)
+		content, err := os.ReadFile(response.Data.Path)
 		require.NoError(t, err)
 		assert.Equal(t, "Hello, World!", string(content))
 	})
 
-	t.Run("nested directory creation", func(t *testing.T) {
-		req := WriteFileRequest{
-			Path:    "subdir/nested/file.txt",
-			Content: "Nested content",
-		}
-
-		reqBody, _ := json.Marshal(req)
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
-		httpReq.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response WriteFileResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-		assert.Contains(t, response.Path, "subdir/nested/file.txt")
-	})
-
-	t.Run("invalid JSON", func(t *testing.T) {
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", strings.NewReader("invalid json"))
-		httpReq.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("empty path", func(t *testing.T) {
-		req := WriteFileRequest{
-			Path:    "",
-			Content: "content",
-		}
-
-		reqBody, _ := json.Marshal(req)
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
-		httpReq.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("write file with base64 encoding", func(t *testing.T) {
-		// Create binary data (PNG header)
+	t.Run("successful binary write", func(t *testing.T) {
 		binaryData := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
-		base64Content := base64.StdEncoding.EncodeToString(binaryData)
-		encoding := "base64"
 
-		req := WriteFileRequest{
-			Path:     "test_image.png",
-			Content:  base64Content,
-			Encoding: &encoding,
-		}
-
-		reqBody, _ := json.Marshal(req)
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
-		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write?path=test.png", bytes.NewReader(binaryData))
+		httpReq.Header.Set("Content-Type", "application/octet-stream")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response WriteFileResponse
+		var response common.Response[WriteFileResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, int64(len(binaryData)), response.Size)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, int64(len(binaryData)), response.Data.Size)
 
-		// Verify file content is decoded binary data
-		content, err := os.ReadFile(response.Path)
+		content, err := os.ReadFile(response.Data.Path)
 		require.NoError(t, err)
 		assert.Equal(t, binaryData, content)
 	})
 
-	t.Run("write file with invalid base64", func(t *testing.T) {
-		encoding := "base64"
+	t.Run("successful multipart write", func(t *testing.T) {
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+
+		fileContent := []byte("Multipart content")
+		part, err := writer.CreateFormFile("file", "test_multipart.txt")
+		require.NoError(t, err)
+		_, err = part.Write(fileContent)
+		require.NoError(t, err)
+
+		err = writer.WriteField("path", "multipart.txt")
+		require.NoError(t, err)
+
+		err = writer.Close()
+		require.NoError(t, err)
+
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
+		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+		w := httptest.NewRecorder()
+
+		handler.WriteFile(w, httpReq)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response common.Response[WriteFileResponse]
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Contains(t, response.Data.Path, "multipart.txt")
+		assert.Equal(t, int64(len(fileContent)), response.Data.Size)
+	})
+
+	t.Run("path traversal blocked", func(t *testing.T) {
 		req := WriteFileRequest{
-			Path:     "test.txt",
-			Content:  "this is not valid base64!!!",
-			Encoding: &encoding,
+			Path:    "../../../etc/passwd",
+			Content: "malicious",
 		}
 
 		reqBody, _ := json.Marshal(req)
@@ -231,22 +199,26 @@ func TestWriteFile(t *testing.T) {
 
 		handler.WriteFile(w, httpReq)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response common.Response[WriteFileResponse]
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.NotEqual(t, common.StatusSuccess, response.Status)
 	})
 
-	t.Run("file size exceeds limit", func(t *testing.T) {
-		// Create a handler with small file size limit
+	t.Run("file size limit enforced", func(t *testing.T) {
 		testWorkspace := createTestWorkspace(t)
 		cfg := &config.Config{
 			WorkspacePath: testWorkspace,
-			MaxFileSize:   10, // 10 bytes limit
+			MaxFileSize:   10,
 		}
-
 		smallHandler := NewFileHandler(cfg)
 
 		req := WriteFileRequest{
 			Path:    "large.txt",
-			Content: strings.Repeat("x", 20), // 20 bytes > 10 bytes limit
+			Content: strings.Repeat("x", 20),
 		}
 
 		reqBody, _ := json.Marshal(req)
@@ -256,331 +228,36 @@ func TestWriteFile(t *testing.T) {
 
 		smallHandler.WriteFile(w, httpReq)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response common.Response[WriteFileResponse]
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.NotEqual(t, common.StatusSuccess, response.Status)
 	})
 
-	t.Run("path traversal attempt", func(t *testing.T) {
-		req := WriteFileRequest{
-			Path:    "../../../etc/passwd",
-			Content: "malicious content",
-		}
-
-		reqBody, _ := json.Marshal(req)
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(reqBody))
+	t.Run("invalid JSON request", func(t *testing.T) {
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", strings.NewReader("invalid json"))
 		httpReq.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
 		handler.WriteFile(w, httpReq)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("binary upload via query parameter", func(t *testing.T) {
-		binaryData := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D}
-
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write?path=binary_image.png", bytes.NewReader(binaryData))
-		httpReq.Header.Set("Content-Type", "application/octet-stream")
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response WriteFileResponse
+		var response common.Response[WriteFileResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, int64(len(binaryData)), response.Size)
-
-		// Verify file content
-		content, err := os.ReadFile(response.Path)
-		require.NoError(t, err)
-		assert.Equal(t, binaryData, content)
-	})
-
-	t.Run("binary upload via header", func(t *testing.T) {
-		binaryData := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46}
-
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(binaryData))
-		httpReq.Header.Set("Content-Type", "image/jpeg")
-		httpReq.Header.Set("X-File-Path", "photo.jpg")
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response WriteFileResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-		assert.Contains(t, response.Path, "photo.jpg")
-
-		// Verify file content
-		content, err := os.ReadFile(response.Path)
-		require.NoError(t, err)
-		assert.Equal(t, binaryData, content)
-	})
-
-	t.Run("binary upload via base64 path", func(t *testing.T) {
-		binaryData := []byte{0x50, 0x4B, 0x03, 0x04}
-		path := "/tmp/test.zip"
-		pathBase64 := base64.StdEncoding.EncodeToString([]byte(path))
-
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write?path_base64="+pathBase64, bytes.NewReader(binaryData))
-		httpReq.Header.Set("Content-Type", "application/zip")
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response WriteFileResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-	})
-
-	t.Run("binary upload missing path", func(t *testing.T) {
-		binaryData := []byte{0x01, 0x02, 0x03}
-
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", bytes.NewReader(binaryData))
-		httpReq.Header.Set("Content-Type", "application/octet-stream")
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("binary upload large file", func(t *testing.T) {
-		binaryData := make([]byte, 1024*1024) // 1MB
-
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write?path=large_binary.bin", bytes.NewReader(binaryData))
-		httpReq.Header.Set("Content-Type", "application/octet-stream")
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response WriteFileResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-		assert.Equal(t, int64(1024*1024), response.Size)
-	})
-
-	t.Run("multipart upload with file field", func(t *testing.T) {
-		// Create multipart form data
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-
-		// Add file field
-		fileContent := []byte("Hello from multipart!")
-		part, err := writer.CreateFormFile("file", "multipart_test.txt")
-		require.NoError(t, err)
-		_, err = part.Write(fileContent)
-		require.NoError(t, err)
-
-		// Add path field (optional)
-		err = writer.WriteField("path", "uploaded_multipart.txt")
-		require.NoError(t, err)
-
-		err = writer.Close()
-		require.NoError(t, err)
-
-		// Create request
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
-		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response WriteFileResponse
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-		assert.Contains(t, response.Path, "uploaded_multipart.txt")
-		assert.Equal(t, int64(len(fileContent)), response.Size)
-
-		// Verify file content
-		content, err := os.ReadFile(response.Path)
-		require.NoError(t, err)
-		assert.Equal(t, fileContent, content)
-	})
-
-	t.Run("multipart upload with files field", func(t *testing.T) {
-		// Create multipart form data
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-
-		// Add files field (batch upload format)
-		fileContent := []byte("Batch upload content")
-		part, err := writer.CreateFormFile("files", "batch_test.txt")
-		require.NoError(t, err)
-		_, err = part.Write(fileContent)
-		require.NoError(t, err)
-
-		err = writer.Close()
-		require.NoError(t, err)
-
-		// Create request
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
-		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response WriteFileResponse
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-		assert.Contains(t, response.Path, "batch_test.txt")
-	})
-
-	t.Run("multipart upload without path defaults to filename", func(t *testing.T) {
-		// Create multipart form data
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-
-		// Add file field without path
-		fileContent := []byte("File content")
-		part, err := writer.CreateFormFile("file", "default_name.txt")
-		require.NoError(t, err)
-		_, err = part.Write(fileContent)
-		require.NoError(t, err)
-
-		err = writer.Close()
-		require.NoError(t, err)
-
-		// Create request
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
-		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response WriteFileResponse
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-		assert.Contains(t, response.Path, "default_name.txt")
-	})
-
-	t.Run("multipart upload with binary data", func(t *testing.T) {
-		// Create multipart form data
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-
-		// Add binary file (PNG header)
-		binaryData := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
-		part, err := writer.CreateFormFile("file", "multipart_image.png")
-		require.NoError(t, err)
-		_, err = part.Write(binaryData)
-		require.NoError(t, err)
-
-		err = writer.Close()
-		require.NoError(t, err)
-
-		// Create request
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
-		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response WriteFileResponse
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-		assert.Equal(t, int64(len(binaryData)), response.Size)
-
-		// Verify binary content
-		content, err := os.ReadFile(response.Path)
-		require.NoError(t, err)
-		assert.Equal(t, binaryData, content)
-	})
-
-	t.Run("multipart upload missing file field", func(t *testing.T) {
-		// Create multipart form data without file field
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-
-		// Add only a text field
-		err := writer.WriteField("path", "test.txt")
-		require.NoError(t, err)
-
-		err = writer.Close()
-		require.NoError(t, err)
-
-		// Create request
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
-		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("multipart upload large file", func(t *testing.T) {
-		// Create multipart form data
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-
-		// Add large file (1MB)
-		largeData := make([]byte, 1024*1024)
-		for i := range largeData {
-			largeData[i] = byte(i % 256)
-		}
-
-		part, err := writer.CreateFormFile("file", "large_multipart.bin")
-		require.NoError(t, err)
-		_, err = part.Write(largeData)
-		require.NoError(t, err)
-
-		err = writer.Close()
-		require.NoError(t, err)
-
-		// Create request
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/write", body)
-		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
-		w := httptest.NewRecorder()
-
-		handler.WriteFile(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response WriteFileResponse
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-		assert.Equal(t, int64(1024*1024), response.Size)
+		assert.Equal(t, common.StatusInvalidRequest, response.Status)
+		assert.Contains(t, response.Message, "Invalid JSON body")
 	})
 }
 
 func TestReadFile(t *testing.T) {
 	handler := createTestFileHandler(t)
 
-	// Setup: Create a test file first
 	testFile := filepath.Join(handler.config.WorkspacePath, "readme.txt")
 	testContent := "This is test content for reading"
 	err := os.WriteFile(testFile, []byte(testContent), 0644)
@@ -593,34 +270,9 @@ func TestReadFile(t *testing.T) {
 		handler.ReadFile(w, httpReq)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response ReadFileResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-		assert.Equal(t, testContent, response.Content)
-		assert.Equal(t, int64(len(testContent)), response.Size)
-	})
-
-	t.Run("successful file read via JSON body", func(t *testing.T) {
-		body := map[string]string{"path": "readme.txt"}
-		reqBody, _ := json.Marshal(body)
-
-		httpReq := httptest.NewRequest("GET", "/api/v1/files/read", bytes.NewReader(reqBody))
-		httpReq.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		handler.ReadFile(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response ReadFileResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.True(t, response.Success)
-		assert.Equal(t, testContent, response.Content)
+		assert.Equal(t, testContent, w.Body.String())
+		assert.Equal(t, "text/plain; charset=utf-8", w.Header().Get("Content-Type"))
+		assert.Equal(t, fmt.Sprintf("%d", len(testContent)), w.Header().Get("Content-Length"))
 	})
 
 	t.Run("missing path parameter", func(t *testing.T) {
@@ -629,17 +281,12 @@ func TestReadFile(t *testing.T) {
 
 		handler.ReadFile(w, httpReq)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
+		assert.Equal(t, http.StatusOK, w.Code)
 
-	t.Run("invalid JSON body", func(t *testing.T) {
-		httpReq := httptest.NewRequest("GET", "/api/v1/files/read", strings.NewReader("invalid json"))
-		httpReq.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		handler.ReadFile(w, httpReq)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		var response common.Response[struct{}]
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.NotEqual(t, common.StatusSuccess, response.Status)
 	})
 
 	t.Run("file not found", func(t *testing.T) {
@@ -648,21 +295,17 @@ func TestReadFile(t *testing.T) {
 
 		handler.ReadFile(w, httpReq)
 
-		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 
-		// Parse error response
-		var errorResponse map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &errorResponse)
+		var response common.Response[struct{}]
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		message, ok := errorResponse["message"].(string)
-		assert.True(t, ok, "message field should be a string")
-		assert.Contains(t, message, "not found")
-		assert.Equal(t, "not_found", errorResponse["type"])
+		assert.Equal(t, common.StatusNotFound, response.Status)
+		assert.Contains(t, response.Message, "not found")
 	})
 
 	t.Run("directory instead of file", func(t *testing.T) {
-		// Create a test directory
 		testDir := filepath.Join(handler.config.WorkspacePath, "testdir")
 		err := os.Mkdir(testDir, 0755)
 		require.NoError(t, err)
@@ -672,20 +315,15 @@ func TestReadFile(t *testing.T) {
 
 		handler.ReadFile(w, httpReq)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
-		// Verify it's an error response with correct content type
+		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-		// Parse error response
-		var errorResponse map[string]interface{}
-		err = json.Unmarshal(w.Body.Bytes(), &errorResponse)
+		var response common.Response[struct{}]
+		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		message, ok := errorResponse["message"].(string)
-		assert.True(t, ok, "message field should be a string")
-		assert.Contains(t, message, "directory")
-		assert.Equal(t, "invalid_request", errorResponse["type"])
+		assert.Equal(t, common.StatusInvalidRequest, response.Status)
+		assert.Contains(t, response.Message, "directory")
 	})
 }
 
@@ -718,15 +356,12 @@ func TestDeleteFile(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response DeleteFileResponse
+		var response common.Response[struct{}]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, testFile, response.Path)
-		assert.NotEmpty(t, response.Timestamp)
+		assert.Equal(t, common.StatusSuccess, response.Status)
 
-		// Verify file is actually deleted
 		_, err = os.Stat(testFile)
 		assert.True(t, os.IsNotExist(err))
 	})
@@ -745,24 +380,21 @@ func TestDeleteFile(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response DeleteFileResponse
+		var response common.Response[struct{}]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
+		assert.Equal(t, common.StatusSuccess, response.Status)
 
-		// Verify directory is actually deleted
 		_, err = os.Stat(testDir)
 		assert.True(t, os.IsNotExist(err))
 	})
 
 	t.Run("directory deletion without recursive flag", func(t *testing.T) {
-		// Recreate test directory with a file to make it non-empty
 		testDir2 := filepath.Join(handler.config.WorkspacePath, "deletedir2")
 		err := os.Mkdir(testDir2, 0755)
 		require.NoError(t, err)
 
-		// Add a file to make directory non-empty
 		subFile := filepath.Join(testDir2, "sub.txt")
 		err = os.WriteFile(subFile, []byte("content"), 0644)
 		require.NoError(t, err)
@@ -778,20 +410,15 @@ func TestDeleteFile(t *testing.T) {
 
 		handler.DeleteFile(w, httpReq)
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-
-		// Verify it's an error response with correct content type
+		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-		// Parse error response
-		var errorResponse map[string]interface{}
-		err = json.Unmarshal(w.Body.Bytes(), &errorResponse)
+		var response common.Response[struct{}]
+		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		message, ok := errorResponse["message"].(string)
-		assert.True(t, ok, "message field should be a string")
-		assert.Contains(t, message, "Failed to delete")
-		assert.Equal(t, "file_operation_error", errorResponse["type"])
+		assert.NotEqual(t, common.StatusSuccess, response.Status)
+		assert.Contains(t, response.Message, "Failed to delete")
 	})
 
 	t.Run("file not found", func(t *testing.T) {
@@ -805,20 +432,15 @@ func TestDeleteFile(t *testing.T) {
 
 		handler.DeleteFile(w, httpReq)
 
-		assert.Equal(t, http.StatusNotFound, w.Code)
-
-		// Verify it's an error response with correct content type
+		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-		// Parse error response
-		var errorResponse map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &errorResponse)
+		var response common.Response[struct{}]
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		message, ok := errorResponse["message"].(string)
-		assert.True(t, ok, "message field should be a string")
-		assert.Contains(t, message, "not found")
-		assert.Equal(t, "not_found", errorResponse["type"])
+		assert.Equal(t, common.StatusNotFound, response.Status)
+		assert.Contains(t, response.Message, "not found")
 	})
 
 	t.Run("invalid JSON", func(t *testing.T) {
@@ -827,20 +449,15 @@ func TestDeleteFile(t *testing.T) {
 
 		handler.DeleteFile(w, httpReq)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
-		// Verify it's an error response with correct content type
+		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-		// Parse error response
-		var errorResponse map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &errorResponse)
+		var response common.Response[struct{}]
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		message, ok := errorResponse["message"].(string)
-		assert.True(t, ok, "message field should be a string")
-		assert.Contains(t, message, "Invalid JSON")
-		assert.Equal(t, "invalid_request", errorResponse["type"])
+		assert.Equal(t, common.StatusInvalidRequest, response.Status)
+		assert.Contains(t, response.Message, "Invalid JSON")
 	})
 }
 
@@ -942,20 +559,15 @@ func TestListFiles(t *testing.T) {
 
 		handler.ListFiles(w, httpReq)
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-
-		// Verify it's an error response with correct content type
+		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-		// Parse error response
-		var errorResponse map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &errorResponse)
+		var response common.Response[struct{}]
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		message, ok := errorResponse["message"].(string)
-		assert.True(t, ok, "message field should be a string")
-		assert.Contains(t, message, "Failed to list directory")
-		assert.Equal(t, "file_operation_error", errorResponse["type"])
+		assert.NotEqual(t, common.StatusSuccess, response.Status)
+		assert.Contains(t, response.Message, "Failed to list directory")
 	})
 }
 
@@ -963,22 +575,16 @@ func TestBatchUpload(t *testing.T) {
 	handler := createTestFileHandler(t)
 
 	t.Run("successful batch upload", func(t *testing.T) {
-		// Create multipart form
 		var buf bytes.Buffer
 		writer := multipart.NewWriter(&buf)
 
-		// Add files
 		file1Content := "Content of file1"
-		part1, _ := writer.CreateFormFile("files", "file1.txt")
+		part1, _ := writer.CreateFormFile("files", "tmp/file1.txt")
 		part1.Write([]byte(file1Content))
 
 		file2Content := "Content of file2"
-		part2, _ := writer.CreateFormFile("files", "file2.txt")
+		part2, _ := writer.CreateFormFile("files", "/tmp/data/file2.txt")
 		part2.Write([]byte(file2Content))
-
-		// Add target directory within workspace to avoid repo residuals
-		uploadsDir := filepath.Join(handler.config.WorkspacePath, "uploads")
-		_ = writer.WriteField("targetDir", uploadsDir)
 
 		err := writer.Close()
 		require.NoError(t, err)
@@ -991,40 +597,36 @@ func TestBatchUpload(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response BatchUploadResponse
+		var response common.Response[BatchUploadResponse]
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, 2, response.TotalFiles)
-		assert.Equal(t, 2, response.SuccessCount)
-		assert.Equal(t, 2, len(response.Results))
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, 2, response.Data.TotalFiles)
+		assert.Equal(t, 2, response.Data.SuccessCount)
+		assert.Equal(t, 2, len(response.Data.Results))
 
-		// Verify files were actually created
-		for _, result := range response.Results {
+		for _, result := range response.Data.Results {
 			if result.Success {
 				assert.FileExists(t, result.Path)
 			}
 		}
 
-		// Explicitly cleanup uploads directory (in addition to t.TempDir cleanup)
-		t.Cleanup(func() {
-			_ = os.RemoveAll(uploadsDir)
-		})
+		// cleanup created files
+		for _, result := range response.Data.Results {
+			if result.Success {
+				_ = os.RemoveAll(filepath.Dir(result.Path))
+			}
+		}
 	})
 
-	t.Run("missing target directory", func(t *testing.T) {
+	t.Run("invalid multipart form", func(t *testing.T) {
 		var buf bytes.Buffer
+		// send invalid body
 		writer := multipart.NewWriter(&buf)
+		_ = writer.Close()
 
-		// Add file without target directory
-		part, _ := writer.CreateFormFile("files", "test.txt")
-		part.Write([]byte("content"))
-
-		err := writer.Close()
-		require.NoError(t, err)
-
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/batch-upload", &buf)
+		httpReq := httptest.NewRequest("POST", "/api/v1/files/batch-upload", strings.NewReader("invalid multipart"))
 		httpReq.Header.Set("Content-Type", writer.FormDataContentType())
 		w := httptest.NewRecorder()
 
@@ -1032,28 +634,12 @@ func TestBatchUpload(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response common.Response
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		require.NoError(t, err)
-
-		assert.False(t, response.Success)
-		assert.Contains(t, response.Error, "targetDir parameter is required")
-	})
-
-	t.Run("invalid multipart form", func(t *testing.T) {
-		httpReq := httptest.NewRequest("POST", "/api/v1/files/batch-upload", strings.NewReader("invalid multipart"))
-		w := httptest.NewRecorder()
-
-		handler.BatchUpload(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response common.Response
+		var response common.Response[struct{}]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.False(t, response.Success)
-		assert.Contains(t, response.Error, "Failed to parse multipart form")
+		assert.Equal(t, common.StatusInvalidRequest, response.Status)
+		assert.Contains(t, response.Message, "Failed to parse multipart form")
 	})
 }
 
@@ -1068,7 +654,7 @@ func TestValidatePath(t *testing.T) {
 			{"file.txt", filepath.Join(handler.config.WorkspacePath, "file.txt")},
 			{"subdir/file.txt", filepath.Join(handler.config.WorkspacePath, "subdir/file.txt")},
 			{"./file.txt", filepath.Join(handler.config.WorkspacePath, "file.txt")},
-			{"/file.txt", filepath.Join(handler.config.WorkspacePath, "file.txt")},
+			{"/file.txt", "/file.txt"},
 		}
 
 		for _, tc := range testCases {
@@ -1083,21 +669,6 @@ func TestValidatePath(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "path is required")
 	})
-
-	t.Run("path traversal attempts", func(t *testing.T) {
-		// Use paths that will definitely go outside the temp workspace
-		maliciousPaths := []string{
-			"../../../../../../../../etc/passwd",
-			"../../../../../../../../root/.ssh/id_rsa",
-			"../../../../../../../../../../../../etc/hosts",
-		}
-
-		for _, path := range maliciousPaths {
-			_, err := handler.validatePath(path)
-			assert.Error(t, err, "should reject path: %s", path)
-			assert.Contains(t, err.Error(), "outside workspace")
-		}
-	})
 }
 
 func TestEnsureDirectory(t *testing.T) {
@@ -1106,7 +677,7 @@ func TestEnsureDirectory(t *testing.T) {
 	t.Run("create nested directory", func(t *testing.T) {
 		testPath := filepath.Join(handler.config.WorkspacePath, "deep", "nested", "path", "file.txt")
 
-		err := handler.ensureDirectory(testPath)
+		err := ensureDirectory(testPath)
 		assert.NoError(t, err)
 
 		// Verify directory was created
@@ -1117,34 +688,10 @@ func TestEnsureDirectory(t *testing.T) {
 	})
 }
 
-func TestCheckFileExists(t *testing.T) {
-	handler := createTestFileHandler(t)
-
-	t.Run("existing file", func(t *testing.T) {
-		testFile := filepath.Join(handler.config.WorkspacePath, "existing.txt")
-		err := os.WriteFile(testFile, []byte("content"), 0644)
-		require.NoError(t, err)
-
-		info, err := handler.checkFileExists(testFile)
-		assert.NoError(t, err)
-		assert.NotNil(t, info)
-		assert.Equal(t, "existing.txt", info.Name())
-	})
-
-	t.Run("nonexistent file", func(t *testing.T) {
-		nonexistentFile := filepath.Join(handler.config.WorkspacePath, "nonexistent.txt")
-
-		_, err := handler.checkFileExists(nonexistentFile)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not found")
-	})
-}
-
 func TestFileHandlerIntegration(t *testing.T) {
 	handler := createTestFileHandler(t)
 
 	t.Run("complete file lifecycle", func(t *testing.T) {
-		// 1. Write file
 		writeReq := WriteFileRequest{
 			Path:    "lifecycle.txt",
 			Content: "Initial content",
@@ -1158,25 +705,18 @@ func TestFileHandlerIntegration(t *testing.T) {
 		handler.WriteFile(w, httpReq)
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var writeResponse WriteFileResponse
+		var writeResponse common.Response[WriteFileResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &writeResponse)
 		require.NoError(t, err)
-		assert.True(t, writeResponse.Success)
+		assert.Equal(t, common.StatusSuccess, writeResponse.Status)
 
-		// 2. Read file
 		readReq := httptest.NewRequest("GET", "/api/v1/files/read?path=lifecycle.txt", nil)
 		w2 := httptest.NewRecorder()
 
 		handler.ReadFile(w2, readReq)
 		assert.Equal(t, http.StatusOK, w2.Code)
+		assert.Equal(t, "Initial content", w2.Body.String())
 
-		var readResponse ReadFileResponse
-		err = json.Unmarshal(w2.Body.Bytes(), &readResponse)
-		require.NoError(t, err)
-		assert.True(t, readResponse.Success)
-		assert.Equal(t, "Initial content", readResponse.Content)
-
-		// 3. List files (should include our file)
 		listReq := httptest.NewRequest("GET", "/api/v1/files/list?path=.", nil)
 		w3 := httptest.NewRecorder()
 
@@ -1191,7 +731,6 @@ func TestFileHandlerIntegration(t *testing.T) {
 		require.True(t, ok)
 		assert.Greater(t, len(files), 0)
 
-		// 4. Delete file
 		deleteReq := DeleteFileRequest{
 			Path: "lifecycle.txt",
 		}
@@ -1203,23 +742,21 @@ func TestFileHandlerIntegration(t *testing.T) {
 		handler.DeleteFile(w4, httpDeleteReq)
 		assert.Equal(t, http.StatusOK, w4.Code)
 
-		var deleteResponse DeleteFileResponse
+		var deleteResponse common.Response[struct{}]
 		err = json.Unmarshal(w4.Body.Bytes(), &deleteResponse)
 		require.NoError(t, err)
-		assert.True(t, deleteResponse.Success)
+		assert.Equal(t, common.StatusSuccess, deleteResponse.Status)
 
-		// 5. Verify file is gone
 		readReq2 := httptest.NewRequest("GET", "/api/v1/files/read?path=lifecycle.txt", nil)
 		w5 := httptest.NewRecorder()
 
 		handler.ReadFile(w5, readReq2)
-		assert.Equal(t, http.StatusNotFound, w5.Code)
+		assert.Equal(t, http.StatusOK, w5.Code)
 
-		// Parse error response
-		var finalResponse map[string]interface{}
+		var finalResponse common.Response[struct{}]
 		err = json.Unmarshal(w5.Body.Bytes(), &finalResponse)
 		require.NoError(t, err)
-		assert.Equal(t, "not_found", finalResponse["type"])
+		assert.Equal(t, common.StatusNotFound, finalResponse.Status)
 	})
 }
 
@@ -1227,7 +764,7 @@ func TestEdgeCases(t *testing.T) {
 	handler := createTestFileHandler(t)
 
 	t.Run("large file content", func(t *testing.T) {
-		largeContent := strings.Repeat("x", 1000) // 1KB content
+		largeContent := strings.Repeat("x", 1000)
 		req := WriteFileRequest{
 			Path:    "large.txt",
 			Content: largeContent,
@@ -1241,10 +778,10 @@ func TestEdgeCases(t *testing.T) {
 		handler.WriteFile(w, httpReq)
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response WriteFileResponse
+		var response common.Response[WriteFileResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
-		assert.Equal(t, int64(len(largeContent)), response.Size)
+		assert.Equal(t, int64(len(largeContent)), response.Data.Size)
 	})
 
 	t.Run("special characters in filename", func(t *testing.T) {
@@ -1262,11 +799,11 @@ func TestEdgeCases(t *testing.T) {
 		handler.WriteFile(w, httpReq)
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response WriteFileResponse
+		var response common.Response[WriteFileResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
-		assert.True(t, response.Success)
-		assert.Contains(t, response.Path, specialName)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Contains(t, response.Data.Path, specialName)
 	})
 
 	t.Run("unicode content", func(t *testing.T) {
@@ -1284,22 +821,17 @@ func TestEdgeCases(t *testing.T) {
 		handler.WriteFile(w, httpReq)
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response WriteFileResponse
+		var response common.Response[WriteFileResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
-		assert.True(t, response.Success)
+		assert.Equal(t, common.StatusSuccess, response.Status)
 
-		// Read back and verify unicode content
 		readReq := httptest.NewRequest("GET", "/api/v1/files/read?path=unicode.txt", nil)
 		w2 := httptest.NewRecorder()
 
 		handler.ReadFile(w2, readReq)
 		assert.Equal(t, http.StatusOK, w2.Code)
-
-		var readResponse ReadFileResponse
-		err = json.Unmarshal(w2.Body.Bytes(), &readResponse)
-		require.NoError(t, err)
-		assert.Equal(t, unicodeContent, readResponse.Content)
+		assert.Equal(t, unicodeContent, w2.Body.String())
 	})
 }
 

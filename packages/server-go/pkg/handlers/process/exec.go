@@ -1,7 +1,6 @@
 package process
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -9,8 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/errors"
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/labring/devbox-sdk-server/pkg/utils"
 )
 
@@ -26,26 +24,24 @@ type ProcessExecRequest struct {
 
 // Process operation response types
 type ProcessExecResponse struct {
-	common.Response
-	ProcessID string  `json:"processId"`
-	PID       int     `json:"pid"`
-	Status    string  `json:"status"`
-	ExitCode  *int    `json:"exitCode,omitempty"`
-	Stdout    *string `json:"stdout,omitempty"`
-	Stderr    *string `json:"stderr,omitempty"`
+	ProcessID     string  `json:"processId"`
+	PID           int     `json:"pid"`
+	ProcessStatus string  `json:"processStatus"`
+	ExitCode      *int    `json:"exitCode,omitempty"`
+	Stdout        *string `json:"stdout,omitempty"`
+	Stderr        *string `json:"stderr,omitempty"`
 }
 
 // ExecProcess handles process execution
 func (h *ProcessHandler) ExecProcess(w http.ResponseWriter, r *http.Request) {
 	var req ProcessExecRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Invalid request body"))
+	if err := common.ParseJSONBodyReturn(w, r, &req); err != nil {
 		return
 	}
 
 	// Validate required fields
 	if req.Command == "" {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Command is required"))
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "Command is required")
 		return
 	}
 
@@ -82,61 +78,25 @@ func (h *ProcessHandler) ExecProcess(w http.ResponseWriter, r *http.Request) {
 	// Create pipes for stdout and stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		errors.WriteErrorResponse(w, errors.NewInternalError(fmt.Sprintf("Failed to create stdout pipe: %v", err)))
+		common.WriteErrorResponse(w, common.StatusInternalError, "Failed to create stdout pipe: %v", err)
 		return
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		errors.WriteErrorResponse(w, errors.NewInternalError(fmt.Sprintf("Failed to create stderr pipe: %v", err)))
+		common.WriteErrorResponse(w, common.StatusInternalError, "Failed to create stderr pipe: %v", err)
 		return
 	}
 
 	// Start the process
 	if err := cmd.Start(); err != nil {
-		// If process fails to start, create a failed process entry for consistency
-		// This allows users to query the process status and logs
-		processInfo := &ProcessInfo{
-			ID:         processID,
-			Cmd:        cmd,
-			StartAt:    time.Now(),
-			Status:     "failed",
-			Logs:       make([]string, 0),
-			LogEntries: make([]common.LogEntry, 0),
-		}
-
-		// Add failure log entry
-		logEntry := common.LogEntry{
-			Timestamp:  time.Now().Unix(),
-			Level:      "error",
-			Source:     "system",
-			TargetID:   processID,
-			TargetType: "process",
-			Message:    fmt.Sprintf("Failed to start process: %v", err),
-		}
-		processInfo.LogEntries = append(processInfo.LogEntries, logEntry)
-
-		// Store process info
-		h.mutex.Lock()
-		h.processes[processID] = processInfo
-		h.mutex.Unlock()
-
-		// Return success response with process ID, but indicate failure in status
-		response := ProcessExecResponse{
-			Response: common.Response{
-				Success: false,
-				Error:   fmt.Sprintf("Failed to start process: %v", err),
-			},
-			ProcessID: processID,
-			Status:    "failed",
-		}
-
-		common.WriteJSONResponse(w, response)
+		// If process fails to start, return failure response
+		common.WriteErrorResponse(w, common.StatusOperationError, "Failed to start process: %v", err)
 		return
 	}
 
 	// Create process info
-	processInfo := &ProcessInfo{
+	processInfo := &processInfo{
 		ID:         processID,
 		Cmd:        cmd,
 		StartAt:    time.Now(),
@@ -157,11 +117,10 @@ func (h *ProcessHandler) ExecProcess(w http.ResponseWriter, r *http.Request) {
 	go h.monitorProcess(processID)
 
 	response := ProcessExecResponse{
-		Response:  common.Response{Success: true},
-		ProcessID: processID,
-		PID:       cmd.Process.Pid,
-		Status:    "running",
+		ProcessID:     processID,
+		PID:           cmd.Process.Pid,
+		ProcessStatus: "running",
 	}
 
-	common.WriteJSONResponse(w, response)
+	common.WriteSuccessResponse(w, response)
 }

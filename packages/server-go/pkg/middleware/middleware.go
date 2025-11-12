@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/errors"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
 // Middleware is a function that wraps an http.Handler
@@ -117,19 +117,13 @@ func Recovery() Middleware {
 						slog.Error("panic recovered", slog.Any("error", err), slog.String("stack", string(debug.Stack())))
 					}
 
-					var apiErr *errors.APIError
-
-					switch e := err.(type) {
-					case *errors.APIError:
-						apiErr = e
-					case error:
-						apiErr = errors.NewInternalError(e.Error())
-					default:
-						apiErr = errors.NewInternalError("Unknown error occurred")
-					}
-
 					// Send error response
-					errors.WriteErrorResponse(w, apiErr)
+					switch e := err.(type) {
+					case error:
+						common.WriteErrorResponse(w, common.StatusPanic, "%s", e.Error())
+					default:
+						common.WriteErrorResponse(w, common.StatusPanic, "Unknown error occurred")
+					}
 				}
 			}()
 

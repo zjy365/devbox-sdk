@@ -84,14 +84,14 @@ Devbox SDK 采用分层架构设计，主要分为以下几个层次：
 ┌──────────────────────▼────────────────────────────────────┐
 │                 服务层 (Services)                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
-│  │  DevboxAPI   │  │ConnectionMgr │  │  ErrorUtils  │   │
+│  │  DevboxAPI   │  │UrlResolver   │  │  ErrorUtils  │   │
 │  └──────────────┘  └──────────────┘  └──────────────┘   │
 └──────────────────────┬────────────────────────────────────┘
                        │
 ┌──────────────────────▼────────────────────────────────────┐
 │                 基础设施层 (Infrastructure)                │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
-│  │ConnectionPool│  │  HTTP Client │  │  WebSocket   │   │
+│  │ContainerClient│  │  HTTP Client │  │  WebSocket   │   │
 │  └──────────────┘  └──────────────┘  └──────────────┘   │
 └──────────────────────┬────────────────────────────────────┘
                        │
@@ -109,8 +109,9 @@ Devbox SDK 采用分层架构设计，主要分为以下几个层次：
 1. **DevboxSDK**: 主入口类，提供高级 API
 2. **DevboxInstance**: Devbox 实例的封装，提供实例级别的操作
 3. **DevboxAPI**: 与 Sealos Devbox API 通信的客户端
-4. **ConnectionManager**: 管理到 Devbox 容器的 HTTP 连接
-5. **ConnectionPool**: 连接池，实现连接复用和健康检查
+4. **ContainerUrlResolver**: 解析 Devbox 容器 URL 并管理连接执行
+5. **DevboxContainerClient**: HTTP 客户端，用于与 Devbox 容器服务器通信
+6. **Git**: Git 操作类，通过依赖注入集成到 DevboxInstance
 
 ### 2.3 数据流
 
@@ -137,13 +138,13 @@ DevboxAPI.createDevbox() → Sealos API
   ↓
 DevboxInstance.writeFile()
   ↓
-DevboxSDK.writeFile()
+ContainerUrlResolver.executeWithConnection()
   ↓
-ConnectionManager.executeWithConnection()
+ContainerUrlResolver.getServerUrl() → 解析 URL（带缓存）
   ↓
-ConnectionPool.getConnection() → 获取或创建连接
+创建 DevboxContainerClient 实例
   ↓
-HTTP Client → Devbox 容器 HTTP API
+DevboxContainerClient.post() → Devbox 容器 HTTP API
   ↓
 返回结果
 ```
@@ -173,12 +174,11 @@ constructor(config: DevboxSDKConfig)
 ```
 
 配置项包括：
-- `kubeconfig`: Kubernetes 配置，用于认证
-- `baseUrl`: Devbox API 基础 URL（可选）
-- `mockServerUrl`: 模拟服务器 URL（用于测试）
-- `devboxServerUrl`: Devbox 服务器 URL（可选）
-- `connectionPool`: 连接池配置
-- `http`: HTTP 客户端配置
+- `kubeconfig`: Kubernetes 配置（实际是 token），用于认证
+- `baseUrl`: Devbox API 基础 URL（可选，默认：`https://devbox.usw.sealos.io/v1`）
+- `mockServerUrl`: 模拟服务器 URL（用于测试，优先级最高）
+- `devboxServerUrl`: Devbox 服务器 URL（用于开发，优先级最高）
+- `http`: HTTP 客户端配置（timeout、retries、rejectUnauthorized）
 
 #### 3.1.3 Devbox 管理方法
 
@@ -220,8 +220,14 @@ async getMonitorData(
 ```typescript
 async close(): Promise<void>
 ```
-- 关闭所有 HTTP 连接
-- 清理资源，防止内存泄漏
+- 清理缓存和资源
+- 防止内存泄漏
+
+**访问器方法**
+```typescript
+getAPIClient(): DevboxAPI  // 获取 API 客户端
+getUrlResolver(): ContainerUrlResolver  // 获取 URL 解析器
+```
 
 ### 3.2 DevboxInstance 实例类
 
@@ -294,26 +300,68 @@ async refreshInfo(): Promise<void>
 
 所有文件操作方法都包含路径验证，防止目录遍历攻击：
 
-- `writeFile(path, content, options?)`
-- `readFile(path, options?)`
-- `deleteFile(path)`
-- `listFiles(path)`
-- `uploadFiles(files, options?)`
-- `watchFiles(path, callback)`
+**基础文件操作**
+- `writeFile(path, content, options?)`: 写入文件
+  - 支持字符串和 Buffer
+  - 支持 base64 编码选项
+  - 自动选择 JSON 模式或二进制模式
+- `readFile(path, options?)`: 读取文件
+  - 返回 Buffer
+  - 支持编码选项（utf-8、base64）
+- `deleteFile(path)`: 删除文件
+- `listFiles(path)`: 列出目录内容
 
-#### 3.2.5 命令执行
+**高级文件操作**
+- `uploadFiles(files, options?)`: 批量上传文件
+  - 支持 FileMap（路径到内容的映射）
+  - 自动计算公共目录前缀
+  - 支持 targetDir 选项
+- `moveFile(source, destination, overwrite?)`: 移动文件
+- `renameFile(oldPath, newPath)`: 重命名文件或目录
+- `downloadFile(paths, options?)`: 下载文件
+  - 支持单个或多个文件路径
+  - 支持多种格式：tar.gz、tar、multipart、direct
+- `getPorts()`: 获取监听端口列表（3000-9999 范围）
+- `watchFiles(path, callback)`: 监听文件变化（WebSocket）
 
+#### 3.2.5 命令执行和进程管理
+
+**异步执行**
 ```typescript
-async executeCommand(command: string): Promise<CommandResult>
+async executeCommand(options: ProcessExecOptions): Promise<ProcessExecResponse>
 ```
-- 在 Devbox 容器中执行命令
-- 返回执行结果（退出码、stdout、stderr、执行时间）
+- 异步执行命令，立即返回进程 ID
+- 返回 `processId` 和 `pid`，可用于后续查询
 
-**获取进程状态**
+**同步执行**
 ```typescript
-async getProcessStatus(pid: number): Promise<ProcessStatus>
+async execSync(options: ProcessExecOptions): Promise<SyncExecutionResponse>
 ```
-- 查询指定进程的状态信息
+- 同步执行命令，等待完成
+- 返回 stdout、stderr、exitCode、执行时间等
+
+**代码执行**
+```typescript
+async codeRun(code: string, options?: CodeRunOptions): Promise<SyncExecutionResponse>
+```
+- 直接执行代码字符串（Node.js 或 Python）
+- 自动检测语言类型
+- 支持命令行参数
+
+**流式执行**
+```typescript
+async execSyncStream(options: ProcessExecOptions): Promise<ReadableStream>
+```
+- 同步执行并返回 Server-Sent Events (SSE) 流
+- 实时获取输出
+
+**进程管理**
+```typescript
+async listProcesses(): Promise<ListProcessesResponse>  // 列出所有进程
+async getProcessStatus(processId: string): Promise<GetProcessStatusResponse>  // 获取进程状态
+async killProcess(processId: string, options?: KillProcessOptions): Promise<void>  // 终止进程
+async getProcessLogs(processId: string, stream?: boolean): Promise<GetProcessLogsResponse>  // 获取进程日志
+```
 
 #### 3.2.6 健康检查
 
@@ -336,7 +384,34 @@ async waitForReady(
 - 默认检查间隔 2 秒
 - 检查状态和健康状态
 
-#### 3.2.7 路径验证
+#### 3.2.7 Git 操作
+
+`DevboxInstance` 提供了 `git` 属性，用于执行 Git 仓库操作：
+
+```typescript
+const instance = await sdk.getDevbox('my-devbox')
+await instance.git.clone({ url: 'https://github.com/user/repo.git' })
+await instance.git.pull('./repo')
+await instance.git.push('./repo')
+```
+
+**Git 方法**
+- `clone(options)`: 克隆仓库
+- `pull(repoPath, options?)`: 拉取更新
+- `push(repoPath, options?)`: 推送更改
+- `branches(repoPath)`: 列出所有分支
+- `createBranch(repoPath, branchName, checkout?)`: 创建分支
+- `deleteBranch(repoPath, branchName, force?, remote?)`: 删除分支
+- `checkoutBranch(repoPath, branchName, create?)`: 切换分支
+- `add(repoPath, files?)`: 暂存文件
+- `commit(repoPath, options)`: 提交更改
+- `status(repoPath)`: 获取仓库状态
+
+**认证支持**
+- 支持 token、username/password 认证
+- 自动设置 Git 环境变量
+
+#### 3.2.8 路径验证
 
 ```typescript
 private validatePath(path: string): void
@@ -357,12 +432,6 @@ DEFAULT_CONFIG = {
   BASE_URL: 'https://devbox.usw.sealos.io/v1',
   CONTAINER_HTTP_PORT: 3000,
   MOCK_SERVER: { ... },
-  CONNECTION_POOL: {
-    MAX_SIZE: 15,
-    CONNECTION_TIMEOUT: 30000,
-    KEEP_ALIVE_INTERVAL: 60000,
-    HEALTH_CHECK_INTERVAL: 60000,
-  },
   HTTP_CLIENT: {
     TIMEOUT: 30000,
     RETRIES: 3,
@@ -389,7 +458,7 @@ DEFAULT_CONFIG = {
 
 定义了标准化的错误代码：
 - 认证错误：`AUTHENTICATION_FAILED`、`INVALID_KUBECONFIG`
-- 连接错误：`CONNECTION_FAILED`、`CONNECTION_TIMEOUT`、`CONNECTION_POOL_EXHAUSTED`
+- 连接错误：`CONNECTION_FAILED`、`CONNECTION_TIMEOUT`
 - Devbox 错误：`DEVBOX_NOT_FOUND`、`DEVBOX_CREATION_FAILED`、`DEVBOX_OPERATION_FAILED`
 - 文件操作错误：`FILE_NOT_FOUND`、`FILE_TOO_LARGE`、`FILE_TRANSFER_FAILED`、`PATH_TRAVERSAL_DETECTED`
 - 服务器错误：`SERVER_UNAVAILABLE`、`HEALTH_CHECK_FAILED`
@@ -412,7 +481,6 @@ interface DevboxSDKConfig {
   baseUrl?: string
   mockServerUrl?: string
   devboxServerUrl?: string
-  connectionPool?: ConnectionPoolConfig
   http?: HttpClientConfig
 }
 ```
@@ -451,25 +519,81 @@ interface ResourceInfo {
 }
 ```
 
+**PortConfig**
+```typescript
+interface PortConfig {
+  number: number
+  protocol: string
+  portName?: string
+  serviceName?: string
+  privateAddress?: string
+  privateHost?: string
+  networkName?: string
+  publicHost?: string
+  publicAddress?: string
+  customDomain?: string
+}
+```
+
 #### 3.4.3 文件操作类型
 
 **FileMap**: 文件映射，键为路径，值为 Buffer 或字符串
 
-**WriteOptions**: 写入选项（编码、权限、创建目录）
+**WriteOptions**: 写入选项（encoding、mode、createDirs）
 
-**ReadOptions**: 读取选项（编码、偏移、长度）
+**ReadOptions**: 读取选项（encoding、offset、length）
 
-**BatchUploadOptions**: 批量上传选项（并发数、块大小、进度回调）
+**BatchUploadOptions**: 批量上传选项（concurrency、chunkSize、onProgress、targetDir）
 
-**TransferResult**: 传输结果（成功标志、处理数量、传输字节、持续时间、错误列表）
+**TransferResult**: 传输结果（success、results、totalFiles、successCount）
+
+**MoveFileResponse**: 移动文件响应（success、source、destination）
+
+**RenameFileResponse**: 重命名文件响应（success、oldPath、newPath）
+
+**DownloadFileOptions**: 下载文件选项（paths、format）
+
+**PortsResponse**: 端口响应（success、ports、lastUpdatedAt）
 
 #### 3.4.4 监控和进程类型
 
 **MonitorData**: 监控数据（CPU、内存、网络、磁盘、时间戳）
 
-**CommandResult**: 命令执行结果（退出码、stdout、stderr、持续时间、PID）
+**ProcessExecOptions**: 进程执行选项（command、args、cwd、env、shell、timeout）
 
-**ProcessStatus**: 进程状态（PID、状态、退出码、CPU、内存、启动时间、运行时间）
+**ProcessExecResponse**: 异步执行响应（success、processId、pid、status、exitCode）
+
+**SyncExecutionResponse**: 同步执行响应（success、stdout、stderr、exitCode、durationMs、startTime、endTime）
+
+**CodeRunOptions**: 代码执行选项（language、argv、env、cwd、timeout）
+
+**ListProcessesResponse**: 进程列表响应（success、processes）
+
+**GetProcessStatusResponse**: 进程状态响应（success、processId、pid、status、startedAt）
+
+**GetProcessLogsResponse**: 进程日志响应（success、processId、logs）
+
+**KillProcessOptions**: 终止进程选项（signal）
+
+#### 3.4.5 Git 操作类型
+
+**GitAuth**: Git 认证选项（username、password、token、sshKey）
+
+**GitCloneOptions**: Git 克隆选项（url、targetDir、branch、commit、depth、auth）
+
+**GitPullOptions**: Git 拉取选项（remote、branch、auth）
+
+**GitPushOptions**: Git 推送选项（remote、branch、auth、force）
+
+**GitBranchInfo**: Git 分支信息（name、isCurrent、isRemote、commit、ahead、behind）
+
+**GitStatus**: Git 仓库状态（currentBranch、isClean、ahead、behind、staged、modified、untracked、deleted）
+
+**Git Commit API**: `commit(repoPath, message, author, email, allowEmpty?)` - 提交更改，author 和 email 为必需参数
+
+**Legacy Types**（向后兼容）:
+- **CommandResult**: 旧版命令执行结果
+- **ProcessStatus**: 旧版进程状态
 
 ---
 
@@ -549,15 +673,14 @@ class KubeconfigAuthenticator {
 
 ## 5. HTTP 连接管理
 
-### 5.1 ConnectionManager 连接管理器
+### 5.1 ContainerUrlResolver URL 解析器
 
-`ConnectionManager` 负责管理到 Devbox 容器的 HTTP 连接。
+`ContainerUrlResolver` 负责解析 Devbox 容器的服务器 URL，并提供连接执行能力。
 
 #### 5.1.1 功能概述
 
-- 管理连接池
 - 解析 Devbox 服务器 URL
-- 缓存 Devbox 信息
+- 缓存 Devbox 信息和 URL（60 秒 TTL）
 - 执行连接操作
 - 健康检查
 
@@ -567,96 +690,105 @@ class KubeconfigAuthenticator {
 ```typescript
 async executeWithConnection<T>(
   devboxName: string,
-  operation: (client: IHTTPClient) => Promise<T>
+  operation: (client: DevboxContainerClient) => Promise<T>
 ): Promise<T>
 ```
-- 获取连接并执行操作
-- 自动处理连接错误
-- 自动释放连接
+- 获取服务器 URL 并创建客户端
+- 执行操作并自动处理错误
+- 每次操作创建新的客户端实例（无连接池）
 
 **获取服务器 URL**
 ```typescript
 async getServerUrl(devboxName: string): Promise<string>
 ```
 - 从 Devbox 信息中提取服务器 URL
-- 优先使用 publicAddress，其次 privateAddress，最后 podIP
+- 优先使用 `ports[0].publicAddress`，其次 `ports[0].privateAddress`，最后 `podIP:3000`
 - 支持缓存（60 秒 TTL）
-- 支持 mockServerUrl 和 devboxServerUrl 配置
+- 支持 `mockServerUrl` 和 `devboxServerUrl` 配置（优先级最高）
 
 **健康检查**
 ```typescript
 async checkDevboxHealth(devboxName: string): Promise<boolean>
 ```
 - 检查 Devbox 健康状态
-- 通过 /health 端点检查
+- 通过 `/health` 端点检查
+- 返回 `status === 'healthy'`
 
 #### 5.1.3 缓存机制
 
 - Devbox 信息缓存（60 秒 TTL）
-- 服务器 URL 缓存
+- 服务器 URL 缓存（60 秒 TTL）
 - 自动过期清理
+- 支持手动清理缓存：`clearCache()`
 
-### 5.2 ConnectionPool 连接池
+#### 5.1.4 URL 解析优先级
 
-`ConnectionPool` 实现 HTTP 连接池，提供连接复用和健康检查。
+1. **配置的 URL**（最高优先级）：
+   - `mockServerUrl`（用于测试）
+   - `devboxServerUrl`（用于开发）
 
-#### 5.2.1 功能概述
+2. **从 Devbox 信息提取**：
+   - `ports[0].publicAddress`（公共地址）
+   - `ports[0].privateAddress`（私有地址）
+   - `http://${podIP}:3000`（Pod IP + 默认端口）
 
-- 连接池管理（最大 15 个连接）
-- 连接复用
-- 健康检查
-- 空闲连接清理
-- 连接统计
+### 5.2 DevboxContainerClient HTTP 客户端
 
-#### 5.2.2 连接策略
+`DevboxContainerClient` 是实际的 HTTP 客户端实现，基于 fetch API，用于与 Devbox 容器服务器通信。
 
-支持三种连接选择策略：
-- `least-used`: 选择使用次数最少的连接（默认）
-- `random`: 随机选择
-- `round-robin`: 轮询选择
-
-#### 5.2.3 健康检查机制
-
-- 初始健康检查：创建连接时检查
-- 使用前检查：使用连接前验证健康状态
-- 定期检查：每 60 秒检查一次空闲连接
-- 自动清理：移除不健康的连接
-
-#### 5.2.4 连接生命周期
-
-1. **创建**: 创建新的 HTTP 客户端
-2. **使用**: 标记为活跃，增加使用计数
-3. **释放**: 标记为非活跃，更新最后使用时间
-4. **清理**: 空闲超过 5 分钟自动清理
-
-#### 5.2.5 统计信息
-
-提供连接池统计信息：
-- 总连接数
-- 活跃连接数
-- 健康连接数
-- 不健康连接数
-- 复用率
-- 平均生命周期
-- 传输字节数
-- 总操作数
-
-### 5.3 ContainerHTTPClient
-
-`ContainerHTTPClient` 是实际的 HTTP 客户端实现，基于 fetch API。
-
-#### 5.3.1 功能特性
+#### 5.2.1 功能特性
 
 - 支持 GET、POST、PUT、DELETE 方法
-- 支持 JSON 和 FormData
-- 超时控制
-- 错误处理
+- 支持 JSON、FormData 和二进制数据
+- 超时控制（默认 30 秒）
+- 错误处理和转换
+- 自动设置 Authorization header
 
-#### 5.3.2 FormData 支持
+#### 5.2.2 核心方法
 
-- 支持原生 FormData
-- 支持 form-data 包
-- 自动检测并设置正确的 Content-Type
+```typescript
+async get<T>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>>
+async post<T>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>>
+async put<T>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>>
+async delete<T>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>>
+```
+
+#### 5.2.3 请求选项
+
+```typescript
+interface RequestOptions {
+  params?: Record<string, any>  // URL 查询参数
+  headers?: Record<string, string>  // 自定义请求头
+  body?: any  // 请求体（支持 JSON、FormData、Buffer、字符串）
+  signal?: AbortSignal  // 取消信号
+}
+```
+
+#### 5.2.4 数据格式支持
+
+- **JSON**: 自动序列化/反序列化
+- **FormData**: 支持浏览器和 Node.js FormData
+- **二进制数据**: 支持 Buffer、ArrayBuffer、Uint8Array
+- **文本**: 支持字符串
+
+#### 5.2.5 响应格式
+
+```typescript
+interface HTTPResponse<T> {
+  data: T
+  status: number
+  headers: Record<string, string>
+  url: string
+}
+```
+
+#### 5.2.6 设计说明
+
+**注意**：当前实现采用**每次操作创建新客户端**的方式，而不是连接池模式。这样设计的好处是：
+- 简化实现，避免连接状态管理复杂性
+- 利用 HTTP/1.1 keep-alive 和现代浏览器的连接复用
+- 减少内存占用和状态同步问题
+- 适合大多数使用场景的性能需求
 
 ---
 
@@ -841,26 +973,26 @@ interface TransferStrategy {
 
 ## 8. 技术特性
 
-### 8.1 连接池管理
+### 8.1 URL 解析和缓存
 
-#### 8.1.1 连接复用
+#### 8.1.1 URL 解析策略
 
-- 最大连接数：15
-- 连接复用率目标：>98%
-- 自动连接清理：空闲 5 分钟后清理
+- 优先级：配置 URL > publicAddress > privateAddress > podIP:3000
+- 支持测试和开发环境配置（mockServerUrl、devboxServerUrl）
+- 自动提取端口信息
 
-#### 8.1.2 健康检查
+#### 8.1.2 缓存机制
 
-- 初始健康检查：创建时
-- 使用前检查：每次使用前
-- 定期检查：每 60 秒
-- 健康状态缓存：基于最后使用时间
+- Devbox 信息缓存：60 秒 TTL
+- 服务器 URL 缓存：60 秒 TTL
+- 自动过期清理
+- 支持手动清理缓存
 
-#### 8.1.3 连接策略
+#### 8.1.3 客户端创建
 
-- 最少使用策略（默认）：平衡连接使用
-- 随机策略：随机分配
-- 轮询策略：顺序分配
+- 每次操作创建新的客户端实例
+- 利用 HTTP/1.1 keep-alive 和浏览器连接复用
+- 简化状态管理，避免连接池复杂性
 
 ### 8.2 错误重试机制
 
@@ -901,7 +1033,7 @@ interface TransferStrategy {
 
 - 小文件延迟：<50ms（<1MB）
 - 大文件吞吐量：>15MB/s
-- 连接复用率：>98%
+- URL 解析缓存命中率：>95%
 - 服务器启动时间：<100ms
 
 ### 8.4 安全性考虑
@@ -933,6 +1065,7 @@ interface TransferStrategy {
    - 使用 `DevboxInstance` 进行实例级别操作
    - 及时调用 `close()` 清理资源
    - 复用 SDK 实例
+   - URL 解析会自动缓存，无需手动管理
 
 2. **错误处理**
    - 使用 try-catch 捕获错误
@@ -941,13 +1074,14 @@ interface TransferStrategy {
 
 3. **性能优化**
    - 使用批量上传处理多个文件
-   - 复用连接（自动处理）
-   - 使用缓存（自动处理）
+   - URL 解析和 Devbox 信息会自动缓存（60 秒 TTL）
+   - 利用 HTTP keep-alive 实现连接复用（浏览器/Node.js 自动处理）
 
 4. **监控和调试**
-   - 使用 `MetricsCollector` 收集指标
    - 启用日志记录
-   - 监控连接池统计
+   - 使用 `getDetailedInfo()` 获取实例详细信息
+   - 使用 `getMonitorData()` 监控资源使用情况
+   - 检查健康状态：`isHealthy()` 和 `waitForReady()`
 
 #### 8.5.2 配置建议
 
@@ -955,12 +1089,10 @@ interface TransferStrategy {
 const sdk = new DevboxSDK({
   kubeconfig: process.env.KUBECONFIG,
   baseUrl: 'https://devbox.usw.sealos.io/v1',
-  connectionPool: {
-    maxSize: 15,
-    connectionTimeout: 30000,
-    keepAliveInterval: 60000,
-    healthCheckInterval: 60000,
-  },
+  // 可选：用于测试的模拟服务器 URL
+  mockServerUrl: process.env.MOCK_SERVER_URL,
+  // 可选：用于开发的 Devbox 服务器 URL
+  devboxServerUrl: process.env.DEVBOX_SERVER_URL,
   http: {
     timeout: 30000,
     retries: 3,
@@ -974,7 +1106,8 @@ const sdk = new DevboxSDK({
 - 使用 `mockServerUrl` 进行单元测试
 - 使用 `devboxServerUrl` 进行集成测试
 - 测试错误处理和重试逻辑
-- 测试连接池行为
+- 测试 URL 解析和缓存机制
+- 测试 Git 操作和文件操作
 
 ---
 
@@ -983,12 +1116,14 @@ const sdk = new DevboxSDK({
 Devbox SDK 是一个功能完整、设计良好的企业级 SDK，提供了：
 
 1. **完整的 Devbox 生命周期管理**
-2. **高效的文件操作和传输**
-3. **可靠的连接管理和复用**
-4. **完善的错误处理和重试机制**
-5. **丰富的监控和性能指标**
-6. **强大的类型系统**
-7. **良好的安全特性**
+2. **高效的文件操作和传输**（包括批量上传、下载、移动、重命名等）
+3. **强大的进程管理**（异步/同步执行、代码执行、流式输出、进程监控）
+4. **Git 操作支持**（克隆、拉取、推送、分支管理等）
+5. **智能的 URL 解析和缓存机制**
+6. **完善的错误处理和重试机制**
+7. **丰富的监控和健康检查功能**
+8. **强大的 TypeScript 类型系统**
+9. **良好的安全特性**（路径验证、输入清理）
 
 通过分层架构、模块化设计和最佳实践，SDK 提供了高性能、高可靠性和易用性的开发体验。
 

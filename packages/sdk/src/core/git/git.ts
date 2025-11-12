@@ -7,7 +7,6 @@ import type {
   GitAuth,
   GitBranchInfo,
   GitCloneOptions,
-  GitCommitOptions,
   GitPullOptions,
   GitPushOptions,
   GitStatus,
@@ -229,18 +228,38 @@ export class Git {
    * Pull changes from remote repository
    */
   async pull(repoPath: string, options?: GitPullOptions): Promise<void> {
-    const args: string[] = ['pull']
     const remote = options?.remote || 'origin'
+
+    // If auth is provided, update remote URL to include credentials
+    if (options?.auth) {
+      const urlResult = await this.deps.execSync({
+        command: 'git',
+        args: ['remote', 'get-url', remote],
+        cwd: repoPath,
+      })
+
+      if (urlResult.exitCode === 0) {
+        const currentUrl = urlResult.stdout.trim()
+        const authUrl = this.buildAuthUrl(currentUrl, options.auth)
+
+        // Update remote URL with authentication
+        await this.deps.execSync({
+          command: 'git',
+          args: ['remote', 'set-url', remote, authUrl],
+          cwd: repoPath,
+        })
+      }
+    }
+
+    const args: string[] = ['pull']
     if (options?.branch) {
       args.push(remote, options.branch)
     }
 
-    const env = this.setupGitAuth({}, options?.auth)
     const result = await this.deps.execSync({
       command: 'git',
       args,
       cwd: repoPath,
-      env,
       timeout: 120, // 2 minutes timeout
     })
 
@@ -253,8 +272,30 @@ export class Git {
    * Push changes to remote repository
    */
   async push(repoPath: string, options?: GitPushOptions): Promise<void> {
-    const args: string[] = ['push']
     const remote = options?.remote || 'origin'
+
+    // If auth is provided, update remote URL to include credentials
+    if (options?.auth) {
+      const urlResult = await this.deps.execSync({
+        command: 'git',
+        args: ['remote', 'get-url', remote],
+        cwd: repoPath,
+      })
+
+      if (urlResult.exitCode === 0) {
+        const currentUrl = urlResult.stdout.trim()
+        const authUrl = this.buildAuthUrl(currentUrl, options.auth)
+
+        // Update remote URL with authentication
+        await this.deps.execSync({
+          command: 'git',
+          args: ['remote', 'set-url', remote, authUrl],
+          cwd: repoPath,
+        })
+      }
+    }
+
+    const args: string[] = ['push']
     if (options?.force) {
       args.push('--force')
     }
@@ -264,12 +305,10 @@ export class Git {
       args.push(remote)
     }
 
-    const env = this.setupGitAuth({}, options?.auth)
     const result = await this.deps.execSync({
       command: 'git',
       args,
       cwd: repoPath,
-      env,
       timeout: 120, // 2 minutes timeout
     })
 
@@ -386,6 +425,40 @@ export class Git {
     }
   }
 
+  private normalizePath(repoPath: string, filePath: string): string {
+    const normalize = (p: string): string => {
+      let normalized = p.trim()
+      if (normalized.startsWith('./')) {
+        normalized = normalized.substring(2)
+      }
+      normalized = normalized.replace(/\/$/, '')
+      return normalized
+    }
+
+    const normRepo = normalize(repoPath)
+    const normFile = normalize(filePath)
+
+    if (normFile.startsWith(`${normRepo}/`)) {
+      return normFile.substring(normRepo.length + 1)
+    }
+
+    if (normFile === normRepo) {
+      return '.'
+    }
+
+    if (filePath.startsWith('/')) {
+      const repoIndex = filePath.indexOf(normRepo)
+      if (repoIndex !== -1) {
+        const afterRepo = filePath.substring(repoIndex + normRepo.length)
+        if (afterRepo.startsWith('/')) {
+          return afterRepo.substring(1) || '.'
+        }
+      }
+    }
+
+    return normFile
+  }
+
   /**
    * Stage files for commit
    */
@@ -394,9 +467,9 @@ export class Git {
     if (!files || (Array.isArray(files) && files.length === 0)) {
       args.push('.')
     } else if (typeof files === 'string') {
-      args.push(files)
+      args.push(this.normalizePath(repoPath, files))
     } else {
-      args.push(...files)
+      args.push(...files.map(file => this.normalizePath(repoPath, file)))
     }
 
     const result = await this.deps.execSync({
@@ -413,18 +486,19 @@ export class Git {
   /**
    * Commit changes
    */
-  async commit(repoPath: string, options: GitCommitOptions): Promise<void> {
+  async commit(
+    repoPath: string,
+    message: string,
+    author: string,
+    email: string,
+    allowEmpty?: boolean
+  ): Promise<void> {
     const args: string[] = ['commit']
-    if (options.all) {
-      args.push('-a')
-    }
-    if (options.allowEmpty) {
+    if (allowEmpty) {
       args.push('--allow-empty')
     }
-    if (options.author) {
-      args.push('--author', `${options.author.name} <${options.author.email}>`)
-    }
-    args.push('-m', options.message)
+    args.push('--author', `${author} <${email}>`)
+    args.push('-m', message)
 
     const result = await this.deps.execSync({
       command: 'git',

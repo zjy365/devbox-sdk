@@ -482,17 +482,3 @@ export interface GitStatus {
   deleted: string[]
 }
 
-// Git commit options
-export interface GitCommitOptions {
-  /** Commit message */
-  message: string
-  /** Author information */
-  author?: {
-    name: string
-    email: string
-  }
-  /** Allow empty commit */
-  allowEmpty?: boolean
-  /** Stage all modified files before commit */
-  all?: boolean
-}

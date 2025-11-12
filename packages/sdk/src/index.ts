@@ -71,7 +71,6 @@ export type {
   GitPushOptions,
   GitBranchInfo,
   GitStatus,
-  GitCommitOptions,
   MoveFileOptions,
   MoveFileResponse,
   RenameFileOptions,

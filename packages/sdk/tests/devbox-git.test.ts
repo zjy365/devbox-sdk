@@ -26,7 +26,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { DevboxSDK } from '../src/core/devbox-sdk'
 import type { DevboxInstance } from '../src/core/devbox-instance'
 import { TEST_CONFIG } from './setup'
-import type { DevboxCreateConfig, GitCloneOptions, GitCommitOptions } from '../src/core/types'
+import type { DevboxCreateConfig, GitCloneOptions } from '../src/core/types'
 import { DevboxRuntime } from '../src/api/types'
 
 async function waitForDevboxReady(devbox: DevboxInstance, timeout = 120000): Promise<void> {
@@ -49,12 +49,37 @@ async function waitForDevboxReady(devbox: DevboxInstance, timeout = 120000): Pro
   throw new Error(`Devbox ${devbox.name} did not become ready within ${timeout}ms`)
 }
 
+async function ensureCleanClone(
+  devboxInstance: DevboxInstance,
+  url: string,
+  targetDir: string,
+  options?: { branch?: string; depth?: number }
+): Promise<void> {
+  // Clean up directory first to avoid clone conflicts
+  try {
+    await devboxInstance.execSync({
+      command: 'rm',
+      args: ['-rf', targetDir],
+    })
+  } catch (error) {
+    // Ignore errors if directory doesn't exist
+  }
+
+  // Clone repo
+  await devboxInstance.git.clone({
+    url,
+    targetDir,
+    branch: options?.branch,
+    depth: options?.depth,
+  })
+}
+
 describe('Devbox SDK Git 版本控制功能测试', () => {
   let sdk: DevboxSDK
   let devboxInstance: DevboxInstance
   const TEST_DEVBOX_NAME = `test-git-ops-${Date.now()}`
-  const TEST_REPO_URL = 'https://github.com/octocat/Hello-World.git' // Small public test repo
-  const TEST_REPO_DIR = './test-git/test-repo'
+  const TEST_REPO_URL = 'https://github.com/zjy365/Hello-World' // Small public test repo
+  const TEST_REPO_DIR = './hello-world-repo'
 
   beforeEach(async () => {
     sdk = new DevboxSDK(TEST_CONFIG)
@@ -101,45 +126,25 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
 
   describe('仓库操作', () => {
     it('应该能够克隆公共仓库', async () => {
-      const options: GitCloneOptions = {
-        url: TEST_REPO_URL,
-        targetDir: TEST_REPO_DIR,
-        depth: 1, // Shallow clone for faster testing
-      }
-
-      await expect(devboxInstance.git.clone(options)).resolves.not.toThrow()
+      await ensureCleanClone(devboxInstance, TEST_REPO_URL, TEST_REPO_DIR, { depth: 1 })
     }, 60000)
 
     it('应该能够克隆特定分支', async () => {
-      const options: GitCloneOptions = {
-        url: TEST_REPO_URL,
-        targetDir: `${TEST_REPO_DIR}-branch`,
-        branch: 'master',
-        depth: 1,
-      }
-
-      await expect(devboxInstance.git.clone(options)).resolves.not.toThrow()
+      await ensureCleanClone(
+        devboxInstance,
+        TEST_REPO_URL,
+        `${TEST_REPO_DIR}-branch`,
+        { branch: 'master', depth: 1 }
+      )
     }, 60000)
 
     it('应该能够拉取远程更改', async () => {
-      // First clone the repo
-      await devboxInstance.git.clone({
-        url: TEST_REPO_URL,
-        targetDir: TEST_REPO_DIR,
-        depth: 1,
-      })
-
-      // Then pull
+      await ensureCleanClone(devboxInstance, TEST_REPO_URL, TEST_REPO_DIR, { depth: 1 })
       await expect(devboxInstance.git.pull(TEST_REPO_DIR)).resolves.not.toThrow()
     }, 60000)
 
     it('应该能够获取仓库状态', async () => {
-      await devboxInstance.git.clone({
-        url: TEST_REPO_URL,
-        targetDir: TEST_REPO_DIR,
-        depth: 1,
-      })
-
+      await ensureCleanClone(devboxInstance, TEST_REPO_URL, TEST_REPO_DIR, { depth: 1 })
       const status = await devboxInstance.git.status(TEST_REPO_DIR)
 
       expect(status).toBeDefined()
@@ -154,12 +159,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
 
   describe('分支管理', () => {
     beforeEach(async () => {
-      // Clone repo before each branch test
-      await devboxInstance.git.clone({
-        url: TEST_REPO_URL,
-        targetDir: TEST_REPO_DIR,
-        depth: 1,
-      })
+      await ensureCleanClone(devboxInstance, TEST_REPO_URL, TEST_REPO_DIR, { depth: 1 })
     })
 
     it('应该能够列出所有分支', async () => {
@@ -230,11 +230,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
 
   describe('提交操作', () => {
     beforeEach(async () => {
-      await devboxInstance.git.clone({
-        url: TEST_REPO_URL,
-        targetDir: TEST_REPO_DIR,
-        depth: 1,
-      })
+      await ensureCleanClone(devboxInstance, TEST_REPO_URL, TEST_REPO_DIR, { depth: 1 })
     })
 
     it('应该能够暂存文件', async () => {
@@ -270,11 +266,14 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
       await devboxInstance.git.add(TEST_REPO_DIR, testFile)
 
       // Commit
-      const commitOptions: GitCommitOptions = {
-        message: `Test commit ${Date.now()}`,
-      }
-
-      await expect(devboxInstance.git.commit(TEST_REPO_DIR, commitOptions)).resolves.not.toThrow()
+      await expect(
+        devboxInstance.git.commit(
+          TEST_REPO_DIR,
+          `Test commit ${Date.now()}`,
+          'Test User',
+          'test@example.com'
+        )
+      ).resolves.not.toThrow()
     }, 30000)
 
     it('应该能够使用作者信息提交', async () => {
@@ -282,24 +281,26 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
       await devboxInstance.writeFile(testFile, 'Author test content')
       await devboxInstance.git.add(TEST_REPO_DIR, testFile)
 
-      const commitOptions: GitCommitOptions = {
-        message: `Test commit with author ${Date.now()}`,
-        author: {
-          name: 'Test User',
-          email: 'test@example.com',
-        },
-      }
-
-      await expect(devboxInstance.git.commit(TEST_REPO_DIR, commitOptions)).resolves.not.toThrow()
+      await expect(
+        devboxInstance.git.commit(
+          TEST_REPO_DIR,
+          `Test commit with author ${Date.now()}`,
+          'Test User',
+          'test@example.com'
+        )
+      ).resolves.not.toThrow()
     }, 30000)
 
     it('应该能够创建空提交', async () => {
-      const commitOptions: GitCommitOptions = {
-        message: `Empty commit ${Date.now()}`,
-        allowEmpty: true,
-      }
-
-      await expect(devboxInstance.git.commit(TEST_REPO_DIR, commitOptions)).resolves.not.toThrow()
+      await expect(
+        devboxInstance.git.commit(
+          TEST_REPO_DIR,
+          `Empty commit ${Date.now()}`,
+          'Test User',
+          'test@example.com',
+          true
+        )
+      ).resolves.not.toThrow()
     }, 30000)
 
     it('应该能够获取仓库状态', async () => {
@@ -318,12 +319,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
 
   describe('Git 工作流集成测试', () => {
     it('应该能够完成完整的 Git 工作流', async () => {
-      // 1. Clone repository
-      await devboxInstance.git.clone({
-        url: TEST_REPO_URL,
-        targetDir: TEST_REPO_DIR,
-        depth: 1,
-      })
+      await ensureCleanClone(devboxInstance, TEST_REPO_URL, TEST_REPO_DIR, { depth: 1 })
 
       // 2. Create a new branch
       const branchName = `feature-${Date.now()}`
@@ -335,9 +331,12 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
       await devboxInstance.git.add(TEST_REPO_DIR, testFile)
 
       // 4. Commit changes
-      await devboxInstance.git.commit(TEST_REPO_DIR, {
-        message: `Workflow test commit ${Date.now()}`,
-      })
+      await devboxInstance.git.commit(
+        TEST_REPO_DIR,
+        `Workflow test commit ${Date.now()}`,
+        'Test User',
+        'test@example.com'
+      )
 
       // 5. Check status
       const status = await devboxInstance.git.status(TEST_REPO_DIR)
@@ -362,12 +361,7 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
     }, 60000)
 
     it('应该处理不存在的分支', async () => {
-      await devboxInstance.git.clone({
-        url: TEST_REPO_URL,
-        targetDir: TEST_REPO_DIR,
-        depth: 1,
-      })
-
+      await ensureCleanClone(devboxInstance, TEST_REPO_URL, TEST_REPO_DIR, { depth: 1 })
       await expect(
         devboxInstance.git.checkoutBranch(TEST_REPO_DIR, 'nonexistent-branch-12345')
       ).rejects.toThrow()
@@ -378,17 +372,9 @@ describe('Devbox SDK Git 版本控制功能测试', () => {
     }, 10000)
 
     it('应该处理提交空消息', async () => {
-      await devboxInstance.git.clone({
-        url: TEST_REPO_URL,
-        targetDir: TEST_REPO_DIR,
-        depth: 1,
-      })
-
-      // Git commit requires a message, so empty message should fail
+      await ensureCleanClone(devboxInstance, TEST_REPO_URL, TEST_REPO_DIR, { depth: 1 })
       await expect(
-        devboxInstance.git.commit(TEST_REPO_DIR, {
-          message: '',
-        })
+        devboxInstance.git.commit(TEST_REPO_DIR, '', 'Test User', 'test@example.com')
       ).rejects.toThrow()
     }, 30000)
   })

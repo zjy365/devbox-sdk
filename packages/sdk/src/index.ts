@@ -58,6 +58,7 @@ export type {
   HttpClientConfig,
   ProcessExecOptions,
   ProcessExecResponse,
+  CodeRunOptions,
   SyncExecutionResponse,
   ProcessInfo,
   ListProcessesResponse,

@@ -250,6 +250,20 @@ export interface ProcessExecOptions {
   timeout?: number
 }
 
+// Code execution options
+export interface CodeRunOptions {
+  /** Language to use ('node' | 'python'). If not specified, will auto-detect */
+  language?: 'node' | 'python'
+  /** Command line arguments */
+  argv?: string[]
+  /** Environment variables */
+  env?: Record<string, string>
+  /** Working directory */
+  cwd?: string
+  /** Timeout in seconds */
+  timeout?: number
+}
+
 // Asynchronous execution response
 export interface ProcessExecResponse {
   success: boolean

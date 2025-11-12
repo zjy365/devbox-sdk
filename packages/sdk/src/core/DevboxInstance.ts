@@ -7,6 +7,7 @@ import FormData from 'form-data'
 import type { DevboxSDK } from '../core/DevboxSDK'
 import type {
   BatchUploadOptions,
+  CodeRunOptions,
   DevboxInfo,
   FileChangeEvent,
   FileMap,
@@ -309,6 +310,60 @@ export class DevboxInstance {
       )
       return response.data
     })
+  }
+
+  /**
+   * Execute code directly (Node.js or Python)
+   * @param code Code string to execute
+   * @param options Code execution options
+   * @returns Synchronous execution response with stdout, stderr, and exit code
+   */
+  async codeRun(code: string, options?: CodeRunOptions): Promise<SyncExecutionResponse> {
+    const language = options?.language || this.detectLanguage(code)
+    const command = this.buildCodeCommand(code, language, options?.argv)
+    
+    return this.execSync({
+      command,
+      cwd: options?.cwd,
+      env: options?.env,
+      timeout: options?.timeout,
+    })
+  }
+
+  /**
+   * Detect programming language from code string
+   * @param code Code string to analyze
+   * @returns Detected language ('node' or 'python')
+   */
+  private detectLanguage(code: string): 'node' | 'python' {
+    // Python 特征
+    if (/\bdef\s+\w+\(|^\s*import\s+\w+|print\s*\(|:\s*$/.test(code)) {
+      return 'python'
+    }
+    // Node.js 特征
+    if (/\brequire\s*\(|module\.exports|console\.log/.test(code)) {
+      return 'node'
+    }
+    return 'node' // 默认
+  }
+
+  /**
+   * Build shell command to execute code
+   * @param code Code string to execute
+   * @param language Programming language ('node' or 'python')
+   * @param argv Command line arguments
+   * @returns Shell command string
+   */
+  private buildCodeCommand(code: string, language: 'node' | 'python', argv?: string[]): string {
+    const base64Code = Buffer.from(code).toString('base64')
+    const argvStr = argv && argv.length > 0 ? ` ${argv.join(' ')}` : ''
+
+    if (language === 'python') {
+      // Python: python3 -u -c "exec(__import__('base64').b64decode('<base64>').decode())"
+      return `sh -c 'python3 -u -c "exec(__import__(\\"base64\\").b64decode(\\"${base64Code}\\").decode())"${argvStr}'`
+    }
+    // Node.js: echo <base64> | base64 --decode | node -e "$(cat)"
+    return `sh -c 'echo ${base64Code} | base64 --decode | node -e "$(cat)"${argvStr}'`
   }
 
   /**

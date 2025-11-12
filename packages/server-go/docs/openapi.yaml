@@ -1122,7 +1122,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                $ref: '#/components/schemas/SessionCdResponse'
+              example:
+                success: true
+                workingDir: "/tmp"
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1945,7 +1948,7 @@ components:
           type: string
           description: Current working directory
           example: "/home/user"
-        status:
+        sessionStatus:
           type: string
           description: Session status
           example: "active"
@@ -1954,12 +1957,59 @@ components:
         - sessionId
         - shell
         - cwd
-        - status
+        - sessionStatus
 
     SessionInfo:
       type: object
+      description: Detailed session information with RFC3339 formatted timestamps (used for GetSession endpoint)
       properties:
-        id:
+        sessionId:
+          type: string
+          description: Session ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        shell:
+          type: string
+          description: Shell type
+          example: "/bin/bash"
+        cwd:
+          type: string
+          description: Current working directory
+          example: "/home/user"
+        env:
+          type: object
+          additionalProperties:
+            type: string
+          description: Environment variables
+          example:
+            PATH: "/usr/bin:/bin"
+            DEBUG: "true"
+        sessionStatus:
+          type: string
+          description: Session status
+          example: "active"
+        createdAt:
+          type: string
+          format: date-time
+          description: Session creation time
+          example: "2024-01-01T12:00:00Z"
+        lastUsedAt:
+          type: string
+          format: date-time
+          description: Last activity time
+          example: "2024-01-01T12:05:00Z"
+      required:
+        - sessionId
+        - shell
+        - cwd
+        - sessionStatus
+        - createdAt
+        - lastUsedAt
+
+    SessionResponse:
+      type: object
+      description: Session information with Unix timestamps (used for GetAllSessions endpoint)
+      properties:
+        Id:
           type: string
           description: Session ID
           example: "550e8400-e29b-41d4-a716-446655440000"
@@ -1980,26 +2030,26 @@ components:
             PATH: "/usr/bin:/bin"
             DEBUG: "true"
         createdAt:
-          type: string
-          format: date-time
-          description: Session creation time
-          example: "2024-01-01T12:00:00Z"
+          type: integer
+          format: int64
+          description: Session creation time (Unix timestamp in seconds)
+          example: 1704110400
         lastUsedAt:
-          type: string
-          format: date-time
-          description: Last activity time
-          example: "2024-01-01T12:05:00Z"
-        status:
+          type: integer
+          format: int64
+          description: Last activity time (Unix timestamp in seconds)
+          example: 1704110700
+        Status:
           type: string
           description: Session status
           example: "active"
       required:
-        - id
+        - Id
         - shell
         - cwd
         - createdAt
         - lastUsedAt
-        - status
+        - Status
 
     GetAllSessionsResponse:
       allOf:
@@ -2009,21 +2059,63 @@ components:
             sessions:
               type: array
               items:
-                $ref: '#/components/schemas/SessionInfo'
+                $ref: '#/components/schemas/SessionResponse'
+            count:
+              type: integer
+              description: Total number of sessions
+              example: 3
       required:
         - success
         - sessions
+        - count
 
     GetSessionResponse:
       allOf:
         - $ref: '#/components/schemas/Response'
         - type: object
           properties:
-            session:
-              $ref: '#/components/schemas/SessionInfo'
+            sessionId:
+              type: string
+              description: Session ID
+              example: "550e8400-e29b-41d4-a716-446655440000"
+            shell:
+              type: string
+              description: Shell type
+              example: "/bin/bash"
+            cwd:
+              type: string
+              description: Current working directory
+              example: "/home/user"
+            env:
+              type: object
+              additionalProperties:
+                type: string
+              description: Environment variables
+              example:
+                PATH: "/usr/bin:/bin"
+                DEBUG: "true"
+            sessionStatus:
+              type: string
+              description: Session status
+              example: "active"
+            createdAt:
+              type: string
+              format: date-time
+              description: Session creation time
+              example: "2024-01-01T12:00:00Z"
+            lastUsedAt:
+              type: string
+              format: date-time
+              description: Last activity time
+              example: "2024-01-01T12:05:00Z"
       required:
         - success
-        - session
+        - sessionId
+        - shell
+        - cwd
+        - sessionStatus
+        - createdAt
+        - lastUsedAt
 
     UpdateSessionEnvRequest:
       type: object
@@ -2055,23 +2147,29 @@ components:
         - $ref: '#/components/schemas/Response'
         - type: object
           properties:
-            stdout:
-              type: string
-              description: Command output
-              example: "total 8\ndrwxr-xr-x 2 user user 4096 Jan  1 12:00 ."
-            stderr:
-              type: string
-              description: Error output
-              example: ""
             exitCode:
               type: integer
               description: Command exit code
               example: 0
+            stdout:
+              type: string
+              description: Command output (standard output)
+              example: ""
+            stderr:
+              type: string
+              description: Error output (standard error)
+              example: ""
+            duration:
+              type: integer
+              format: int64
+              description: Execution duration in milliseconds
+              example: 0
       required:
         - success
+        - exitCode
         - stdout
         - stderr
-        - exitCode
+        - duration
 
     SessionCdRequest:
       type: object
@@ -2082,6 +2180,19 @@ components:
           example: "/tmp"
       required:
         - path
+
+    SessionCdResponse:
+      allOf:
+        - $ref: '#/components/schemas/Response'
+        - type: object
+          properties:
+            workingDir:
+              type: string
+              description: New working directory
+              example: "/tmp"
+      required:
+        - success
+        - workingDir
 
     GetSessionLogsResponse:
       allOf:
@@ -2095,7 +2206,9 @@ components:
             logs:
               type: array
               items:
-                $ref: '#/components/schemas/LogEntry'
+                type: string
+              description: Session log lines (plain text format)
+              example: ["[1640995200] stdout: line 1", "[1640995201] stderr: error"]
       required:
         - success
         - sessionId

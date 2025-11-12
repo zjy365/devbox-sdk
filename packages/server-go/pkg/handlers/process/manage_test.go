@@ -223,7 +223,7 @@ func TestListProcesses(t *testing.T) {
 			assert.NotEmpty(t, process.ID)
 			assert.Greater(t, process.PID, 0)
 			assert.NotEmpty(t, process.Command)
-			assert.Equal(t, "running", process.ProcessStatus)
+			assert.Equal(t, "running", process.Status)
 			assert.Greater(t, process.StartTime, int64(0))
 		}
 	})

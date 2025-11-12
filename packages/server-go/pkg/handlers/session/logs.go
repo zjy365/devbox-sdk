@@ -14,13 +14,13 @@ type SessionLogsResponse struct {
 }
 
 type SessionResponse struct {
-	SessionID     string            `json:"sessionId"`
-	Shell         string            `json:"shell"`
-	Cwd           string            `json:"cwd"`
-	Env           map[string]string `json:"env"`
-	CreatedAt     int64             `json:"createdAt"`
-	LastUsedAt    int64             `json:"lastUsedAt"`
-	SessionStatus string            `json:"sessionStatus"`
+	ID         string            `json:"Id"`
+	Shell      string            `json:"shell"`
+	Cwd        string            `json:"cwd"`
+	Env        map[string]string `json:"env"`
+	CreatedAt  int64             `json:"createdAt"`
+	LastUsedAt int64             `json:"lastUsedAt"`
+	Status     string            `json:"Status"`
 }
 
 type GetAllSessionsResponse struct {
@@ -83,13 +83,13 @@ func (h *SessionHandler) GetAllSessions(w http.ResponseWriter, r *http.Request) 
 	sessions := make([]SessionResponse, 0, len(h.sessions))
 	for _, sessionInfo := range h.sessions {
 		sessions = append(sessions, SessionResponse{
-			SessionID:     sessionInfo.ID,
-			Shell:         sessionInfo.Shell,
-			Cwd:           sessionInfo.Cwd,
-			Env:           sessionInfo.Env,
-			CreatedAt:     sessionInfo.CreatedAt.Unix(),
-			LastUsedAt:    sessionInfo.LastUsedAt.Unix(),
-			SessionStatus: sessionInfo.Status,
+			ID:         sessionInfo.ID,
+			Shell:      sessionInfo.Shell,
+			Cwd:        sessionInfo.Cwd,
+			Env:        sessionInfo.Env,
+			CreatedAt:  sessionInfo.CreatedAt.Unix(),
+			LastUsedAt: sessionInfo.LastUsedAt.Unix(),
+			Status:     sessionInfo.Status,
 		})
 	}
 

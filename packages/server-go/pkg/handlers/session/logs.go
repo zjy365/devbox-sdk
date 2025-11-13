@@ -1,32 +1,29 @@
 package session
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/labring/devbox-sdk-server/pkg/errors"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
 // Session operation response types
 type SessionLogsResponse struct {
-	Success   bool     `json:"success"`
 	SessionID string   `json:"sessionId"`
 	Logs      []string `json:"logs"`
 }
 
 type SessionResponse struct {
-	ID         string            `json:"sessionId"`
+	ID         string            `json:"Id"`
 	Shell      string            `json:"shell"`
 	Cwd        string            `json:"cwd"`
 	Env        map[string]string `json:"env"`
 	CreatedAt  int64             `json:"createdAt"`
 	LastUsedAt int64             `json:"lastUsedAt"`
-	Status     string            `json:"status"`
+	Status     string            `json:"Status"`
 }
 
 type GetAllSessionsResponse struct {
-	Success  bool              `json:"success"`
 	Sessions []SessionResponse `json:"sessions"`
 	Count    int               `json:"count"`
 }
@@ -36,7 +33,7 @@ func (h *SessionHandler) GetSessionLogs(w http.ResponseWriter, r *http.Request) 
 	query := r.URL.Query()
 	sessionID := query.Get("sessionId")
 	if sessionID == "" {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("sessionId parameter is required"))
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "sessionId parameter is required")
 		return
 	}
 
@@ -54,7 +51,7 @@ func (h *SessionHandler) GetSessionLogs(w http.ResponseWriter, r *http.Request) 
 	h.mutex.RUnlock()
 
 	if !exists {
-		errors.WriteErrorResponse(w, errors.NewSessionNotFoundError(sessionID))
+		common.WriteErrorResponse(w, common.StatusNotFound, "Session not found: %s", sessionID)
 		return
 	}
 
@@ -71,14 +68,11 @@ func (h *SessionHandler) GetSessionLogs(w http.ResponseWriter, r *http.Request) 
 	tailedLogs := logs[startIndex:]
 
 	response := SessionLogsResponse{
-		Success:   true,
 		SessionID: sessionID,
 		Logs:      tailedLogs,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	common.WriteSuccessResponse(w, response)
 }
 
 // GetAllSessions handles getting all sessions
@@ -100,12 +94,9 @@ func (h *SessionHandler) GetAllSessions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	response := GetAllSessionsResponse{
-		Success:  true,
 		Sessions: sessions,
 		Count:    len(sessions),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	common.WriteSuccessResponse(w, response)
 }

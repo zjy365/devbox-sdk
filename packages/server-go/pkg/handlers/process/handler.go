@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
 // WebSocketBroadcaster interface for broadcasting log entries
@@ -15,13 +15,13 @@ type WebSocketBroadcaster interface {
 
 // ProcessHandler handles process operations
 type ProcessHandler struct {
-	processes        map[string]*ProcessInfo
+	processes        map[string]*processInfo
 	mutex            sync.RWMutex
 	webSocketHandler WebSocketBroadcaster
 }
 
-// ProcessInfo holds information about a running process
-type ProcessInfo struct {
+// processInfo holds information about a running process
+type processInfo struct {
 	ID         string
 	Cmd        *exec.Cmd
 	StartAt    time.Time
@@ -34,7 +34,7 @@ type ProcessInfo struct {
 // NewProcessHandler creates a new process handler
 func NewProcessHandler() *ProcessHandler {
 	return &ProcessHandler{
-		processes:        make(map[string]*ProcessInfo),
+		processes:        make(map[string]*processInfo),
 		webSocketHandler: nil,
 	}
 }

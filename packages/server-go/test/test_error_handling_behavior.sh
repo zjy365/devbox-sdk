@@ -122,7 +122,7 @@ run_structured_test() {
     local expected_status="$4"
     local description="$5"
     local expected_success="$6"
-    local expected_has_exitCode="$7"
+    local expected_has_exit_code="$7"
 
     echo -e "\n${BLUE}Testing: $description${NC}"
     echo -e "${BLUE}Request: $method $url${NC}"
@@ -148,11 +148,11 @@ run_structured_test() {
 
         # Parse JSON response
         if echo "$response_body" | jq . >/dev/null 2>&1; then
-            # For boolean fields, use jq without -r to get proper JSON type
-            local success_bool=$(echo "$response_body" | jq '.success')
-            local success_str=$(echo "$response_body" | jq -r '.success // "null"')
-            local error=$(echo "$response_body" | jq -r '.error // "null"')
-            local exitCode=$(echo "$response_body" | jq -r '.exitCode // "null"')
+            # Adapt to current API envelope: { status, message, Data: { ... } }
+            local success_bool=$(echo "$response_body" | jq '(.status == 0)')
+            local success_str=$(echo "$response_body" | jq -r 'if .status==0 then "true" else "false" end')
+            local error=$(echo "$response_body" | jq -r '.message // "null"')
+            local exit_code=$(echo "$response_body" | jq -r '.Data.exitCode // "null"')
 
             echo -e "${BLUE}Response Structure:${NC}"
             echo -e "  Success: $success_str (raw: $success_bool)"

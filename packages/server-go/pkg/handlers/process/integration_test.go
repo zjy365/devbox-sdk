@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
+	"github.com/labring/devbox-sdk-server/pkg/router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,16 +26,18 @@ func TestProcessHandlerIntegration(t *testing.T) {
 		_, processID := startTestProcess(t, handler, req)
 
 		// 3. Get process status
-		statusReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/processes/status?id=%s", processID), nil)
+		statusReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/process/%s/status", processID), nil)
 		w2 := httptest.NewRecorder()
-		handler.GetProcessStatus(w2, statusReq)
+		r := router.NewRouter()
+		r.Register("GET", "/api/v1/process/:id/status", handler.GetProcessStatus)
+		r.ServeHTTP(w2, statusReq)
 		assert.Equal(t, http.StatusOK, w2.Code)
 
-		var statusResponse GetProcessStatusResponse
+		var statusResponse common.Response[GetProcessStatusResponse]
 		err := json.Unmarshal(w2.Body.Bytes(), &statusResponse)
 		require.NoError(t, err)
-		assert.True(t, statusResponse.Success)
-		assert.Equal(t, "running", statusResponse.Status)
+		assert.Equal(t, common.StatusSuccess, statusResponse.Status)
+		assert.Equal(t, "running", statusResponse.Data.ProcessStatus)
 
 		// 4. List processes (should include our process)
 		listReq := httptest.NewRequest("GET", "/api/v1/processes", nil)
@@ -42,33 +45,37 @@ func TestProcessHandlerIntegration(t *testing.T) {
 		handler.ListProcesses(w3, listReq)
 		assert.Equal(t, http.StatusOK, w3.Code)
 
-		var listResponse ListProcessesResponse
+		var listResponse common.Response[ListProcessesResponse]
 		err = json.Unmarshal(w3.Body.Bytes(), &listResponse)
 		require.NoError(t, err)
-		assert.True(t, listResponse.Success)
-		assert.Greater(t, len(listResponse.Processes), 0)
+		assert.Equal(t, common.StatusSuccess, listResponse.Status)
+		assert.Greater(t, len(listResponse.Data.Processes), 0)
 
 		// 5. Get process logs
-		logsReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/processes/logs?id=%s", processID), nil)
+		logsReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/process/%s/logs", processID), nil)
 		w4 := httptest.NewRecorder()
-		handler.GetProcessLogs(w4, logsReq)
+		r = router.NewRouter()
+		r.Register("GET", "/api/v1/process/:id/logs", handler.GetProcessLogs)
+		r.ServeHTTP(w4, logsReq)
 		assert.Equal(t, http.StatusOK, w4.Code)
 
-		var logsResponse GetProcessLogsResponse
+		var logsResponse common.Response[GetProcessLogsResponse]
 		err = json.Unmarshal(w4.Body.Bytes(), &logsResponse)
 		require.NoError(t, err)
-		assert.True(t, logsResponse.Success)
+		assert.Equal(t, common.StatusSuccess, logsResponse.Status)
 
 		// 6. Kill process
-		killReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/processes/kill?id=%s", processID), nil)
+		killReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/process/%s/kill", processID), nil)
 		w5 := httptest.NewRecorder()
-		handler.KillProcess(w5, killReq)
+		r = router.NewRouter()
+		r.Register("POST", "/api/v1/process/:id/kill", handler.KillProcess)
+		r.ServeHTTP(w5, killReq)
 		assert.Equal(t, http.StatusOK, w5.Code)
 
-		var killResponse common.Response
+		var killResponse common.Response[struct{}]
 		err = json.Unmarshal(w5.Body.Bytes(), &killResponse)
 		require.NoError(t, err)
-		assert.True(t, killResponse.Success)
+		assert.Equal(t, common.StatusSuccess, killResponse.Status)
 
 		// 7. Verify process is no longer running
 		waitForProcessCompletion(t, handler, processID, 2*time.Second)

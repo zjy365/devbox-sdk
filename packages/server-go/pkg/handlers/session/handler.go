@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
 // WebSocketBroadcaster interface for broadcasting log entries
@@ -18,13 +18,13 @@ type WebSocketBroadcaster interface {
 
 // SessionHandler handles session operations
 type SessionHandler struct {
-	sessions         map[string]*SessionInfo
+	sessions         map[string]*sessionInfo
 	mutex            sync.RWMutex
 	webSocketHandler WebSocketBroadcaster
 }
 
-// SessionInfo holds information about a session
-type SessionInfo struct {
+// sessionInfo holds information about a session
+type sessionInfo struct {
 	ID          string
 	Shell       string
 	Cwd         string
@@ -46,7 +46,7 @@ type SessionInfo struct {
 // NewSessionHandler creates a new session handler
 func NewSessionHandler() *SessionHandler {
 	handler := &SessionHandler{
-		sessions:         make(map[string]*SessionInfo),
+		sessions:         make(map[string]*sessionInfo),
 		webSocketHandler: nil,
 	}
 

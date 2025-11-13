@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/process"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/session"
 )
@@ -47,6 +47,30 @@ type SubscriptionInfo struct {
 	LogLevels []string // subscribed log levels
 	CreatedAt time.Time
 	Active    bool
+}
+
+// SubscriptionResult subscription result response
+type SubscriptionResult struct {
+	Action    string          `json:"action"` // "subscribed", "unsubscribed"
+	Type      string          `json:"type"`   // "process" or "session"
+	TargetID  string          `json:"targetId"`
+	Levels    map[string]bool `json:"levels,omitempty"`
+	Timestamp int64           `json:"timestamp"`
+	Extra     map[string]any  `json:"extra,omitempty"`
+}
+
+// SubscriptionRequest subscription request structure
+type SubscriptionRequest struct {
+	Action   string              `json:"action"` // "subscribe", "unsubscribe", "list"
+	Type     string              `json:"type"`   // "process", "session"
+	TargetID string              `json:"targetId"`
+	Options  SubscriptionOptions `json:"options"`
+}
+
+// SubscriptionOptions subscription options
+type SubscriptionOptions struct {
+	Levels []string `json:"levels"` // ["stdout", "stderr", "system"]
+	Tail   int      `json:"tail"`   // Historical log lines count
 }
 
 // NewWebSocketHandlerWithDeps creates a new WebSocket handler with process and session handlers
@@ -136,7 +160,7 @@ func (h *WebSocketHandler) handleClient(conn *websocket.Conn, client *ClientInfo
 		client.LastActive = time.Now()
 
 		// Parse subscription-based request
-		var req common.SubscriptionRequest
+		var req SubscriptionRequest
 		if err := json.Unmarshal(message, &req); err != nil {
 			h.sendError(conn, "Invalid request format")
 			continue
@@ -162,7 +186,7 @@ func (h *WebSocketHandler) handleClient(conn *websocket.Conn, client *ClientInfo
 }
 
 // handleSubscribe handles subscription requests
-func (h *WebSocketHandler) handleSubscribe(conn *websocket.Conn, client *ClientInfo, req *common.SubscriptionRequest) error {
+func (h *WebSocketHandler) handleSubscribe(conn *websocket.Conn, client *ClientInfo, req *SubscriptionRequest) error {
 	if req.Type == "" || req.TargetID == "" {
 		return fmt.Errorf("type and target_id are required")
 	}
@@ -198,7 +222,7 @@ func (h *WebSocketHandler) handleSubscribe(conn *websocket.Conn, client *ClientI
 	}
 
 	// Send confirmation
-	response := common.SubscriptionResult{
+	response := SubscriptionResult{
 		Action:    "subscribed",
 		Type:      req.Type,
 		TargetID:  req.TargetID,
@@ -215,7 +239,7 @@ func (h *WebSocketHandler) handleSubscribe(conn *websocket.Conn, client *ClientI
 }
 
 // handleUnsubscribe handles unsubscription requests
-func (h *WebSocketHandler) handleUnsubscribe(conn *websocket.Conn, client *ClientInfo, req *common.SubscriptionRequest) error {
+func (h *WebSocketHandler) handleUnsubscribe(conn *websocket.Conn, client *ClientInfo, req *SubscriptionRequest) error {
 	if req.Type == "" || req.TargetID == "" {
 		return fmt.Errorf("type and target_id are required")
 	}
@@ -243,7 +267,7 @@ func (h *WebSocketHandler) handleUnsubscribe(conn *websocket.Conn, client *Clien
 	}
 
 	// Send confirmation
-	response := common.SubscriptionResult{
+	response := SubscriptionResult{
 		Action:    "unsubscribed",
 		Type:      req.Type,
 		TargetID:  req.TargetID,
@@ -467,9 +491,9 @@ func (h *WebSocketHandler) sendHistoricalLogs(conn *websocket.Conn, targetType, 
 
 // sendError sends an error message over WebSocket
 func (h *WebSocketHandler) sendError(conn *websocket.Conn, message string) error {
-	errorMsg := common.Response{
-		Error:   message,
-		Success: false,
+	errorMsg := common.Response[struct{}]{
+		Status:  common.StatusInvalidRequest,
+		Message: message,
 	}
 	return h.sendJSON(conn, errorMsg)
 }

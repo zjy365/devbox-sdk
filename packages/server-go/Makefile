@@ -19,14 +19,14 @@ help: ## Show available commands
 	@echo "  GOEXPERIMENT=greenteagc   Enable experimental green tea GC during build"
 	@echo "  GOEXPERIMENT=jsonv2   Enable experimental encoding/json/v2"
 
-build: clean ## Build optimized binary (respects GOEXPERIMENT if set)
+build: clean ## Build optimized binary with GOEXPERIMENT=greenteagc,jsonv2
 	@mkdir -p $(BUILD_DIR)
-	@$(BUILD_ENV) go build $(BUILD_FLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	@GOEXPERIMENT=greenteagc,jsonv2 $(BUILD_ENV) go build $(BUILD_FLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Binary: $(BUILD_DIR)/$(BINARY_NAME)"
 
-build-exp: clean ## Build with GOEXPERIMENT=greenteagc GOEXPERIMENT=jsonv2
+build-stable: clean ## Build optimized binary with json/v2(must)
 	@mkdir -p $(BUILD_DIR)
-	@GOEXPERIMENT=greenteagc GOEXPERIMENT=jsonv2 $(BUILD_ENV) go build $(BUILD_FLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	@GOEXPERIMENT=jsonv2 $(BUILD_ENV) go build $(BUILD_FLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Binary: $(BUILD_DIR)/$(BINARY_NAME) (greenteagc)"
 
 run: ## Run application

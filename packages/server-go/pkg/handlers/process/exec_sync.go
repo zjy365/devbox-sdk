@@ -3,7 +3,6 @@ package process
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -12,8 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/errors"
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
 // SyncExecutionRequest Synchronous execution request
@@ -28,7 +26,6 @@ type SyncExecutionRequest struct {
 
 // SyncExecutionResponse Synchronous execution response
 type SyncExecutionResponse struct {
-	common.Response
 	Stdout     string `json:"stdout"`
 	Stderr     string `json:"stderr"`
 	ExitCode   *int   `json:"exitCode"`
@@ -40,14 +37,13 @@ type SyncExecutionResponse struct {
 // ExecProcessSync Handle synchronous process execution
 func (h *ProcessHandler) ExecProcessSync(w http.ResponseWriter, r *http.Request) {
 	var req SyncExecutionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Invalid request body"))
+	if err := common.ParseJSONBodyReturn(w, r, &req); err != nil {
 		return
 	}
 
 	// Parameter validation
 	if req.Command == "" {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Command is required"))
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "Command is required")
 		return
 	}
 
@@ -73,7 +69,6 @@ func (h *ProcessHandler) ExecProcessSync(w http.ResponseWriter, r *http.Request)
 		// This handles cases like command not found (exit code 127)
 		startTime = time.Now()
 		endTime := time.Now()
-		duration := endTime.Sub(startTime).Milliseconds()
 
 		// Try to extract exit code from the error
 		var exitCode *int
@@ -89,16 +84,12 @@ func (h *ProcessHandler) ExecProcessSync(w http.ResponseWriter, r *http.Request)
 		response := SyncExecutionResponse{
 			Stdout:     "",
 			Stderr:     err.Error(),
-			DurationMS: duration,
+			DurationMS: 0,
 			StartTime:  startTime.Unix(),
 			EndTime:    endTime.Unix(),
 			ExitCode:   exitCode,
-			Response: common.Response{
-				Success: false,
-				Error:   err.Error(),
-			},
 		}
-		common.WriteJSONResponse(w, response)
+		common.WriteJSONResponse(w, common.StatusOperationError, "", response)
 		return
 	}
 
@@ -151,11 +142,7 @@ func (h *ProcessHandler) ExecProcessSync(w http.ResponseWriter, r *http.Request)
 			response.ExitCode = &exitCode
 		} else {
 			// Timeout or other error
-			response.Response = common.Response{
-				Success: false,
-				Error:   waitErr.Error(),
-			}
-			common.WriteJSONResponse(w, response)
+			common.WriteJSONResponse(w, common.StatusOperationError, waitErr.Error(), response)
 			return
 		}
 	} else {
@@ -163,8 +150,7 @@ func (h *ProcessHandler) ExecProcessSync(w http.ResponseWriter, r *http.Request)
 		response.ExitCode = &exitCode
 	}
 
-	response.Response = common.Response{Success: true}
-	common.WriteJSONResponse(w, response)
+	common.WriteSuccessResponse(w, response)
 }
 
 // buildCommand Build command

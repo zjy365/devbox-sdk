@@ -1,14 +1,11 @@
 package session
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/errors"
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/labring/devbox-sdk-server/pkg/utils"
 )
 
@@ -21,18 +18,16 @@ type CreateSessionRequest struct {
 
 // Session operation response types
 type CreateSessionResponse struct {
-	Success   bool   `json:"success"`
-	SessionID string `json:"sessionId"`
-	Shell     string `json:"shell"`
-	Cwd       string `json:"cwd"`
-	Status    string `json:"status"`
+	SessionID     string `json:"sessionId"`
+	Shell         string `json:"shell"`
+	Cwd           string `json:"cwd"`
+	SessionStatus string `json:"sessionStatus"`
 }
 
 // CreateSession handles session creation
 func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 	var req CreateSessionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errors.WriteErrorResponse(w, errors.NewInvalidRequestError("Invalid JSON body"))
+	if err := common.ParseJSONBodyReturn(w, r, &req); err != nil {
 		return
 	}
 
@@ -57,7 +52,7 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create session info
-	sessionInfo := &SessionInfo{
+	sessionInfo := &sessionInfo{
 		ID:         sessionID,
 		Shell:      shell,
 		Cwd:        workingDir,
@@ -72,7 +67,7 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 
 	// Start shell process
 	if err := h.startShellProcess(sessionInfo); err != nil {
-		errors.WriteErrorResponse(w, errors.NewSessionOperationError(fmt.Sprintf("Failed to start shell: %v", err)))
+		common.WriteErrorResponse(w, common.StatusOperationError, "Failed to start shell: %v", err)
 		return
 	}
 
@@ -82,13 +77,11 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 	h.mutex.Unlock()
 
 	response := CreateSessionResponse{
-		Success:   true,
-		SessionID: sessionID,
-		Shell:     shell,
-		Cwd:       workingDir,
-		Status:    "active",
+		SessionID:     sessionID,
+		Shell:         shell,
+		Cwd:           workingDir,
+		SessionStatus: "active",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	common.WriteSuccessResponse(w, response)
 }

@@ -39,7 +39,8 @@ func TestDownloadFormats(t *testing.T) {
 		{
 			name: "explicit tar.gz format",
 			request: DownloadFilesRequest{
-				Paths: []string{"file1.txt", "file2.txt"},
+				Paths:  []string{"file1.txt", "file2.txt"},
+				Format: "tar.gz",
 			},
 			expectedType: "application/gzip",
 			validateFunc: func(t *testing.T, contentType string, body []byte) {
@@ -70,7 +71,8 @@ func TestDownloadFormats(t *testing.T) {
 		{
 			name: "explicit tar format (no compression)",
 			request: DownloadFilesRequest{
-				Paths: []string{"file1.txt", "file2.txt"},
+				Paths:  []string{"file1.txt", "file2.txt"},
+				Format: "tar",
 			},
 			expectedType: "application/x-tar",
 			validateFunc: func(t *testing.T, contentType string, body []byte) {
@@ -95,7 +97,8 @@ func TestDownloadFormats(t *testing.T) {
 		{
 			name: "explicit multipart format",
 			request: DownloadFilesRequest{
-				Paths: []string{"file1.txt", "file2.txt"},
+				Paths:  []string{"file1.txt", "file2.txt"},
+				Format: "mixed",
 			},
 			expectedType: "multipart/mixed",
 			validateFunc: func(t *testing.T, contentType string, body []byte) {
@@ -200,7 +203,8 @@ func TestMultipartDownloadWithDirectories(t *testing.T) {
 	os.WriteFile(filepath.Join(tmpDir, "single.txt"), []byte("single content"), 0644)
 
 	req := DownloadFilesRequest{
-		Paths: []string{"dir1", "single.txt"},
+		Paths:  []string{"dir1", "single.txt"},
+		Format: "mixed",
 	}
 
 	reqBody, _ := json.Marshal(req)
@@ -236,7 +240,8 @@ func TestFormatPriorityExplicitOverAccept(t *testing.T) {
 
 	// Request tar format explicitly, but Accept header says multipart
 	req := DownloadFilesRequest{
-		Paths: []string{"file1.txt", "file2.txt"},
+		Paths:  []string{"file1.txt", "file2.txt"},
+		Format: "tar",
 	}
 
 	reqBody, _ := json.Marshal(req)

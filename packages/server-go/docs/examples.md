@@ -72,13 +72,13 @@ curl -X POST "$BASE_URL/api/v1/files/write?path=/tmp/photo.jpg" \
 
 #### Mode 5: Binary Upload with Special Characters in Path
 
-Use base64-encoded path for filenames with spaces or special characters:
+Use url-encoded path for filenames with spaces or special characters:
 
 ```bash
-# Encode path to base64
-path_base64=$(echo -n "/tmp/file with spaces.png" | base64)
+# Encode path 
+path_url=$(echo -n "/tmp/file with spaces.png" | jq -Rr @uri)
 
-curl -X POST "$BASE_URL/api/v1/files/write?path_base64=$path_base64" \
+curl -X POST "$BASE_URL/api/v1/files/write?path=$path_url" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: image/png" \
   --data-binary @"file with spaces.png"
@@ -128,29 +128,13 @@ fetch('http://localhost:9757/api/v1/files/write', {
 
 ### 2. Read a File
 
-#### Method 1: Using JSON body
 ```bash
-curl -X POST "$BASE_URL/api/v1/files/read" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"path": "/tmp/example.txt"}'
-```
-
-#### Method 2: Using query parameter
-```bash
-curl -X POST "$BASE_URL/api/v1/files/read?path=/tmp/example.txt" \
+curl -X GET "$BASE_URL/api/v1/files/read?path=/tmp/example.txt" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 **Response:**
-```json
-{
-  "success": true,
-  "path": "/tmp/example.txt",
-  "content": "Hello, World!\nThis is a test file.",
-  "size": 32
-}
-```
+Binary file content with appropriate Content-Type and Content-Disposition headers.
 
 ### 3. List Directory Contents
 
@@ -204,14 +188,57 @@ curl -X POST "$BASE_URL/api/v1/files/delete" \
 }
 ```
 
-### 5. Batch Upload Files
+### 5. Download a Single File
+
+```bash
+curl -X GET "$BASE_URL/api/v1/files/download?path=/tmp/example.txt" \
+  -H "Authorization: Bearer $TOKEN" \
+  -o example.txt
+```
+
+**Response:**
+Binary file content with Content-Disposition header for download.
+
+### 6. Batch Download Files
+
+```bash
+# Download multiple files as tar.gz (default)
+curl -X POST "$BASE_URL/api/v1/files/batch-download" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "paths": ["/tmp/file1.txt", "/tmp/file2.txt"]
+  }' \
+  -o files.tar.gz
+
+# Download as uncompressed tar
+curl -X POST "$BASE_URL/api/v1/files/batch-download" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "paths": ["/tmp/file1.txt", "/tmp/file2.txt"],
+    "format": "tar"
+  }' \
+  -o files.tar
+
+# Download as multipart format
+curl -X POST "$BASE_URL/api/v1/files/batch-download" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: multipart/mixed" \
+  -d '{
+    "paths": ["/tmp/file1.txt", "/tmp/file2.txt"]
+  }' \
+  -o files.multipart
+```
+
+### 7. Batch Upload Files
 
 ```bash
 curl -X POST "$BASE_URL/api/v1/files/batch-upload" \
   -H "Authorization: Bearer $TOKEN" \
-  -F "targetDir=/tmp/uploads" \
-  -F "files=@file1.txt" \
-  -F "files=@file2.txt"
+  -F "files=@tmp/file1.txt" \
+  -F "files=@/tmp/data/file2.txt"
 ```
 
 ## Process Operations
@@ -298,7 +325,7 @@ curl -X GET "$BASE_URL/api/v1/process/list" \
 ### 4. Get Process Status
 
 ```bash
-curl -X GET "$BASE_URL/api/v1/process/550e8400-e29b-41d4-a716-446655440000/status?id=550e8400-e29b-41d4-a716-446655440000" \
+curl -X GET "$BASE_URL/api/v1/process/550e8400-e29b-41d4-a716-446655440000/status" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -316,7 +343,7 @@ curl -X GET "$BASE_URL/api/v1/process/550e8400-e29b-41d4-a716-446655440000/statu
 ### 5. Get Process Logs
 
 ```bash
-curl -X GET "$BASE_URL/api/v1/process/550e8400-e29b-41d4-a716-446655440000/logs?id=550e8400-e29b-41d4-a716-446655440000" \
+curl -X GET "$BASE_URL/api/v1/process/550e8400-e29b-41d4-a716-446655440000/logs" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -336,7 +363,7 @@ curl -X GET "$BASE_URL/api/v1/process/550e8400-e29b-41d4-a716-446655440000/logs?
 ### 6. Kill a Process
 
 ```bash
-curl -X POST "$BASE_URL/api/v1/process/550e8400-e29b-41d4-a716-446655440000/kill?id=550e8400-e29b-41d4-a716-446655440000&signal=SIGTERM" \
+curl -X POST "$BASE_URL/api/v1/process/550e8400-e29b-41d4-a716-446655440000/kill?signal=SIGTERM" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

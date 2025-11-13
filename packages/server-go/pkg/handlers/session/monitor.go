@@ -9,11 +9,11 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
 // startShellProcess starts a shell process for the session
-func (h *SessionHandler) startShellProcess(sessionInfo *SessionInfo) error {
+func (h *SessionHandler) startShellProcess(sessionInfo *sessionInfo) error {
 	// Create command
 	cmd := exec.Command(sessionInfo.Shell)
 	cmd.Dir = sessionInfo.Cwd
@@ -64,7 +64,7 @@ func (h *SessionHandler) startShellProcess(sessionInfo *SessionInfo) error {
 }
 
 // collectSessionLogs collects logs from session stdout/stderr
-func (h *SessionHandler) collectSessionLogs(ctx context.Context, sessionInfo *SessionInfo, reader io.Reader, source string) {
+func (h *SessionHandler) collectSessionLogs(ctx context.Context, sessionInfo *sessionInfo, reader io.Reader, source string) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		select {
@@ -103,7 +103,7 @@ func (h *SessionHandler) collectSessionLogs(ctx context.Context, sessionInfo *Se
 }
 
 // monitorSession monitors session status
-func (h *SessionHandler) monitorSession(sessionInfo *SessionInfo) {
+func (h *SessionHandler) monitorSession(sessionInfo *sessionInfo) {
 	err := sessionInfo.Cmd.Wait()
 
 	sessionInfo.LogMux.Lock()

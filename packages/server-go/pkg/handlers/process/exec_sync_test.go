@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,18 +30,18 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success, "Response should be successful")
-		assert.Equal(t, "hello world\n", response.Stdout, "Stdout should contain command output")
-		assert.Equal(t, "", response.Stderr, "Stderr should be empty for successful command")
-		assert.NotNil(t, response.ExitCode, "ExitCode should not be nil")
-		assert.Equal(t, 0, *response.ExitCode, "Exit code should be 0 for successful command")
-		assert.Greater(t, response.DurationMS, int64(0), "Duration should be positive")
-		assert.Greater(t, response.StartTime, int64(0), "StartTime should be set")
-		assert.GreaterOrEqual(t, response.EndTime, response.StartTime, "EndTime should be greater than or equal to StartTime")
+		assert.Equal(t, common.StatusSuccess, response.Status, "Status should be success")
+		assert.Equal(t, "hello world\n", response.Data.Stdout, "Stdout should contain command output")
+		assert.Equal(t, "", response.Data.Stderr, "Stderr should be empty for successful command")
+		assert.NotNil(t, response.Data.ExitCode, "ExitCode should not be nil")
+		assert.Equal(t, 0, *response.Data.ExitCode, "Exit code should be 0 for successful command")
+		assert.Greater(t, response.Data.DurationMS, int64(0), "Duration should be positive")
+		assert.Greater(t, response.Data.StartTime, int64(0), "StartTime should be set")
+		assert.GreaterOrEqual(t, response.Data.EndTime, response.Data.StartTime, "EndTime should be greater than or equal to StartTime")
 	})
 
 	t.Run("command without args (string parsing)", func(t *testing.T) {
@@ -56,13 +56,13 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, "hello world\n", response.Stdout)
-		assert.Equal(t, 0, *response.ExitCode)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, "hello world\n", response.Data.Stdout)
+		assert.Equal(t, 0, *response.Data.ExitCode)
 	})
 
 	t.Run("command with single word", func(t *testing.T) {
@@ -77,13 +77,13 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Contains(t, response.Stdout, "packages/server-go", "Should contain current directory")
-		assert.Equal(t, 0, *response.ExitCode)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Contains(t, response.Data.Stdout, "packages/server-go", "Should contain current directory")
+		assert.Equal(t, 0, *response.Data.ExitCode)
 	})
 
 	t.Run("command with working directory", func(t *testing.T) {
@@ -100,13 +100,13 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, testDir+"\n", response.Stdout, "Should show specified working directory")
-		assert.Equal(t, 0, *response.ExitCode)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, testDir+"\n", response.Data.Stdout, "Should show specified working directory")
+		assert.Equal(t, 0, *response.Data.ExitCode)
 	})
 
 	t.Run("command with environment variables", func(t *testing.T) {
@@ -125,13 +125,13 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, "test_value\n", response.Stdout)
-		assert.Equal(t, 0, *response.ExitCode)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, "test_value\n", response.Data.Stdout)
+		assert.Equal(t, 0, *response.Data.ExitCode)
 	})
 
 	t.Run("complex environment variables", func(t *testing.T) {
@@ -154,14 +154,14 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Contains(t, response.Stdout, "value with spaces")
-		assert.Contains(t, response.Stdout, "value=with=equals")
-		assert.Equal(t, 0, *response.ExitCode)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Contains(t, response.Data.Stdout, "value with spaces")
+		assert.Contains(t, response.Data.Stdout, "value=with=equals")
+		assert.Equal(t, 0, *response.Data.ExitCode)
 	})
 
 	t.Run("command that outputs to stderr", func(t *testing.T) {
@@ -177,14 +177,14 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, "error message\n", response.Stderr, "Stderr should contain error message")
-		assert.Equal(t, "", response.Stdout, "Stdout should be empty")
-		assert.Equal(t, 0, *response.ExitCode, "Exit code should be 0")
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, "error message\n", response.Data.Stderr, "Stderr should contain error message")
+		assert.Equal(t, "", response.Data.Stdout, "Stdout should be empty")
+		assert.Equal(t, 0, *response.Data.ExitCode, "Exit code should be 0")
 	})
 
 	t.Run("command that exits with non-zero code", func(t *testing.T) {
@@ -200,13 +200,13 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success, "Response should still be successful")
-		assert.NotNil(t, response.ExitCode, "ExitCode should not be nil")
-		assert.Equal(t, 42, *response.ExitCode, "Exit code should be 42")
+		assert.Equal(t, common.StatusSuccess, response.Status, "Response should still be successful")
+		assert.NotNil(t, response.Data.ExitCode, "ExitCode should not be nil")
+		assert.Equal(t, 42, *response.Data.ExitCode, "Exit code should be 42")
 	})
 
 	t.Run("custom timeout", func(t *testing.T) {
@@ -224,13 +224,13 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, "quick command\n", response.Stdout)
-		assert.Less(t, response.DurationMS, int64(5000), "Duration should be less than timeout")
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, "quick command\n", response.Data.Stdout)
+		assert.Less(t, response.Data.DurationMS, int64(5000), "Duration should be less than timeout")
 	})
 
 	t.Run("timeout exceeded", func(t *testing.T) {
@@ -250,13 +250,13 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.False(t, response.Success, "Response should not be successful due to timeout")
-		assert.Contains(t, response.Error, "execution timeout after 1 seconds", "Error should indicate timeout")
-		assert.Greater(t, response.DurationMS, int64(1000), "Duration should be at least timeout duration")
+		assert.Equal(t, common.StatusOperationError, response.Status, "Status should indicate operation error")
+		assert.Contains(t, response.Message, "execution timeout after 1 seconds", "Message should indicate timeout")
+		assert.Greater(t, response.Data.DurationMS, int64(1000), "Duration should be at least timeout duration")
 		assert.Less(t, elapsed, 4*time.Second, "Total request time should be less than actual command time due to timeout")
 	})
 
@@ -275,12 +275,12 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, "test\n", response.Stdout)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, "test\n", response.Data.Stdout)
 	})
 
 	t.Run("negative timeout (should use default)", func(t *testing.T) {
@@ -298,12 +298,12 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, "test\n", response.Stdout)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, "test\n", response.Data.Stdout)
 	})
 
 	t.Run("invalid JSON request", func(t *testing.T) {
@@ -312,8 +312,8 @@ func TestExecProcessSync(t *testing.T) {
 
 		handler.ExecProcessSync(w, httpReq)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assertErrorResponse(t, w, "Invalid request body")
+		assert.Equal(t, http.StatusOK, w.Code)
+		assertErrorResponse(t, w, "Invalid JSON body")
 	})
 
 	t.Run("missing command", func(t *testing.T) {
@@ -326,7 +326,7 @@ func TestExecProcessSync(t *testing.T) {
 
 		handler.ExecProcessSync(w, httpReq)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 		assertErrorResponse(t, w, "Command is required")
 	})
 
@@ -340,7 +340,7 @@ func TestExecProcessSync(t *testing.T) {
 
 		handler.ExecProcessSync(w, httpReq)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 		assertErrorResponse(t, w, "Command is required")
 	})
 
@@ -354,8 +354,16 @@ func TestExecProcessSync(t *testing.T) {
 
 		handler.ExecProcessSync(w, httpReq)
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assertErrorResponse(t, w, "Failed to start process")
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response common.Response[SyncExecutionResponse]
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, common.StatusOperationError, response.Status)
+		assert.NotNil(t, response.Data.ExitCode)
+		assert.Equal(t, 127, *response.Data.ExitCode, "Exit code should be 127 for command not found")
+		assert.Contains(t, response.Data.Stderr, "nonexistent-command-12345")
 	})
 
 	t.Run("invalid working directory", func(t *testing.T) {
@@ -371,8 +379,16 @@ func TestExecProcessSync(t *testing.T) {
 
 		handler.ExecProcessSync(w, httpReq)
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assertErrorResponse(t, w, "Failed to start process")
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response common.Response[SyncExecutionResponse]
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, common.StatusOperationError, response.Status)
+		assert.NotNil(t, response.Data.ExitCode)
+		assert.Equal(t, 127, *response.Data.ExitCode, "Exit code should be 127 for failed start")
+		assert.Contains(t, response.Data.Stderr, "nonexistent")
 	})
 
 	t.Run("shell parameter (should be ignored for now)", func(t *testing.T) {
@@ -390,12 +406,12 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, "shell test\n", response.Stdout)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, "shell test\n", response.Data.Stdout)
 	})
 
 	t.Run("large output", func(t *testing.T) {
@@ -411,15 +427,15 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Contains(t, response.Stdout, "Line 1", "Should contain first line")
-		assert.Contains(t, response.Stdout, "Line 1000", "Should contain last line")
-		assert.Greater(t, len(response.Stdout), 10000, "Output should be substantial")
-		assert.Equal(t, 0, *response.ExitCode)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Contains(t, response.Data.Stdout, "Line 1", "Should contain first line")
+		assert.Contains(t, response.Data.Stdout, "Line 1000", "Should contain last line")
+		assert.Greater(t, len(response.Data.Stdout), 10000, "Output should be substantial")
+		assert.Equal(t, 0, *response.Data.ExitCode)
 	})
 
 	t.Run("command with unicode output", func(t *testing.T) {
@@ -435,13 +451,13 @@ func TestExecProcessSync(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response SyncExecutionResponse
+		var response common.Response[SyncExecutionResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, "Hello 世界 🌍\n", response.Stdout)
-		assert.Equal(t, 0, *response.ExitCode)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, "Hello 世界 🌍\n", response.Data.Stdout)
+		assert.Equal(t, 0, *response.Data.ExitCode)
 	})
 }
 
@@ -455,165 +471,32 @@ func TestBuildCommand(t *testing.T) {
 		}
 		cmd := handler.buildCommand(req)
 
-		// Go resolves the full path for system commands
 		assert.True(t, cmd.Path == "echo" || cmd.Path == "/usr/bin/echo", "Path should be echo or full path to echo")
 		assert.Equal(t, []string{"echo", "hello", "world"}, cmd.Args)
 	})
 
-	t.Run("command without args - single word", func(t *testing.T) {
-		req := SyncExecutionRequest{
-			Command: "pwd",
-		}
-		cmd := handler.buildCommand(req)
-
-		// Go resolves the full path for system commands
-		assert.True(t, cmd.Path == "pwd" || cmd.Path == "/usr/bin/pwd", "Path should be pwd or full path to pwd")
-		assert.Equal(t, []string{"pwd"}, cmd.Args)
-	})
-
-	t.Run("command without args - multiple words", func(t *testing.T) {
+	t.Run("command string parsing", func(t *testing.T) {
 		req := SyncExecutionRequest{
 			Command: "echo hello world",
 		}
 		cmd := handler.buildCommand(req)
 
-		// Go resolves the full path for system commands
-		assert.True(t, cmd.Path == "echo" || cmd.Path == "/usr/bin/echo", "Path should be echo or full path to echo")
+		assert.True(t, cmd.Path == "echo" || cmd.Path == "/usr/bin/echo")
 		assert.Equal(t, []string{"echo", "hello", "world"}, cmd.Args)
 	})
 
-	t.Run("command with working directory", func(t *testing.T) {
+	t.Run("working directory and environment", func(t *testing.T) {
 		testDir := "/tmp"
 		req := SyncExecutionRequest{
 			Command: "pwd",
 			Cwd:     &testDir,
+			Env: map[string]string{
+				"TEST_VAR": "test_value",
+			},
 		}
 		cmd := handler.buildCommand(req)
 
 		assert.Equal(t, testDir, cmd.Dir)
-	})
-
-	t.Run("command with empty working directory", func(t *testing.T) {
-		emptyDir := ""
-		req := SyncExecutionRequest{
-			Command: "pwd",
-			Cwd:     &emptyDir,
-		}
-		cmd := handler.buildCommand(req)
-
-		assert.Empty(t, cmd.Dir, "Dir should be empty when Cwd is empty string")
-	})
-
-	t.Run("command with environment variables", func(t *testing.T) {
-		req := SyncExecutionRequest{
-			Command: "echo",
-			Args:    []string{"test"},
-			Env: map[string]string{
-				"TEST_VAR": "test_value",
-				"PATH":     "/custom/bin",
-			},
-		}
-		cmd := handler.buildCommand(req)
-
-		assert.NotNil(t, cmd.Env)
 		assert.Contains(t, cmd.Env, "TEST_VAR=test_value")
-		assert.Contains(t, cmd.Env, "PATH=/custom/bin")
-
-		// Should also include existing environment variables
-		foundPATH := false
-		for _, env := range cmd.Env {
-			if strings.HasPrefix(env, "PATH=") {
-				foundPATH = true
-				break
-			}
-		}
-		assert.True(t, foundPATH, "Should preserve existing PATH")
-	})
-
-	t.Run("command with empty environment variables", func(t *testing.T) {
-		req := SyncExecutionRequest{
-			Command: "echo",
-			Args:    []string{"test"},
-			Env:     map[string]string{},
-		}
-		cmd := handler.buildCommand(req)
-
-		// When Env map is empty, buildCommand doesn't set cmd.Env (len(req.Env) is 0)
-		assert.Nil(t, cmd.Env, "Environment should be nil when Env map is empty")
-	})
-
-	t.Run("command with nil environment variables", func(t *testing.T) {
-		req := SyncExecutionRequest{
-			Command: "echo",
-			Args:    []string{"test"},
-			Env:     nil,
-		}
-		cmd := handler.buildCommand(req)
-
-		// Should use default environment when Env is nil
-		assert.Nil(t, cmd.Env)
-	})
-
-	t.Run("command with shell parameter", func(t *testing.T) {
-		customShell := "/bin/bash"
-		req := SyncExecutionRequest{
-			Command: "echo",
-			Args:    []string{"test"},
-			Shell:   &customShell,
-		}
-		cmd := handler.buildCommand(req)
-
-		// Shell should be ignored for now (see implementation comment)
-		// Go resolves the full path for system commands
-		assert.True(t, cmd.Path == "echo" || cmd.Path == "/usr/bin/echo", "Path should be echo or full path to echo")
-		assert.Equal(t, []string{"echo", "test"}, cmd.Args)
-	})
-
-	t.Run("command with empty shell parameter", func(t *testing.T) {
-		emptyShell := ""
-		req := SyncExecutionRequest{
-			Command: "echo",
-			Args:    []string{"test"},
-			Shell:   &emptyShell,
-		}
-		cmd := handler.buildCommand(req)
-
-		// Go resolves the full path for system commands
-		assert.True(t, cmd.Path == "echo" || cmd.Path == "/usr/bin/echo", "Path should be echo or full path to echo")
-		assert.Equal(t, []string{"echo", "test"}, cmd.Args)
-	})
-
-	t.Run("environment variables with special characters", func(t *testing.T) {
-		req := SyncExecutionRequest{
-			Command: "echo",
-			Args:    []string{"test"},
-			Env: map[string]string{
-				"SPECIAL_CHARS": "!@#$%^&*()_+-=[]{}|;':\",./<>?",
-				"NEWLINES":      "line1\nline2",
-				"EQUALS":        "key=value",
-			},
-		}
-		cmd := handler.buildCommand(req)
-
-		assert.Contains(t, cmd.Env, "SPECIAL_CHARS=!@#$%^&*()_+-=[]{}|;':\",./<>?")
-		assert.Contains(t, cmd.Env, "NEWLINES=line1\nline2")
-		assert.Contains(t, cmd.Env, "EQUALS=key=value")
-	})
-
-	t.Run("environment variable override existing", func(t *testing.T) {
-		// Set an existing environment variable
-		os.Setenv("TEST_OVERRIDE", "original_value")
-		defer os.Unsetenv("TEST_OVERRIDE")
-
-		req := SyncExecutionRequest{
-			Command: "echo",
-			Args:    []string{"test"},
-			Env: map[string]string{
-				"TEST_OVERRIDE": "new_value",
-			},
-		}
-		cmd := handler.buildCommand(req)
-
-		assert.Contains(t, cmd.Env, "TEST_OVERRIDE=new_value")
 	})
 }

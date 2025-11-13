@@ -1,13 +1,13 @@
 package router
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 )
 
-// Route represents a single route registration
 type Route struct {
 	method  string
 	pattern string
@@ -83,16 +83,13 @@ func (r *Router) compilePattern(pattern string) (*regexp.Regexp, []string) {
 	// Find parameter patterns and replace them
 	paramRegex := regexp.MustCompile(`:([a-zA-Z_][a-zA-Z0-9_]*)`)
 	regexPattern = paramRegex.ReplaceAllStringFunc(regexPattern, func(match string) string {
-		// Extract parameter name (remove the colon)
 		param := strings.TrimPrefix(match, ":")
 		params = append(params, param)
-		return `([^/]+)` // Match any character except forward slash
+		return `([^/]+)`
 	})
 
-	// Handle wildcard patterns
 	regexPattern = strings.ReplaceAll(regexPattern, `*`, `(.*)`)
 
-	// Ensure exact match
 	regexPattern = "^" + regexPattern + "$"
 
 	regex := regexp.MustCompile(regexPattern)
@@ -107,15 +104,29 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Add route parameters to URL query for handler access
 	if len(params) > 0 {
-		query := req.URL.Query()
-		for key, value := range params {
-			query.Set(key, value)
-		}
-		req.URL.RawQuery = query.Encode()
+		ctx := context.WithValue(req.Context(), paramsContextKey{}, params)
+		req = req.WithContext(ctx)
 	}
 
-	// Execute the handler
 	handler(w, req)
+}
+
+// paramsContextKey is the context key type for route params
+type paramsContextKey struct{}
+
+// Param returns the path parameter value from request context
+func Param(r *http.Request, name string) string {
+	if r == nil {
+		return ""
+	}
+	v := r.Context().Value(paramsContextKey{})
+	if v == nil {
+		return ""
+	}
+	m, ok := v.(map[string]string)
+	if !ok {
+		return ""
+	}
+	return m[name]
 }

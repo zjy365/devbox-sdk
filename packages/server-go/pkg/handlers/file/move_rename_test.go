@@ -10,7 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/labring/devbox-sdk-server/pkg/config"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMoveFile(t *testing.T) {
@@ -74,7 +76,7 @@ func TestMoveFile(t *testing.T) {
 				Destination: "destination3.txt",
 				Overwrite:   false,
 			},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK,
 			expectSuccess:  false,
 		},
 		{
@@ -86,7 +88,7 @@ func TestMoveFile(t *testing.T) {
 				Source:      "nonexistent.txt",
 				Destination: "destination4.txt",
 			},
-			expectedStatus: http.StatusNotFound,
+			expectedStatus: http.StatusOK,
 			expectSuccess:  false,
 		},
 	}
@@ -102,26 +104,26 @@ func TestMoveFile(t *testing.T) {
 
 			handler.MoveFile(w, req)
 
-			if w.Code != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d. Body: %s", tt.expectedStatus, w.Code, w.Body.String())
-			}
+			assert.Equal(t, tt.expectedStatus, w.Code, "Status code mismatch. Body: %s", w.Body.String())
 
 			if tt.expectSuccess {
-				var resp MoveFileResponse
-				json.NewDecoder(w.Body).Decode(&resp)
-				if !resp.Success {
-					t.Error("Expected success to be true")
-				}
+				var resp common.Response[struct{}]
+				err := json.NewDecoder(w.Body).Decode(&resp)
+				assert.NoError(t, err)
+				assert.Equal(t, common.StatusSuccess, resp.Status)
 
 				destPath := filepath.Join(tmpDir, tt.request.Destination)
-				if _, err := os.Stat(destPath); err != nil {
-					t.Errorf("Destination file should exist: %v", err)
-				}
+				_, err = os.Stat(destPath)
+				assert.NoError(t, err, "Destination file should exist")
 
 				srcPath := filepath.Join(tmpDir, tt.request.Source)
-				if _, err := os.Stat(srcPath); err == nil {
-					t.Error("Source file should not exist after move")
-				}
+				_, err = os.Stat(srcPath)
+				assert.Error(t, err, "Source file should not exist after move")
+			} else {
+				var resp common.Response[struct{}]
+				err := json.NewDecoder(w.Body).Decode(&resp)
+				assert.NoError(t, err)
+				assert.NotEqual(t, common.StatusSuccess, resp.Status)
 			}
 		})
 	}
@@ -164,7 +166,7 @@ func TestRenameFile(t *testing.T) {
 				OldPath: "file1.txt",
 				NewPath: "file2.txt",
 			},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK,
 			expectSuccess:  false,
 		},
 		{
@@ -175,7 +177,7 @@ func TestRenameFile(t *testing.T) {
 				OldPath: "nonexistent.txt",
 				NewPath: "newfile.txt",
 			},
-			expectedStatus: http.StatusNotFound,
+			expectedStatus: http.StatusOK,
 			expectSuccess:  false,
 		},
 		{
@@ -204,26 +206,26 @@ func TestRenameFile(t *testing.T) {
 
 			handler.RenameFile(w, req)
 
-			if w.Code != tt.expectedStatus {
-				t.Errorf("Expected status %d, got %d. Body: %s", tt.expectedStatus, w.Code, w.Body.String())
-			}
+			assert.Equal(t, tt.expectedStatus, w.Code, "Status code mismatch. Body: %s", w.Body.String())
 
 			if tt.expectSuccess {
-				var resp RenameFileResponse
-				json.NewDecoder(w.Body).Decode(&resp)
-				if !resp.Success {
-					t.Error("Expected success to be true")
-				}
+				var resp common.Response[struct{}]
+				err := json.NewDecoder(w.Body).Decode(&resp)
+				assert.NoError(t, err)
+				assert.Equal(t, common.StatusSuccess, resp.Status)
 
 				newPath := filepath.Join(tmpDir, tt.request.NewPath)
-				if _, err := os.Stat(newPath); err != nil {
-					t.Errorf("New path should exist: %v", err)
-				}
+				_, err = os.Stat(newPath)
+				assert.NoError(t, err, "New path should exist")
 
 				oldPath := filepath.Join(tmpDir, tt.request.OldPath)
-				if _, err := os.Stat(oldPath); err == nil {
-					t.Error("Old path should not exist after rename")
-				}
+				_, err = os.Stat(oldPath)
+				assert.Error(t, err, "Old path should not exist after rename")
+			} else {
+				var resp common.Response[struct{}]
+				err := json.NewDecoder(w.Body).Decode(&resp)
+				assert.NoError(t, err)
+				assert.NotEqual(t, common.StatusSuccess, resp.Status)
 			}
 		})
 	}
@@ -243,9 +245,12 @@ func TestMoveFileInvalidJSON(t *testing.T) {
 
 	handler.MoveFile(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d for invalid JSON, got %d", http.StatusBadRequest, w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp common.Response[struct{}]
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	assert.NoError(t, err)
+	assert.Equal(t, common.StatusInvalidRequest, resp.Status)
 }
 
 func TestRenameFileInvalidJSON(t *testing.T) {
@@ -262,9 +267,12 @@ func TestRenameFileInvalidJSON(t *testing.T) {
 
 	handler.RenameFile(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status %d for invalid JSON, got %d", http.StatusBadRequest, w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp common.Response[struct{}]
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	assert.NoError(t, err)
+	assert.Equal(t, common.StatusInvalidRequest, resp.Status)
 }
 
 func TestMoveFileMissingPaths(t *testing.T) {
@@ -306,9 +314,12 @@ func TestMoveFileMissingPaths(t *testing.T) {
 
 			handler.MoveFile(w, req)
 
-			if w.Code != http.StatusBadRequest {
-				t.Errorf("Expected status %d for missing paths, got %d", http.StatusBadRequest, w.Code)
-			}
+			assert.Equal(t, http.StatusOK, w.Code)
+
+			var resp common.Response[struct{}]
+			err := json.NewDecoder(w.Body).Decode(&resp)
+			assert.NoError(t, err)
+			assert.Equal(t, common.StatusInvalidRequest, resp.Status)
 		})
 	}
 }
@@ -352,9 +363,12 @@ func TestRenameFileMissingPaths(t *testing.T) {
 
 			handler.RenameFile(w, req)
 
-			if w.Code != http.StatusBadRequest {
-				t.Errorf("Expected status %d for missing paths, got %d", http.StatusBadRequest, w.Code)
-			}
+			assert.Equal(t, http.StatusOK, w.Code)
+
+			var resp common.Response[struct{}]
+			err := json.NewDecoder(w.Body).Decode(&resp)
+			assert.NoError(t, err)
+			assert.Equal(t, common.StatusInvalidRequest, resp.Status)
 		})
 	}
 }

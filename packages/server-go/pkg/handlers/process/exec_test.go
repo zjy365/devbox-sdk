@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,12 +39,13 @@ func TestExecProcess(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response ProcessExecResponse
+		var response common.Response[ProcessExecResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Greater(t, response.PID, 0, "PID should be positive")
-		assert.Equal(t, "running", response.Status)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Greater(t, response.Data.PID, 0, "PID should be positive")
+		assert.Equal(t, "running", response.Data.ProcessStatus)
 	})
 
 	t.Run("command without args (string parsing)", func(t *testing.T) {
@@ -59,12 +61,13 @@ func TestExecProcess(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response ProcessExecResponse
+		var response common.Response[ProcessExecResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Greater(t, response.PID, 0)
-		assert.Equal(t, "running", response.Status)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Greater(t, response.Data.PID, 0)
+		assert.Equal(t, "running", response.Data.ProcessStatus)
 	})
 
 	t.Run("command with working directory", func(t *testing.T) {
@@ -82,11 +85,12 @@ func TestExecProcess(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response ProcessExecResponse
+		var response common.Response[ProcessExecResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Greater(t, response.PID, 0)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Greater(t, response.Data.PID, 0)
 	})
 
 	t.Run("command with environment variables", func(t *testing.T) {
@@ -106,11 +110,12 @@ func TestExecProcess(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response ProcessExecResponse
+		var response common.Response[ProcessExecResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Greater(t, response.PID, 0)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Greater(t, response.Data.PID, 0)
 	})
 
 	t.Run("complex environment variables", func(t *testing.T) {
@@ -134,12 +139,13 @@ func TestExecProcess(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response ProcessExecResponse
+		var response common.Response[ProcessExecResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Greater(t, response.PID, 0)
-		assert.Equal(t, "running", response.Status)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Greater(t, response.Data.PID, 0)
+		assert.Equal(t, "running", response.Data.ProcessStatus)
 	})
 
 	t.Run("shell parameter with custom shell", func(t *testing.T) {
@@ -157,20 +163,12 @@ func TestExecProcess(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response ProcessExecResponse
+		var response common.Response[ProcessExecResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Greater(t, response.PID, 0)
-	})
-
-	t.Run("invalid HTTP method", func(t *testing.T) {
-		httpReq := httptest.NewRequest("GET", "/api/v1/processes/exec", nil)
-		w := httptest.NewRecorder()
-
-		handler.ExecProcess(w, httpReq)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Greater(t, response.Data.PID, 0)
 	})
 
 	t.Run("invalid JSON request", func(t *testing.T) {
@@ -179,7 +177,7 @@ func TestExecProcess(t *testing.T) {
 
 		handler.ExecProcess(w, httpReq)
 
-		assertErrorResponse(t, w, "Invalid request body")
+		assertErrorResponse(t, w, "Invalid JSON body")
 	})
 
 	t.Run("missing command", func(t *testing.T) {

@@ -44,7 +44,7 @@ func TestServer_ServeHTTP_AuthAndHealth(t *testing.T) {
 		traceID := rr.Header().Get("X-Trace-ID")
 		assert.NotEmpty(t, traceID, "logger should add trace id header")
 
-		var resp map[string]interface{}
+		var resp map[string]any
 		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 		assert.Equal(t, "healthy", resp["status"])
 	})
@@ -88,7 +88,7 @@ func TestHealthAndReadinessEndpoints(t *testing.T) {
 			assert.Equal(t, http.StatusOK, rr.Code)
 			assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
 
-			var resp map[string]interface{}
+			var resp map[string]any
 			require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 			assert.NotEmpty(t, resp["status"])
 		})

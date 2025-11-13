@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,44 +35,37 @@ func startTestProcess(t *testing.T, handler *ProcessHandler, req ProcessExecRequ
 	handler.ExecProcess(w, httpReq)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response ProcessExecResponse
+	var response common.Response[ProcessExecResponse]
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
-	processID := response.ProcessID
+	processID := response.Data.ProcessID
 	require.NotEmpty(t, processID)
 
-	return response, processID
+	return response.Data, processID
 }
 
 // Helper function to assert error response
 func assertErrorResponse(t *testing.T, w *httptest.ResponseRecorder, expectedError string) {
-	// Accept 200 (legacy), 400, 404, 409, and 500 status codes for errors
-	assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusBadRequest || w.Code == http.StatusNotFound || w.Code == http.StatusConflict || w.Code == http.StatusInternalServerError,
-		"Expected status 200, 400, 404, 409, or 500 for error response, got %d", w.Code)
+	assert.Equal(t, http.StatusOK, w.Code, "Status code should be 200")
 
 	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err, "Response should be valid JSON")
 
-	// Check success flag when present
-	if success, ok := response["success"]; ok {
-		if successBool, isBool := success.(bool); isBool {
-			assert.False(t, successBool, "Response success should be false")
-		}
+	status, hasStatus := response["status"]
+	assert.True(t, hasStatus, "Response should have status field")
+	if hasStatus {
+		statusFloat, ok := status.(float64)
+		assert.True(t, ok, "Status should be a number")
+		assert.NotEqual(t, float64(0), statusFloat, "Status should not be 0 (success)")
 	}
 
-	// Check error/message contains expected text
-	if errorMsg, ok := response["error"]; ok {
-		if errorStr, isStr := errorMsg.(string); isStr {
-			assert.Contains(t, errorStr, expectedError, "Error message should contain expected text")
-		}
-	} else if message, ok := response["message"]; ok {
+	message, hasMessage := response["message"]
+	if hasMessage {
 		if messageStr, isStr := message.(string); isStr {
 			assert.Contains(t, messageStr, expectedError, "Message should contain expected text")
 		}
-	} else {
-		t.Errorf("Response should contain an 'error' or 'message' field")
 	}
 }
 
@@ -92,7 +86,7 @@ func cleanupTestProcesses(t *testing.T, h *ProcessHandler) {
 	}
 
 	// Clear the process map
-	h.processes = make(map[string]*ProcessInfo)
+	h.processes = make(map[string]*processInfo)
 }
 
 // Helper function to wait for process completion with timeout

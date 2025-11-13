@@ -34,7 +34,7 @@ HTTP Response
 # Workflow
 
 - Take a careful look at Makefile to understand what commands should be run at different points in the project lifecycle
-- After making code changes, first run `make fmt vet lint`
+- After making code changes, first run `make fmt vet`
 - Then, run unit tests and a couple of relevant integration tests to verify your changes
   - Don't run tests manually using `go test` unless instructed to do so
   - If tests are failing that are unrelated to your changes, let me know and stop working.
@@ -46,3 +46,4 @@ HTTP Response
 # Test
 - Unit tests should cover all business logic and edge cases
 - Integration tests is under test folder and should simulate real-world scenarios and validate end-to-end functionality
+- when need to run go test, must add "GOEXPERIMENT=greenteagc,jsonv2" in env

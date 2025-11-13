@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -73,6 +74,13 @@ func ParseCfg() *Config {
 	} else if workspacePathEnv != "" {
 		cfg.WorkspacePath = workspacePathEnv
 	}
+
+	// Convert to absolute path
+	workspacePath, err := filepath.Abs(cfg.WorkspacePath)
+	if err != nil {
+		panic("failed to resolve absolute path for workspace: " + err.Error())
+	}
+	cfg.WorkspacePath = workspacePath
 
 	if *maxFileSizeFlag != "" {
 		if size, err := strconv.ParseInt(*maxFileSizeFlag, 10, 64); err == nil {

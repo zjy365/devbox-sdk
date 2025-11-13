@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labring/devbox-sdk-server/pkg/handlers/common"
+	"github.com/labring/devbox-sdk-server/pkg/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,26 +25,26 @@ func TestGetProcessStatus(t *testing.T) {
 	execResponse, processID := startTestProcess(t, handler, execReq)
 
 	t.Run("get existing process status", func(t *testing.T) {
-		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/processes/status?id=%s", processID), nil)
+		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/process/%s/status", processID), nil)
 		w := httptest.NewRecorder()
 
 		handler.GetProcessStatus(w, httpReq)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response GetProcessStatusResponse
+		var response common.Response[GetProcessStatusResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, processID, response.ProcessID)
-		assert.Equal(t, execResponse.PID, response.PID)
-		assert.Equal(t, "running", response.Status)
-		assert.NotEmpty(t, response.StartedAt)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, processID, response.Data.ProcessID)
+		assert.Equal(t, execResponse.PID, response.Data.PID)
+		assert.Equal(t, "running", response.Data.ProcessStatus)
+		assert.NotEmpty(t, response.Data.StartedAt)
 	})
 
 	t.Run("get non-existent process status", func(t *testing.T) {
-		httpReq := httptest.NewRequest("GET", "/api/v1/processes/status?id=non-existent-id", nil)
+		httpReq := httptest.NewRequest("GET", "/api/v1/process/non-existent-id/status", nil)
 		w := httptest.NewRecorder()
 
 		handler.GetProcessStatus(w, httpReq)
@@ -53,21 +53,12 @@ func TestGetProcessStatus(t *testing.T) {
 	})
 
 	t.Run("missing process ID", func(t *testing.T) {
-		httpReq := httptest.NewRequest("GET", "/api/v1/processes/status", nil)
+		httpReq := httptest.NewRequest("GET", "/api/v1/process//status", nil)
 		w := httptest.NewRecorder()
 
 		handler.GetProcessStatus(w, httpReq)
 
 		assertErrorResponse(t, w, "Process ID is required")
-	})
-
-	t.Run("invalid HTTP method", func(t *testing.T) {
-		httpReq := httptest.NewRequest("POST", "/api/v1/processes/status", nil)
-		w := httptest.NewRecorder()
-
-		handler.GetProcessStatus(w, httpReq)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 
@@ -82,22 +73,22 @@ func TestKillProcess(t *testing.T) {
 	_, processID := startTestProcess(t, handler, execReq)
 
 	t.Run("kill process with default signal", func(t *testing.T) {
-		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/processes/kill?id=%s", processID), nil)
+		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/process/%s/kill", processID), nil)
 		w := httptest.NewRecorder()
 
 		handler.KillProcess(w, httpReq)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response common.Response
+		var response common.Response[struct{}]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
+		assert.Equal(t, common.StatusSuccess, response.Status)
 	})
 
 	t.Run("kill non-existent process", func(t *testing.T) {
-		httpReq := httptest.NewRequest("POST", "/api/v1/processes/kill?id=non-existent", nil)
+		httpReq := httptest.NewRequest("POST", "/api/v1/process/non-existent/kill", nil)
 		w := httptest.NewRecorder()
 
 		handler.KillProcess(w, httpReq)
@@ -109,23 +100,23 @@ func TestKillProcess(t *testing.T) {
 		// Start another process for signal test
 		_, processID2 := startTestProcess(t, handler, execReq)
 
-		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/processes/kill?id=%s&signal=SIGKILL", processID2), nil)
+		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/process/%s/kill?signal=SIGKILL", processID2), nil)
 		w := httptest.NewRecorder()
 
 		handler.KillProcess(w, httpReq)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response common.Response
+		var response common.Response[struct{}]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
+		assert.Equal(t, common.StatusSuccess, response.Status)
 	})
 
 	t.Run("kill process with invalid signal", func(t *testing.T) {
 		// This test uses the already killed process from previous test
-		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/processes/kill?id=%s&signal=INVALID", processID), nil)
+		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/process/%s/kill?signal=INVALID", processID), nil)
 		w := httptest.NewRecorder()
 
 		handler.KillProcess(w, httpReq)
@@ -134,21 +125,12 @@ func TestKillProcess(t *testing.T) {
 	})
 
 	t.Run("missing process ID", func(t *testing.T) {
-		httpReq := httptest.NewRequest("POST", "/api/v1/processes/kill", nil)
+		httpReq := httptest.NewRequest("POST", "/api/v1/process//kill", nil)
 		w := httptest.NewRecorder()
 
 		handler.KillProcess(w, httpReq)
 
 		assertErrorResponse(t, w, "Process ID is required")
-	})
-
-	t.Run("invalid HTTP method", func(t *testing.T) {
-		httpReq := httptest.NewRequest("GET", "/api/v1/processes/kill", nil)
-		w := httptest.NewRecorder()
-
-		handler.KillProcess(w, httpReq)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
 	t.Run("kill already completed process", func(t *testing.T) {
@@ -162,7 +144,7 @@ func TestKillProcess(t *testing.T) {
 		waitForProcessCompletion(t, handler, processID, 2*time.Second)
 
 		// Try to kill the completed process
-		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/processes/kill?id=%s", processID), nil)
+		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/process/%s/kill", processID), nil)
 		w := httptest.NewRecorder()
 
 		handler.KillProcess(w, httpReq)
@@ -181,7 +163,7 @@ func TestKillProcess(t *testing.T) {
 		waitForProcessCompletion(t, handler, processID, 2*time.Second)
 
 		// Try to kill the failed process
-		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/processes/kill?id=%s", processID), nil)
+		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/process/%s/kill", processID), nil)
 		w := httptest.NewRecorder()
 
 		handler.KillProcess(w, httpReq)
@@ -201,12 +183,12 @@ func TestListProcesses(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response ListProcessesResponse
+		var response common.Response[ListProcessesResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Empty(t, response.Processes)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Empty(t, response.Data.Processes)
 	})
 
 	t.Run("list with active processes", func(t *testing.T) {
@@ -229,15 +211,15 @@ func TestListProcesses(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response ListProcessesResponse
+		var response common.Response[ListProcessesResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Len(t, response.Processes, 3)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Len(t, response.Data.Processes, 3)
 
 		// Verify process structure
-		for _, process := range response.Processes {
+		for _, process := range response.Data.Processes {
 			assert.NotEmpty(t, process.ID)
 			assert.Greater(t, process.PID, 0)
 			assert.NotEmpty(t, process.Command)
@@ -261,24 +243,24 @@ func TestGetProcessLogs(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	t.Run("get process logs", func(t *testing.T) {
-		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/processes/logs?id=%s", processID), nil)
+		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/process/%s/logs", processID), nil)
 		w := httptest.NewRecorder()
 
 		handler.GetProcessLogs(w, httpReq)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response GetProcessLogsResponse
+		var response common.Response[GetProcessLogsResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, processID, response.ProcessID)
-		assert.NotNil(t, response.Logs)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, processID, response.Data.ProcessID)
+		assert.NotNil(t, response.Data.Logs)
 	})
 
 	t.Run("stream process logs", func(t *testing.T) {
-		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/processes/logs?id=%s&stream=true", processID), nil)
+		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/process/%s/logs?stream=true", processID), nil)
 		w := httptest.NewRecorder()
 
 		handler.GetProcessLogs(w, httpReq)
@@ -288,7 +270,7 @@ func TestGetProcessLogs(t *testing.T) {
 	})
 
 	t.Run("get non-existent process logs", func(t *testing.T) {
-		httpReq := httptest.NewRequest("GET", "/api/v1/processes/logs?id=non-existent", nil)
+		httpReq := httptest.NewRequest("GET", "/api/v1/process/non-existent/logs", nil)
 		w := httptest.NewRecorder()
 
 		handler.GetProcessLogs(w, httpReq)
@@ -297,21 +279,12 @@ func TestGetProcessLogs(t *testing.T) {
 	})
 
 	t.Run("missing process ID", func(t *testing.T) {
-		httpReq := httptest.NewRequest("GET", "/api/v1/processes/logs", nil)
+		httpReq := httptest.NewRequest("GET", "/api/v1/process//logs", nil)
 		w := httptest.NewRecorder()
 
 		handler.GetProcessLogs(w, httpReq)
 
 		assertErrorResponse(t, w, "Process ID is required")
-	})
-
-	t.Run("invalid HTTP method", func(t *testing.T) {
-		httpReq := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/processes/logs?id=%s", processID), nil)
-		w := httptest.NewRecorder()
-
-		handler.GetProcessLogs(w, httpReq)
-
-		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
 	t.Run("streaming basic test", func(t *testing.T) {
@@ -323,7 +296,7 @@ func TestGetProcessLogs(t *testing.T) {
 		_, processID := startTestProcess(t, handler, req)
 
 		// Test streaming endpoint
-		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/processes/logs?id=%s&stream=true", processID), nil)
+		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/process/%s/logs?stream=true", processID), nil)
 		w := httptest.NewRecorder()
 
 		handler.GetProcessLogs(w, httpReq)
@@ -348,20 +321,20 @@ func TestGetProcessLogs(t *testing.T) {
 		_, processID := startTestProcess(t, handler, req)
 
 		// Get logs immediately (should be empty or minimal)
-		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/processes/logs?id=%s", processID), nil)
+		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/process/%s/logs", processID), nil)
 		w := httptest.NewRecorder()
 
 		handler.GetProcessLogs(w, httpReq)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var response GetProcessLogsResponse
+		var response common.Response[GetProcessLogsResponse]
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.True(t, response.Success)
-		assert.Equal(t, processID, response.ProcessID)
-		assert.NotNil(t, response.Logs)
+		assert.Equal(t, common.StatusSuccess, response.Status)
+		assert.Equal(t, processID, response.Data.ProcessID)
+		assert.NotNil(t, response.Data.Logs)
 		// Logs might be empty or just have system messages
 	})
 
@@ -374,7 +347,7 @@ func TestGetProcessLogs(t *testing.T) {
 		_, processID := startTestProcess(t, handler, req)
 
 		// Start streaming
-		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/processes/logs?id=%s&stream=true", processID), nil)
+		httpReq := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/process/%s/logs?stream=true", processID), nil)
 		w := httptest.NewRecorder()
 
 		// Use a goroutine to handle streaming with shorter timeout

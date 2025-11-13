@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
 type SyncStreamExecutionRequest struct {
@@ -52,8 +54,7 @@ type SyncStreamErrorEvent struct {
 // ExecProcessSyncStream Handle synchronous streaming process execution
 func (h *ProcessHandler) ExecProcessSyncStream(w http.ResponseWriter, r *http.Request) {
 	var req SyncStreamExecutionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeStreamError(w, "Invalid request body", 0)
+	if err := common.ParseJSONBodyReturn(w, r, &req); err != nil {
 		return
 	}
 
@@ -241,7 +242,7 @@ func (h *ProcessHandler) buildSyncStreamCommand(req SyncStreamExecutionRequest) 
 }
 
 // writeStreamEvent Write SSE event
-func (h *ProcessHandler) writeStreamEvent(w http.ResponseWriter, flusher http.Flusher, eventType string, data interface{}) {
+func (h *ProcessHandler) writeStreamEvent(w http.ResponseWriter, flusher http.Flusher, eventType string, data any) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		slog.Error("Failed to marshal event data", "error", err)

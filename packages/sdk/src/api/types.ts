@@ -204,10 +204,12 @@ export interface ErrorDetail {
 }
 
 export interface APIError {
+  error: string  // Server 返回的字段名
   code: string
-  message: string
-  details?: ErrorDetail | ErrorDetail[] | Record<string, unknown>
   timestamp: number
+  details?: ErrorDetail | ErrorDetail[] | Record<string, unknown>
+  // 向后兼容：保留 message 字段作为 error 的别名
+  message?: string
 }
 
 export interface HealthCheckResponse {

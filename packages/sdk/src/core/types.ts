@@ -310,7 +310,7 @@ export interface ProcessExecResponse {
   success: boolean
   processId: string
   pid: number
-  status: string
+  processStatus: string
   exitCode?: number
 }
 
@@ -347,7 +347,7 @@ export interface GetProcessStatusResponse {
   success: boolean
   processId: string
   pid: number
-  status: string
+  processStatus: string
   startedAt: number // Unix timestamp (seconds)
 }
 

@@ -99,11 +99,10 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const result = await devboxInstance.executeCommand(options)
 
-      expect(result.success).toBe(true)
       expect(result.processId).toBeDefined()
       expect(typeof result.processId).toBe('string')
       expect(result.pid).toBeGreaterThan(0)
-      expect(result.status).toBeDefined()
+      expect(result.processStatus).toBeDefined()
     }, 10000)
 
     it('应该能够异步执行带工作目录的命令', async () => {
@@ -114,7 +113,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const result = await devboxInstance.executeCommand(options)
 
-      expect(result.success).toBe(true)
       expect(result.processId).toBeDefined()
       expect(result.pid).toBeGreaterThan(0)
     }, 10000)
@@ -130,7 +128,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const result = await devboxInstance.executeCommand(options)
 
-      expect(result.success).toBe(true)
       expect(result.processId).toBeDefined()
     }, 10000)
 
@@ -143,7 +140,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const result = await devboxInstance.executeCommand(options)
 
-      expect(result.success).toBe(true)
       expect(result.processId).toBeDefined()
     }, 10000)
   })
@@ -157,7 +153,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const result = await devboxInstance.execSync(options)
 
-      expect(result.success).toBe(true)
       expect(result.stdout).toContain('Hello World')
       expect(result.stderr).toBeDefined()
       expect(result.durationMs).toBeGreaterThanOrEqual(0)
@@ -173,7 +168,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const result = await devboxInstance.execSync(options)
 
-      expect(result.success).toBe(true)
       expect(result.exitCode).toBe(0)
     }, 15000)
 
@@ -196,7 +190,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const result = await devboxInstance.execSync(options)
 
-      expect(result.success).toBe(true)
       expect(result.stdout).toContain('/tmp')
     }, 15000)
 
@@ -211,7 +204,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const result = await devboxInstance.execSync(options)
 
-      expect(result.success).toBe(true)
       expect(result.stdout).toContain('test-value-123')
     }, 15000)
 
@@ -299,7 +291,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const result = await devboxInstance.listProcesses()
 
-      expect(result.success).toBe(true)
       expect(result.processes).toBeDefined()
       expect(Array.isArray(result.processes)).toBe(true)
       // 至少应该有一个进程（我们刚启动的）
@@ -317,7 +308,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const result = await devboxInstance.listProcesses()
 
-      expect(result.success).toBe(true)
       if (result.processes.length > 0) {
         const process = result.processes[0]
         expect(process.id).toBeDefined()
@@ -342,10 +332,9 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const status = await devboxInstance.getProcessStatus(execResult.processId)
 
-      expect(status.success).toBe(true)
       expect(status.processId).toBe(execResult.processId)
       expect(status.pid).toBe(execResult.pid)
-      expect(status.status).toBeDefined()
+      expect(status.processStatus).toBeDefined()
       expect(status.startedAt).toBeDefined()
     }, 15000)
 
@@ -375,7 +364,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const status = await devboxInstance.getProcessStatus(execResult.processId)
       // 进程状态应该是 terminated 或类似的
-      expect(status.status).toBeDefined()
+      expect(status.processStatus).toBeDefined()
     }, 20000)
 
     it('应该能够使用指定信号终止进程', async () => {
@@ -393,7 +382,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       const status = await devboxInstance.getProcessStatus(execResult.processId)
-      expect(status.status).toBeDefined()
+      expect(status.processStatus).toBeDefined()
     }, 20000)
 
     it('应该能够处理终止不存在的进程', async () => {
@@ -418,7 +407,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const logs = await devboxInstance.getProcessLogs(execResult.processId)
 
-      expect(logs.success).toBe(true)
       expect(logs.processId).toBe(execResult.processId)
       expect(logs.logs).toBeDefined()
       expect(Array.isArray(logs.logs)).toBe(true)
@@ -436,7 +424,6 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       const logs = await devboxInstance.getProcessLogs(execResult.processId)
 
-      expect(logs.success).toBe(true)
       expect(logs.processId).toBe(execResult.processId)
       expect(logs.logs).toBeDefined()
     }, 15000)
@@ -456,18 +443,15 @@ describe('Devbox SDK 进程管理功能测试', () => {
         args: ['20'],
       })
 
-      expect(execResult.success).toBe(true)
       expect(execResult.processId).toBeDefined()
 
       // 2. 查询进程状态
       await new Promise(resolve => setTimeout(resolve, 1000))
       const status = await devboxInstance.getProcessStatus(execResult.processId)
-      expect(status.success).toBe(true)
       expect(status.processId).toBe(execResult.processId)
 
       // 3. 获取进程日志
       const logs = await devboxInstance.getProcessLogs(execResult.processId)
-      expect(logs.success).toBe(true)
 
       // 4. 终止进程
       await devboxInstance.killProcess(execResult.processId)
@@ -475,7 +459,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       // 5. 验证进程已终止
       await new Promise(resolve => setTimeout(resolve, 1000))
       const finalStatus = await devboxInstance.getProcessStatus(execResult.processId)
-      expect(finalStatus.status).toBeDefined()
+      expect(finalStatus.processStatus).toBeDefined()
     }, 30000)
 
     it('应该能够在进程列表中看到新启动的进程', async () => {

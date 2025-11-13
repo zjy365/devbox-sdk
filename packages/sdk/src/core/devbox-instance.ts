@@ -176,26 +176,50 @@ export class DevboxInstance {
     this.validatePath(path)
     const urlResolver = this.sdk.getUrlResolver()
     return await urlResolver.executeWithConnection(this.name, async client => {
-      const response = await client.post<{
-        success: boolean
-        path: string
-        content: string
-        size: number
-        encoding?: string
-      }>('/api/v1/files/read', {
-        body: { path, ...options },
+      // According to openapi.yaml, /api/v1/files/read is a GET request that returns binary content
+      // Server may return different Content-Types:
+      // - application/octet-stream, image/*, video/*, audio/* -> binary (Buffer)
+      // - text/plain -> text (string)
+      const response = await client.get('/api/v1/files/read', {
+        params: { path, ...options },
       })
+      console.log('response,readFile', response)
+  
 
-      const responseData = response.data
-      if (!responseData.success || !responseData.content) {
-        throw new Error('Failed to read file: invalid response')
+      // HTTP client handles response based on Content-Type:
+      // - Binary content types -> Buffer
+      // - Text content types -> string
+      // Note: Go server's ReadFile endpoint does NOT support encoding parameter
+      // It always returns raw file content. Base64 encoding is only used during
+      // write operations for JSON mode transmission.
+      
+      if (Buffer.isBuffer(response.data)) {
+        // Binary content already in Buffer format
+        return response.data
       }
-
-      const encoding = options?.encoding || responseData.encoding || 'utf-8'
-      if (encoding === 'base64') {
-        return Buffer.from(responseData.content, 'base64')
+      
+      // If it's a string, convert to Buffer
+      if (typeof response.data === 'string') {
+        // Go server returns raw file content as text/plain for text files
+        // Convert UTF-8 string to Buffer (preserves Unicode characters correctly)
+        // Note: encoding option is ignored for readFile - server doesn't support it
+        return Buffer.from(response.data, 'utf-8')
       }
-      return Buffer.from(responseData.content, 'utf-8')
+      
+      // Handle ArrayBuffer if present (fallback for safety)
+      if (response.data instanceof ArrayBuffer) {
+        return Buffer.from(new Uint8Array(response.data))
+      }
+      if (response.data instanceof Uint8Array) {
+        return Buffer.from(response.data)
+      }
+      
+      // Log the actual type for debugging
+      const dataType = typeof response.data
+      const dataConstructor = response.data?.constructor?.name || 'unknown'
+      throw new Error(
+        `Failed to read file: unexpected response format (type: ${dataType}, constructor: ${dataConstructor})`
+      )
     })
   }
 
@@ -307,7 +331,10 @@ export class DevboxInstance {
       for (const [filePath, content] of Object.entries(files)) {
         const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content)
         const relativePath = relativePaths[index++] || filePath.split('/').pop() || 'file'
-        const file = new File([buffer], relativePath)
+        // Server doesn't use targetDir parameter, so we need to combine targetDir and relativePath
+        // to form the full path as the filename
+        const fullPath = targetDir === '.' ? relativePath : `${targetDir}/${relativePath}`
+        const file = new File([buffer], fullPath)
         formData.append('files', file)
       }
 

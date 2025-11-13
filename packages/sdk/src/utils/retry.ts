@@ -182,6 +182,70 @@ function isTimeoutError(errorObj: RetryableError): boolean {
 function isRetryable(error: unknown): boolean {
   const errorObj = error as RetryableError
 
+  // Check if it's a DevboxSDKError with a server error code
+  if (errorObj.code) {
+    // Import ERROR_CODES dynamically to avoid circular dependency
+    const ERROR_CODES = {
+      // 4xx errors that should NOT be retried (except specific cases)
+      UNAUTHORIZED: 'UNAUTHORIZED',
+      INVALID_TOKEN: 'INVALID_TOKEN',
+      TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+      INVALID_REQUEST: 'INVALID_REQUEST',
+      MISSING_REQUIRED_FIELD: 'MISSING_REQUIRED_FIELD',
+      INVALID_FIELD_VALUE: 'INVALID_FIELD_VALUE',
+      NOT_FOUND: 'NOT_FOUND',
+      FILE_NOT_FOUND: 'FILE_NOT_FOUND',
+      PROCESS_NOT_FOUND: 'PROCESS_NOT_FOUND',
+      SESSION_NOT_FOUND: 'SESSION_NOT_FOUND',
+      CONFLICT: 'CONFLICT',
+      VALIDATION_ERROR: 'VALIDATION_ERROR',
+      // 4xx errors that CAN be retried
+      OPERATION_TIMEOUT: 'OPERATION_TIMEOUT',
+      SESSION_TIMEOUT: 'SESSION_TIMEOUT',
+      // 5xx errors that CAN be retried
+      INTERNAL_ERROR: 'INTERNAL_ERROR',
+      SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+      SERVER_UNAVAILABLE: 'SERVER_UNAVAILABLE',
+      CONNECTION_FAILED: 'CONNECTION_FAILED',
+      CONNECTION_TIMEOUT: 'CONNECTION_TIMEOUT',
+    } as const
+
+    // Don't retry on client errors (4xx) except for timeout errors
+    const nonRetryable4xxCodes = [
+      ERROR_CODES.UNAUTHORIZED,
+      ERROR_CODES.INVALID_TOKEN,
+      ERROR_CODES.TOKEN_EXPIRED,
+      ERROR_CODES.INVALID_REQUEST,
+      ERROR_CODES.MISSING_REQUIRED_FIELD,
+      ERROR_CODES.INVALID_FIELD_VALUE,
+      ERROR_CODES.NOT_FOUND,
+      ERROR_CODES.FILE_NOT_FOUND,
+      ERROR_CODES.PROCESS_NOT_FOUND,
+      ERROR_CODES.SESSION_NOT_FOUND,
+      ERROR_CODES.CONFLICT,
+      ERROR_CODES.VALIDATION_ERROR,
+    ]
+
+    if (nonRetryable4xxCodes.includes(errorObj.code as any)) {
+      return false
+    }
+
+    // Retry on timeout and server errors
+    const retryableCodes = [
+      ERROR_CODES.OPERATION_TIMEOUT,
+      ERROR_CODES.SESSION_TIMEOUT,
+      ERROR_CODES.INTERNAL_ERROR,
+      ERROR_CODES.SERVICE_UNAVAILABLE,
+      ERROR_CODES.SERVER_UNAVAILABLE,
+      ERROR_CODES.CONNECTION_FAILED,
+      ERROR_CODES.CONNECTION_TIMEOUT,
+    ]
+
+    if (retryableCodes.includes(errorObj.code as any)) {
+      return true
+    }
+  }
+
   return (
     isRetryableNetworkError(errorObj) ||
     isRetryableHTTPStatus(errorObj) ||

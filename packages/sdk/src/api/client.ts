@@ -93,11 +93,38 @@ class SealosAPIClient {
         clearTimeout(timeoutId)
 
         if (!response.ok) {
-          const errorText = await response.text().catch(() => 'Unable to read error response')
+          let errorData: { error?: string; code?: string; timestamp?: number } = {}
+          try {
+            const contentType = response.headers.get('content-type') || ''
+            if (contentType.includes('application/json')) {
+              errorData = (await response.json()) as { error?: string; code?: string; timestamp?: number }
+            } else {
+              // 如果不是 JSON，尝试读取文本
+              const errorText = await response.text().catch(() => 'Unable to read error response')
+              // 尝试解析 JSON（某些情况下 Content-Type 可能不正确）
+              try {
+                errorData = JSON.parse(errorText) as { error?: string; code?: string; timestamp?: number }
+              } catch {
+                // 如果无法解析，使用文本作为错误消息
+                errorData = { error: errorText }
+              }
+            }
+          } catch (e) {
+            // 忽略解析错误，使用默认错误信息
+          }
+          
+          const errorMessage = errorData.error || response.statusText
+          const errorCode = errorData.code || this.getErrorCodeFromStatus(response.status)
+          
           throw new DevboxSDKError(
-            `HTTP ${response.status}: ${response.statusText}`,
-            this.getErrorCodeFromStatus(response.status),
-            { status: response.status, statusText: response.statusText, body: errorText }
+            errorMessage,
+            errorCode,
+            {
+              status: response.status,
+              statusText: response.statusText,
+              timestamp: errorData.timestamp,
+              serverErrorCode: errorData.code,
+            }
           )
         }
 
@@ -137,12 +164,37 @@ class SealosAPIClient {
 
   private shouldRetry(error: Error): boolean {
     if (error instanceof DevboxSDKError) {
+      // Don't retry on client errors (4xx) except for timeout errors
+      const nonRetryable4xxCodes = [
+        ERROR_CODES.UNAUTHORIZED,
+        ERROR_CODES.INVALID_TOKEN,
+        ERROR_CODES.TOKEN_EXPIRED,
+        ERROR_CODES.INVALID_REQUEST,
+        ERROR_CODES.MISSING_REQUIRED_FIELD,
+        ERROR_CODES.INVALID_FIELD_VALUE,
+        ERROR_CODES.NOT_FOUND,
+        ERROR_CODES.FILE_NOT_FOUND,
+        ERROR_CODES.PROCESS_NOT_FOUND,
+        ERROR_CODES.SESSION_NOT_FOUND,
+        ERROR_CODES.CONFLICT,
+        ERROR_CODES.VALIDATION_ERROR,
+        ERROR_CODES.AUTHENTICATION_FAILED,
+      ]
+
+      if (nonRetryable4xxCodes.includes(error.code as any)) {
+        return false
+      }
+
+      // Retry on timeout and server errors
       return [
         ERROR_CODES.CONNECTION_TIMEOUT,
         ERROR_CODES.CONNECTION_FAILED,
         ERROR_CODES.SERVER_UNAVAILABLE,
-        'SERVICE_UNAVAILABLE' as any,
-      ].includes(error.code)
+        ERROR_CODES.SERVICE_UNAVAILABLE,
+        ERROR_CODES.OPERATION_TIMEOUT,
+        ERROR_CODES.SESSION_TIMEOUT,
+        ERROR_CODES.INTERNAL_ERROR,
+      ].includes(error.code as any)
     }
     return error.name === 'AbortError' || error.message.includes('fetch')
   }

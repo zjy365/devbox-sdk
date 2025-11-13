@@ -15,7 +15,11 @@ export interface FileMetadata {
   path: string
   size: number
   isDir: boolean
-  modTime: string
+  mimeType?: string
+  permissions?: string
+  modified?: string
+  // Deprecated: use 'modified' instead
+  modTime?: string
 }
 
 /**

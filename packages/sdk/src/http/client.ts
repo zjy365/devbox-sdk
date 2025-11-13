@@ -1,4 +1,4 @@
-import { DevboxSDKError, ERROR_CODES } from '../utils/error'
+import { DevboxSDKError, ERROR_CODES, parseServerResponse, type ServerResponse } from '../utils/error'
 import type { HTTPResponse, RequestOptions } from './types'
 
 export class DevboxContainerClient {
@@ -75,20 +75,35 @@ export class DevboxContainerClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
     try {
-    console.log('url', url.toString())
-    // console.log('fetchOptions', fetchOptions)
-     const response = await fetch(url.toString(), {
+      const response = await fetch(url.toString(), {
         ...fetchOptions,
         signal: options?.signal || controller.signal,
       })
-    // console.log('response', response);
       clearTimeout(timeoutId)
 
       if (!response.ok) {
+        let errorData: { error?: string; code?: string; timestamp?: number } = {}
+        try {
+          const contentType = response.headers.get('content-type') || ''
+          if (contentType.includes('application/json')) {
+            errorData = (await response.json()) as { error?: string; code?: string; timestamp?: number }
+          }
+        } catch (e) {
+          // error
+        }
+        
+        const errorMessage = errorData.error || response.statusText
+        const errorCode = errorData.code || ERROR_CODES.CONNECTION_FAILED
+        
         throw new DevboxSDKError(
-          `HTTP ${response.status}: ${response.statusText}`,
-          ERROR_CODES.CONNECTION_FAILED,
-          { status: response.status, statusText: response.statusText }
+          errorMessage,
+          errorCode,
+          {
+            status: response.status,
+            statusText: response.statusText,
+            timestamp: errorData.timestamp,
+            serverErrorCode: errorData.code,
+          }
         )
       }
 
@@ -96,11 +111,28 @@ export class DevboxContainerClient {
       let data: T
 
       if (contentType.includes('application/json')) {
-        data = (await response.json()) as T
+        const jsonData = (await response.json()) as ServerResponse<T>
+        // Parse server response and check for errors in response body
+        // This will throw if server returned error status
+        data = parseServerResponse(jsonData)
+      } else if (contentType.includes('application/octet-stream') || 
+                 contentType.includes('image/') || 
+                 contentType.includes('video/') ||
+                 contentType.includes('audio/')) {
+        const arrayBuffer = await response.arrayBuffer()
+        data = (Buffer.from(arrayBuffer) as unknown) as T
       } else {
         data = (await response.text()) as T
       }
-      console.log('data', data)
+      
+      // Log original response for debugging
+      console.log('url', url.toString())
+      console.log('response', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        data,
+      })
       return {
         data,
         status: response.status,

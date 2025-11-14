@@ -4,11 +4,15 @@
   "description": "Enterprise TypeScript SDK for Sealos Devbox management with HTTP API + Bun runtime architecture",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "build": "turbo run build",
     "build:sdk": "turbo run build --filter=@sealos/devbox-sdk",
+    "build:docs": "turbo run build --filter=@sealos/devbox-docs",
+    "dev:docs": "turbo run dev --filter=@sealos/devbox-docs",
+    "start:docs": "turbo run start --filter=@sealos/devbox-docs",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "lint": "turbo run lint",

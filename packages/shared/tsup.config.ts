@@ -12,11 +12,8 @@ export default defineConfig({
   format: ['esm', 'cjs'],
   dts: {
     resolve: true,
-    compilerOptions: {
-      composite: false,
-    },
   },
-  tsconfig: './tsconfig.json',
+  tsconfig: './tsconfig.build.json',
 
   // Output configuration
   outDir: 'dist',

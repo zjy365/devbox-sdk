@@ -7,6 +7,12 @@ dist/
 devbox-server
 devbox-server-*
 
+# Next.js
+.next/
+out/
+next-env.d.ts
+.source/
+
 # Testing coverage
 coverage/
 .nyc_output/

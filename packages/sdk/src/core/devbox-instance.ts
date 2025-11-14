@@ -334,7 +334,9 @@ export class DevboxInstance {
         // Server doesn't use targetDir parameter, so we need to combine targetDir and relativePath
         // to form the full path as the filename
         const fullPath = targetDir === '.' ? relativePath : `${targetDir}/${relativePath}`
-        const file = new File([buffer], fullPath)
+        // Convert Buffer to Uint8Array for File constructor compatibility
+        const uint8Array = new Uint8Array(buffer)
+        const file = new File([uint8Array], fullPath)
         formData.append('files', file)
       }
 

@@ -24,6 +24,8 @@
   "exclude": [
     "dist",
     "node_modules",
-    "__tests__"
+    "__tests__",
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 }

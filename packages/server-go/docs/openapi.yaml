@@ -1808,7 +1808,7 @@ components:
     ProcessInfoResponse:
       type: object
       properties:
-        id:
+        processId:
           type: string
           description: Process ID
           example: "550e8400-e29b-41d4-a716-446655440000"
@@ -1820,7 +1820,7 @@ components:
           type: string
           description: Command that was executed
           example: "ls"
-        status:
+        processStatus:
           type: string
           description: Current process status
           example: "running"
@@ -1839,10 +1839,10 @@ components:
           description: Process exit code
           example: 0
       required:
-        - id
+        - processId
         - pid
         - command
-        - status
+        - processStatus
         - startTime
 
     ListProcessesResponse:

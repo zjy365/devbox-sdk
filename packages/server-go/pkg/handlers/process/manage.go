@@ -25,13 +25,13 @@ type GetProcessLogsResponse struct {
 }
 
 type ProcessInfoResponse struct {
-	ID        string `json:"id"`
-	PID       int    `json:"pid"`
-	Command   string `json:"command"`
-	Status    string `json:"Status"`
-	StartTime int64  `json:"startTime"`
-	EndTime   *int64 `json:"endTime,omitempty"`
-	ExitCode  *int   `json:"exitCode,omitempty"`
+	ProcessID     string `json:"processId"`
+	PID           int    `json:"pid"`
+	Command       string `json:"command"`
+	ProcessStatus string `json:"processStatus"`
+	StartTime     int64  `json:"startTime"`
+	EndTime       *int64 `json:"endTime,omitempty"`
+	ExitCode      *int   `json:"exitCode,omitempty"`
 }
 
 // GetProcessStatus handles process status queries
@@ -100,11 +100,11 @@ func (h *ProcessHandler) ListProcesses(w http.ResponseWriter, r *http.Request) {
 	processes := make([]ProcessInfoResponse, 0, len(h.processes))
 	for id, info := range h.processes {
 		processes = append(processes, ProcessInfoResponse{
-			ID:        id,
-			PID:       info.Cmd.Process.Pid,
-			Command:   info.Cmd.Path,
-			Status:    info.Status,
-			StartTime: info.StartAt.Unix(),
+			ProcessID:     id,
+			PID:           info.Cmd.Process.Pid,
+			Command:       info.Cmd.Path,
+			ProcessStatus: info.Status,
+			StartTime:     info.StartAt.Unix(),
 		})
 	}
 	h.mutex.RUnlock()

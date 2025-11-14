@@ -220,10 +220,10 @@ func TestListProcesses(t *testing.T) {
 
 		// Verify process structure
 		for _, process := range response.Data.Processes {
-			assert.NotEmpty(t, process.ID)
+			assert.NotEmpty(t, process.ProcessID)
 			assert.Greater(t, process.PID, 0)
 			assert.NotEmpty(t, process.Command)
-			assert.Equal(t, "running", process.Status)
+			assert.Equal(t, "running", process.ProcessStatus)
 			assert.Greater(t, process.StartTime, int64(0))
 		}
 	})

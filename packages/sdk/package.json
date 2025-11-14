@@ -2,7 +2,9 @@
   "name": "@sealos/devbox-sdk",
   "version": "1.0.0",
   "description": "Enterprise TypeScript SDK for Sealos Devbox management",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "type": "module",
   "exports": {
     ".": {
@@ -49,6 +51,10 @@
     "url": "https://github.com/zjy365"
   },
   "license": "Apache-2.0",
+  "homepage": "https://github.com/zjy365/devbox-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/zjy365/devbox-sdk/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/zjy365/devbox-sdk.git",

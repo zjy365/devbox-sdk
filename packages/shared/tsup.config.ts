@@ -10,12 +10,18 @@ export default defineConfig({
 
   // Output formats
   format: ['esm', 'cjs'],
-  dts: true,
+  dts: {
+    resolve: true,
+    compilerOptions: {
+      composite: false,
+    },
+  },
+  tsconfig: './tsconfig.json',
 
   // Output configuration
   outDir: 'dist',
   clean: true,
-  sourcemap: true,
+  sourcemap: false,
   splitting: false,
 
   // Optimization

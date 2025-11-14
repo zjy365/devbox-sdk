@@ -1,0 +1,99 @@
+---
+title: Server API Documentation
+description: Complete Devbox SDK Server HTTP API documentation
+---
+
+# Devbox SDK Server API Documentation
+
+Devbox SDK Server provides a comprehensive HTTP API for managing processes, sessions, files, and real-time monitoring capabilities.
+
+## Overview
+
+Devbox SDK Server is built with Go, follows RESTful principles, and supports real-time communication via WebSocket.
+
+## Key Features
+
+- **File Operations**: Complete CRUD operations with intelligent routing
+  - JSON mode: For text and small files, with optional base64 encoding
+  - Binary stream mode: For large files and media
+  - Multipart FormData mode: For native browser uploads
+  - Multiple upload methods: multipart, JSON, or direct binary
+- **Process Management**: Execute processes synchronously or asynchronously with comprehensive log monitoring
+- **Session Management**: Create and manage interactive shell sessions with environment and directory management
+- **Real-time Communication**: WebSocket connections for real-time log streaming and event subscriptions
+- **Health Monitoring**: Built-in health check and readiness endpoints for service monitoring
+- **Security**: All sensitive operations require Bearer token authentication
+
+## Quick Start
+
+### Prerequisites
+
+- Bearer token for authentication
+- HTTP client or API testing tool
+
+### Basic Usage
+
+**Note**: The default port is `:9757`, which can be changed via the `ADDR` environment variable or `-addr` flag.
+
+1. **Health Check** (no authentication required):
+   ```bash
+   curl -X GET http://localhost:9757/health
+   ```
+
+2. **File Operations** (authentication required):
+   ```bash
+   # Write text file (JSON mode)
+   curl -X POST http://localhost:9757/api/v1/files/write \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"path": "/tmp/hello.txt", "content": "Hello, World!"}'
+   ```
+
+3. **Process Management**:
+   ```bash
+   # Execute command asynchronously
+   curl -X POST http://localhost:9757/api/v1/process/exec \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"command": "ls", "args": ["-la", "/tmp"]}'
+   ```
+
+## Authentication
+
+All API endpoints (except health checks) require Bearer token authentication:
+
+```http
+Authorization: Bearer <your-token>
+```
+
+Include this header in all requests that require authentication.
+
+## API Structure
+
+The API is organized into several main categories:
+
+- **Health**: `/health` - Service health check and readiness check
+- **Files**: `/api/v1/files/*` - File operations and management
+- **Processes**: `/api/v1/process/*` - Process execution and monitoring
+- **Sessions**: `/api/v1/sessions/*` - Interactive session management
+- **WebSocket**: `/ws` - Real-time log streaming and events
+
+## Error Handling
+
+The API uses standard HTTP status codes and returns consistent error responses:
+
+```json
+{
+  "error": "Error description",
+  "code": "ERROR_CODE",
+  "timestamp": 1640995200000
+}
+```
+
+Common HTTP status codes:
+- `200` - Success
+- `400` - Bad Request
+- `401` - Unauthorized
+- `404` - Not Found
+- `409` - Conflict
+- `500` - Internal Server Error

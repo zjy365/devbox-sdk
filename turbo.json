@@ -12,12 +12,24 @@
       ],
       "outputs": [
         "dist/**",
+        ".next/**",
+        "out/**",
+        ".source/**",
         "devbox-server",
         "devbox-server-*",
         "*.tsbuildinfo"
       ],
       "inputs": [
         "src/**/*.ts",
+        "src/**/*.tsx",
+        "app/**/*.tsx",
+        "app/**/*.ts",
+        "content/**/*.mdx",
+        "lib/**/*.ts",
+        "lib/**/*.tsx",
+        "source.config.ts",
+        "next.config.mjs",
+        "next.config.js",
         "tsconfig.json",
         "tsup.config.ts",
         "package.json"
@@ -29,7 +41,9 @@
       ],
       "inputs": [
         "src/**/*.ts",
-        "**/__tests__/**/*.test.ts"
+        "src/**/*.tsx",
+        "**/__tests__/**/*.test.ts",
+        "**/tests/**/*.test.ts"
       ],
       "env": [
         "NODE_ENV"
@@ -47,7 +61,14 @@
       "outputs": [],
       "inputs": [
         "src/**/*.ts",
-        "biome.json"
+        "src/**/*.tsx",
+        "app/**/*.tsx",
+        "app/**/*.ts",
+        "lib/**/*.ts",
+        "lib/**/*.tsx",
+        "biome.json",
+        ".eslintrc.*",
+        "eslint.config.*"
       ]
     },
     "lint:fix": {
@@ -64,6 +85,11 @@
       ],
       "inputs": [
         "src/**/*.ts",
+        "src/**/*.tsx",
+        "app/**/*.tsx",
+        "app/**/*.ts",
+        "lib/**/*.ts",
+        "lib/**/*.tsx",
         "tsconfig.json"
       ]
     },
@@ -71,6 +97,10 @@
       "cache": false
     },
     "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "start": {
       "cache": false,
       "persistent": true
     }

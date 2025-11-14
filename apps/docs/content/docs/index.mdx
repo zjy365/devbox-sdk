@@ -1,0 +1,102 @@
+---
+title: Welcome to Devbox SDK
+description: Enterprise TypeScript SDK for Sealos Devbox management
+---
+
+# Devbox SDK Documentation
+
+Welcome to the Devbox SDK documentation! This is an enterprise-grade TypeScript SDK for managing Sealos Devbox, built with HTTP API + Bun runtime architecture.
+
+## 🏗️ Architecture
+
+This project is a monorepo containing two main packages:
+
+- **@sealos/devbox-sdk** - TypeScript SDK for Devbox management
+- **@sealos/devbox-server** - HTTP server for Devbox runtime (built on Bun)
+
+## 📦 Package Overview
+
+### @sealos/devbox-sdk
+
+TypeScript/Node.js SDK providing high-level APIs for Devbox management:
+
+- Devbox lifecycle management
+- HTTP connection pooling
+- Adaptive strategy file transfer
+- Security and monitoring
+
+### @sealos/devbox-server
+
+High-performance HTTP server running in Devbox containers:
+
+- File operation APIs
+- Process execution
+- Real-time file monitoring via WebSocket
+- Built on Bun runtime
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+npm install @sealos/devbox-sdk
+```
+
+### Basic Usage
+
+```typescript
+import { DevboxSDK } from '@sealos/devbox-sdk'
+
+const sdk = new DevboxSDK({
+  kubeconfig: process.env.KUBECONFIG
+})
+
+// Create a Devbox
+const devbox = await sdk.createDevbox({
+  name: 'my-app',
+  runtime: 'node.js',
+  resource: { cpu: 1, memory: 2 }
+})
+
+// Write a file
+await devbox.writeFile('index.js', 'console.log("Hello World")')
+
+// Execute a command
+const result = await devbox.executeCommand('node index.js')
+console.log(result.stdout)
+```
+
+## 📚 Documentation Navigation
+
+- [API Reference](/docs/api) - Complete API documentation
+- [Server Documentation](/docs/server) - HTTP server API documentation
+- [Examples](/docs/examples) - Usage examples and best practices
+
+## 🔧 Configuration
+
+### Environment Variables
+
+#### Server (@sealos/devbox-server)
+- `PORT` - Server port (default: 3000)
+- `HOST` - Server host (default: 0.0.0.0)
+- `WORKSPACE_PATH` - Workspace directory (default: /workspace)
+- `ENABLE_CORS` - Enable CORS (default: false)
+- `MAX_FILE_SIZE` - Maximum file size in bytes (default: 100MB)
+
+#### SDK (@sealos/devbox-sdk)
+- `KUBECONFIG` - Kubernetes configuration for Devbox API access
+
+## 📄 License
+
+Apache-2.0
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our contribution guidelines and submit a Pull Request.
+
+## 📞 Support
+
+For questions and issues:
+- Create an Issue on GitHub
+- Check the documentation
+- Contact the maintainers

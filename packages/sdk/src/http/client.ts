@@ -116,13 +116,20 @@ export class DevboxContainerClient {
         // This will throw if server returned error status
         data = parseServerResponse(jsonData)
       } else if (contentType.includes('application/octet-stream') || 
+                 contentType.includes('application/gzip') ||
+                 contentType.includes('application/x-tar') ||
+                 contentType.includes('multipart/') ||
                  contentType.includes('image/') || 
                  contentType.includes('video/') ||
                  contentType.includes('audio/')) {
+        // Binary data - return as Buffer
         const arrayBuffer = await response.arrayBuffer()
         data = (Buffer.from(arrayBuffer) as unknown) as T
       } else {
-        data = (await response.text()) as T
+        // Text data (text/plain, text/html, etc.) - return as Buffer
+        // This ensures consistent Buffer return type for file downloads
+        const arrayBuffer = await response.arrayBuffer()
+        data = (Buffer.from(arrayBuffer) as unknown) as T
       }
       
       // Log original response for debugging

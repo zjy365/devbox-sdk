@@ -31,13 +31,21 @@ class SealosAPIClient {
   private timeout: number
   private retries: number
   private rejectUnauthorized: boolean
+  private getAuthHeaders?: () => Record<string, string>
 
-  constructor(config: { baseUrl?: string; timeout?: number; retries?: number; rejectUnauthorized?: boolean }) {
-    this.baseUrl = config.baseUrl || 'https://devbox.usw.sealos.io/v1'
+  constructor(config: { 
+    baseUrl?: string
+    timeout?: number
+    retries?: number
+    rejectUnauthorized?: boolean
+    getAuthHeaders?: () => Record<string, string>
+  }) {
+    this.baseUrl = config.baseUrl || 'https://devbox.usw.sealos.io'
     this.timeout = config.timeout || 30000
     this.retries = config.retries || 3
     this.rejectUnauthorized = config.rejectUnauthorized ?? 
       (process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0')
+    this.getAuthHeaders = config.getAuthHeaders
     if (!this.rejectUnauthorized) {
       process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
     }
@@ -67,6 +75,7 @@ class SealosAPIClient {
       method,
       headers: {
         'Content-Type': 'application/json',
+        ...(this.getAuthHeaders ? this.getAuthHeaders() : {}),
         ...options.headers,
       },
     }
@@ -88,7 +97,7 @@ class SealosAPIClient {
           signal: controller.signal,
         })
 
-        // console.log('response.url',url.toString(),fetchOptions)
+        // console.log('response.url',response.ok,url.toString(),fetchOptions,)
 
         clearTimeout(timeoutId)
 
@@ -99,13 +108,11 @@ class SealosAPIClient {
             if (contentType.includes('application/json')) {
               errorData = (await response.json()) as { error?: string; code?: string; timestamp?: number }
             } else {
-              // 如果不是 JSON，尝试读取文本
               const errorText = await response.text().catch(() => 'Unable to read error response')
-              // 尝试解析 JSON（某些情况下 Content-Type 可能不正确）
-              try {
+            try {
                 errorData = JSON.parse(errorText) as { error?: string; code?: string; timestamp?: number }
               } catch {
-                // 如果无法解析，使用文本作为错误消息
+                
                 errorData = { error: errorText }
               }
             }
@@ -247,13 +254,14 @@ export class DevboxAPI {
   private endpoints: APIEndpoints
 
   constructor(config: APIClientConfig) {
+    this.authenticator = new KubeconfigAuthenticator(config.kubeconfig)
     this.httpClient = new SealosAPIClient({
       baseUrl: config.baseUrl,
       timeout: config.timeout,
       retries: config.retries,
       rejectUnauthorized: config.rejectUnauthorized,
+      getAuthHeaders: () => this.authenticator.getAuthHeaders(),
     })
-    this.authenticator = new KubeconfigAuthenticator(config.kubeconfig)
     this.endpoints = new APIEndpoints(config.baseUrl)
   }
 
@@ -271,7 +279,6 @@ export class DevboxAPI {
 
     try {
       const response = await this.httpClient.post(this.endpoints.devboxCreate(), {
-        headers: this.authenticator.getAuthHeaders(),
         data: request,
       })
       const responseData = response.data as { data: DevboxCreateResponse }
@@ -290,9 +297,7 @@ export class DevboxAPI {
    */
   async getDevbox(name: string): Promise<DevboxInfo> {
     try {
-      const response = await this.httpClient.get(this.endpoints.devboxGet(name), {
-        headers: this.authenticator.getAuthHeaders(),
-      })
+      const response = await this.httpClient.get(this.endpoints.devboxGet(name))
 
       const responseData = response.data as { data: DevboxDetail }
       return this.transformDetailToDevboxInfo(responseData.data)
@@ -306,9 +311,7 @@ export class DevboxAPI {
    */
   async listDevboxes(): Promise<DevboxInfo[]> {
     try {
-      const response = await this.httpClient.get(this.endpoints.devboxList(), {
-        headers: this.authenticator.getAuthHeaders(),
-      })
+      const response = await this.httpClient.get(this.endpoints.devboxList())
       const listResponse = response.data as DevboxListApiResponse
       return listResponse.data.map(this.transformListItemToDevboxInfo)
     } catch (error) {
@@ -322,7 +325,6 @@ export class DevboxAPI {
   async startDevbox(name: string): Promise<void> {
     try {
       await this.httpClient.post(this.endpoints.devboxStart(name), {
-        headers: this.authenticator.getAuthHeaders(),
         data: {},
       })
     } catch (error) {
@@ -336,7 +338,6 @@ export class DevboxAPI {
   async pauseDevbox(name: string): Promise<void> {
     try {
       await this.httpClient.post(this.endpoints.devboxPause(name), {
-        headers: this.authenticator.getAuthHeaders(),
         data: {},
       })
     } catch (error) {
@@ -350,7 +351,6 @@ export class DevboxAPI {
   async restartDevbox(name: string): Promise<void> {
     try {
       await this.httpClient.post(this.endpoints.devboxRestart(name), {
-        headers: this.authenticator.getAuthHeaders(),
         data: {},
       })
     } catch (error) {
@@ -363,9 +363,7 @@ export class DevboxAPI {
    */
   async deleteDevbox(name: string): Promise<void> {
     try {
-      await this.httpClient.delete(this.endpoints.devboxDelete(name), {
-        headers: this.authenticator.getAuthHeaders(),
-      })
+      await this.httpClient.delete(this.endpoints.devboxDelete(name))
     } catch (error) {
       throw this.handleAPIError(error, `Failed to delete Devbox '${name}'`)
     }
@@ -377,7 +375,6 @@ export class DevboxAPI {
   async updateDevbox(name: string, config: any): Promise<void> {
     try {
       await this.httpClient.request('PATCH', this.endpoints.devboxUpdate(name), {
-        headers: this.authenticator.getAuthHeaders(),
         data: config,
       })
     } catch (error) {
@@ -391,7 +388,6 @@ export class DevboxAPI {
   async shutdownDevbox(name: string): Promise<void> {
     try {
       await this.httpClient.post(this.endpoints.devboxShutdown(name), {
-        headers: this.authenticator.getAuthHeaders(),
         data: {},
       })
     } catch (error) {
@@ -404,9 +400,7 @@ export class DevboxAPI {
    */
   async getTemplates(): Promise<any> {
     try {
-      const response = await this.httpClient.get(this.endpoints.devboxTemplates(), {
-        headers: this.authenticator.getAuthHeaders(),
-      })
+      const response = await this.httpClient.get(this.endpoints.devboxTemplates())
       return response.data
     } catch (error) {
       throw this.handleAPIError(error, 'Failed to get templates')
@@ -419,7 +413,6 @@ export class DevboxAPI {
   async updatePorts(name: string, ports: any[]): Promise<void> {
     try {
       await this.httpClient.put(this.endpoints.devboxPorts(name), {
-        headers: this.authenticator.getAuthHeaders(),
         data: { ports },
       })
     } catch (error) {
@@ -433,7 +426,6 @@ export class DevboxAPI {
   async configureAutostart(name: string, config?: any): Promise<void> {
     try {
       await this.httpClient.post(this.endpoints.devboxAutostart(name), {
-        headers: this.authenticator.getAuthHeaders(),
         data: config || {},
       })
     } catch (error) {
@@ -446,9 +438,7 @@ export class DevboxAPI {
    */
   async listReleases(name: string): Promise<any[]> {
     try {
-      const response = await this.httpClient.get(this.endpoints.releaseList(name), {
-        headers: this.authenticator.getAuthHeaders(),
-      })
+      const response = await this.httpClient.get(this.endpoints.releaseList(name))
       const responseData = response.data as { data?: any[] } | undefined
       return responseData?.data || []
     } catch (error) {
@@ -462,7 +452,6 @@ export class DevboxAPI {
   async createRelease(name: string, config: any): Promise<void> {
     try {
       await this.httpClient.post(this.endpoints.releaseCreate(name), {
-        headers: this.authenticator.getAuthHeaders(),
         data: config,
       })
     } catch (error) {
@@ -475,9 +464,7 @@ export class DevboxAPI {
    */
   async deleteRelease(name: string, tag: string): Promise<void> {
     try {
-      await this.httpClient.delete(this.endpoints.releaseDelete(name, tag), {
-        headers: this.authenticator.getAuthHeaders(),
-      })
+      await this.httpClient.delete(this.endpoints.releaseDelete(name, tag))
     } catch (error) {
       throw this.handleAPIError(error, `Failed to delete release '${tag}' for '${name}'`)
     }
@@ -489,7 +476,6 @@ export class DevboxAPI {
   async deployRelease(name: string, tag: string): Promise<void> {
     try {
       await this.httpClient.post(this.endpoints.releaseDeploy(name, tag), {
-        headers: this.authenticator.getAuthHeaders(),
         data: {},
       })
     } catch (error) {
@@ -509,7 +495,6 @@ export class DevboxAPI {
       }
 
       const response = await this.httpClient.get(this.endpoints.devboxMonitor(name), {
-        headers: this.authenticator.getAuthHeaders(),
         params,
       })
 
@@ -525,9 +510,7 @@ export class DevboxAPI {
    */
   async testAuth(): Promise<boolean> {
     try {
-      await this.httpClient.get(this.endpoints.devboxList(), {
-        headers: this.authenticator.getAuthHeaders(),
-      })
+      await this.httpClient.get(this.endpoints.devboxList())
       return true
     } catch (error) {
       return false

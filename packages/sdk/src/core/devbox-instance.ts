@@ -231,6 +231,11 @@ export class DevboxInstance {
       throw new Error('Path cannot be empty')
     }
 
+    // Reject paths ending with slash (directory paths)
+    if (path.endsWith('/') || path.endsWith('\\')) {
+      throw new Error('Path cannot end with a directory separator')
+    }
+
     // Check for directory traversal attempts
     const normalized = path.replace(/\\/g, '/')
     if (normalized.includes('../') || normalized.includes('..\\')) {
@@ -385,65 +390,69 @@ export class DevboxInstance {
   }
 
   /**
-   * Download one or multiple files with smart format detection
-   * @param paths Single file path or array of file paths
-   * @param options Download options including format
-   * @returns Buffer containing downloaded file(s)
+   * Download a single file
+   * @param path File path to download
+   * @returns Buffer containing file content
    */
-  async downloadFile(
-    paths: string | string[],
+  async downloadFile(path: string): Promise<Buffer> {
+    this.validatePath(path)
+
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const response = await client.get<Buffer>(
+        `${API_ENDPOINTS.CONTAINER.FILES.DOWNLOAD}?path=${encodeURIComponent(path)}`
+      )
+      return response.data
+    })
+  }
+
+  /**
+   * Download multiple files with format options
+   * @param paths Array of file paths to download
+   * @param options Download options including format
+   * @returns Buffer containing downloaded files (tar.gz, tar, or multipart format)
+   */
+  async downloadFiles(
+    paths: string[],
     options?: { format?: 'tar.gz' | 'tar' | 'multipart' | 'direct' }
   ): Promise<Buffer> {
-    const pathsArray = Array.isArray(paths) ? paths : [paths]
-    
+    if (!paths || paths.length === 0) {
+      throw new Error('At least one file path is required')
+    }
+
     // Validate all paths
-    for (const path of pathsArray) {
+    for (const path of paths) {
       this.validatePath(path)
     }
 
     const urlResolver = this.sdk.getUrlResolver()
-    const serverUrl = await urlResolver.getServerUrl(this.name)
-    const url = `${serverUrl}${API_ENDPOINTS.CONTAINER.FILES.DOWNLOAD}`
-
-    // Determine Accept header based on format
-    let acceptHeader: string | undefined
-    if (options?.format) {
-      switch (options.format) {
-        case 'tar.gz':
-          acceptHeader = 'application/gzip'
-          break
-        case 'tar':
-          acceptHeader = 'application/x-tar'
-          break
-        case 'multipart':
-          acceptHeader = 'multipart/mixed'
-          break
-        case 'direct':
-          // No Accept header for direct download
-          break
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      // Determine Accept header based on format
+      const headers: Record<string, string> = {}
+      if (options?.format) {
+        switch (options.format) {
+          case 'tar.gz':
+            headers.Accept = 'application/gzip'
+            break
+          case 'tar':
+            headers.Accept = 'application/x-tar'
+            break
+          case 'multipart':
+            headers.Accept = 'multipart/mixed'
+            break
+          case 'direct':
+            // No Accept header for direct download
+            break
+        }
       }
-    }
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer 1234', // TODO: remove this
-    }
-    if (acceptHeader) {
-      headers.Accept = acceptHeader
-    }
+      const response = await client.post<Buffer>(API_ENDPOINTS.CONTAINER.FILES.BATCH_DOWNLOAD, {
+        body: { paths, format: options?.format },
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
+      })
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ paths: pathsArray }),
+      return response.data
     })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    const arrayBuffer = await response.arrayBuffer()
-    return Buffer.from(arrayBuffer)
   }
 
   /**

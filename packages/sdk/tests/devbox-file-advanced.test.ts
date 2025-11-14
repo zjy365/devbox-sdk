@@ -69,6 +69,16 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     devboxInstance = await sdk.createDevbox(config)
     await devboxInstance.start()
     await waitForDevboxReady(devboxInstance)
+
+    // 清理之前测试可能留下的文件和目录
+    try {
+      await devboxInstance.execSync({
+        command: 'rm',
+        args: ['-rf', './move', './move-dir', './move-overwrite', './move-no-overwrite', './rename', './rename-dir', './rename-conflict', './download', './download-multi', './download-tar', './download-targz', './download-multipart', './combo', './combo-ports'],
+      })
+    } catch (error) {
+      // 忽略清理错误
+    }
   }, 30000)
 
   afterEach(async () => {
@@ -86,20 +96,28 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
   }, 10000)
 
   describe('文件移动操作', () => {
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './move', './move-dir', './move-overwrite', './move-no-overwrite'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
+
     it('应该能够移动文件', async () => {
-      const sourcePath = '/move/source.txt'
-      const destinationPath = '/move/destination.txt'
+      const sourcePath = './move/source.txt'
+      const destinationPath = './move/destination.txt'
       const content = 'File to be moved'
 
       // 创建源文件
       await devboxInstance.writeFile(sourcePath, content)
 
       // 移动文件
-      const result = await devboxInstance.moveFile(sourcePath, destinationPath)
-
-      expect(result.success).toBe(true)
-      expect(result.source).toBe(sourcePath)
-      expect(result.destination).toBe(destinationPath)
+      await devboxInstance.moveFile(sourcePath, destinationPath)
 
       // 验证文件已移动到新位置
       const movedContent = await devboxInstance.readFile(destinationPath)
@@ -110,8 +128,8 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     }, 10000)
 
     it('应该能够移动目录', async () => {
-      const sourceDir = '/move-dir/source'
-      const destinationDir = '/move-dir/dest'
+      const sourceDir = './move-dir/source'
+      const destinationDir = './move-dir/dest'
       const filePath = `${sourceDir}/file.txt`
       const content = 'File in directory'
 
@@ -119,9 +137,7 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
       await devboxInstance.writeFile(filePath, content)
 
       // 移动目录
-      const result = await devboxInstance.moveFile(sourceDir, destinationDir)
-
-      expect(result.success).toBe(true)
+      await devboxInstance.moveFile(sourceDir, destinationDir)
 
       // 验证文件在新目录中
       const movedFilePath = `${destinationDir}/file.txt`
@@ -133,8 +149,8 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     }, 10000)
 
     it('应该能够覆盖已存在的目标文件', async () => {
-      const sourcePath = '/move-overwrite/source.txt'
-      const destinationPath = '/move-overwrite/dest.txt'
+      const sourcePath = './move-overwrite/source.txt'
+      const destinationPath = './move-overwrite/dest.txt'
       const sourceContent = 'New content'
       const destContent = 'Old content'
 
@@ -143,9 +159,7 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
       await devboxInstance.writeFile(destinationPath, destContent)
 
       // 移动并覆盖
-      const result = await devboxInstance.moveFile(sourcePath, destinationPath, true)
-
-      expect(result.success).toBe(true)
+      await devboxInstance.moveFile(sourcePath, destinationPath, true)
 
       // 验证目标文件内容已更新
       const content = await devboxInstance.readFile(destinationPath)
@@ -153,8 +167,8 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     }, 10000)
 
     it('移动不存在的文件应该抛出错误', async () => {
-      const nonExistentPath = '/move/non-existent.txt'
-      const destinationPath = '/move/dest.txt'
+      const nonExistentPath = './move/non-existent.txt'
+      const destinationPath = './move/dest.txt'
 
       await expect(
         devboxInstance.moveFile(nonExistentPath, destinationPath)
@@ -162,8 +176,8 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     }, 5000)
 
     it('移动文件到已存在的目标且不覆盖应该抛出错误', async () => {
-      const sourcePath = '/move-no-overwrite/source.txt'
-      const destinationPath = '/move-no-overwrite/dest.txt'
+      const sourcePath = './move-no-overwrite/source.txt'
+      const destinationPath = './move-no-overwrite/dest.txt'
 
       await devboxInstance.writeFile(sourcePath, 'Source content')
       await devboxInstance.writeFile(destinationPath, 'Dest content')
@@ -175,20 +189,28 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
   })
 
   describe('文件重命名操作', () => {
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './rename', './rename-dir', './rename-conflict'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
+
     it('应该能够重命名文件', async () => {
-      const oldPath = '/rename/old-name.txt'
-      const newPath = '/rename/new-name.txt'
+      const oldPath = './rename/old-name.txt'
+      const newPath = './rename/new-name.txt'
       const content = 'File to be renamed'
 
       // 创建文件
       await devboxInstance.writeFile(oldPath, content)
 
       // 重命名文件
-      const result = await devboxInstance.renameFile(oldPath, newPath)
-
-      expect(result.success).toBe(true)
-      expect(result.oldPath).toBe(oldPath)
-      expect(result.newPath).toBe(newPath)
+      await devboxInstance.renameFile(oldPath, newPath)
 
       // 验证文件已重命名
       const renamedContent = await devboxInstance.readFile(newPath)
@@ -199,8 +221,8 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     }, 10000)
 
     it('应该能够重命名目录', async () => {
-      const oldDirPath = '/rename-dir/old-dir'
-      const newDirPath = '/rename-dir/new-dir'
+      const oldDirPath = './rename-dir/old-dir'
+      const newDirPath = './rename-dir/new-dir'
       const filePath = `${oldDirPath}/file.txt`
       const content = 'File in renamed directory'
 
@@ -208,9 +230,7 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
       await devboxInstance.writeFile(filePath, content)
 
       // 重命名目录
-      const result = await devboxInstance.renameFile(oldDirPath, newDirPath)
-
-      expect(result.success).toBe(true)
+      await devboxInstance.renameFile(oldDirPath, newDirPath)
 
       // 验证文件在新目录中
       const newFilePath = `${newDirPath}/file.txt`
@@ -222,8 +242,8 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     }, 10000)
 
     it('重命名不存在的文件应该抛出错误', async () => {
-      const nonExistentPath = '/rename/non-existent.txt'
-      const newPath = '/rename/new-name.txt'
+      const nonExistentPath = './rename/non-existent.txt'
+      const newPath = './rename/new-name.txt'
 
       await expect(
         devboxInstance.renameFile(nonExistentPath, newPath)
@@ -231,8 +251,8 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     }, 5000)
 
     it('重命名到已存在的路径应该抛出错误', async () => {
-      const oldPath = '/rename-conflict/old.txt'
-      const existingPath = '/rename-conflict/existing.txt'
+      const oldPath = './rename-conflict/old.txt'
+      const existingPath = './rename-conflict/existing.txt'
 
       await devboxInstance.writeFile(oldPath, 'Old content')
       await devboxInstance.writeFile(existingPath, 'Existing content')
@@ -244,8 +264,20 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
   })
 
   describe('文件下载操作', () => {
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './download', './download-multi', './download-tar', './download-targz', './download-multipart'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
+
     it('应该能够下载单个文件', async () => {
-      const filePath = '/download/single-file.txt'
+      const filePath = './download/single-file.txt'
       const content = 'File content to download'
 
       // 创建文件
@@ -260,19 +292,21 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
 
     it('应该能够下载多个文件（默认格式）', async () => {
       const files = [
-        '/download-multi/file1.txt',
-        '/download-multi/file2.txt',
-        '/download-multi/file3.txt',
+        './download-multi/file1.txt',
+        './download-multi/file2.txt',
+        './download-multi/file3.txt',
       ]
       const contents = ['Content 1', 'Content 2', 'Content 3']
 
       // 创建多个文件
       for (let i = 0; i < files.length; i++) {
-        await devboxInstance.writeFile(files[i], contents[i])
+        const file = files[i] as string
+        const content = contents[i] as string
+        await devboxInstance.writeFile(file, content)
       }
 
       // 下载多个文件（默认 tar.gz）
-      const buffer = await devboxInstance.downloadFile(files)
+      const buffer = await devboxInstance.downloadFiles(files)
 
       expect(buffer).toBeInstanceOf(Buffer)
       expect(buffer.length).toBeGreaterThan(0)
@@ -281,18 +315,20 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
 
     it('应该能够下载多个文件（tar 格式）', async () => {
       const files = [
-        '/download-tar/file1.txt',
-        '/download-tar/file2.txt',
+        './download-tar/file1.txt',
+        './download-tar/file2.txt',
       ]
       const contents = ['Content 1', 'Content 2']
 
       // 创建文件
       for (let i = 0; i < files.length; i++) {
-        await devboxInstance.writeFile(files[i], contents[i])
+        const file = files[i] as string
+        const content = contents[i] as string
+        await devboxInstance.writeFile(file, content)
       }
 
       // 下载为 tar 格式
-      const buffer = await devboxInstance.downloadFile(files, { format: 'tar' })
+      const buffer = await devboxInstance.downloadFiles(files, { format: 'tar' })
 
       expect(buffer).toBeInstanceOf(Buffer)
       expect(buffer.length).toBeGreaterThan(0)
@@ -300,18 +336,20 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
 
     it('应该能够下载多个文件（tar.gz 格式）', async () => {
       const files = [
-        '/download-targz/file1.txt',
-        '/download-targz/file2.txt',
+        './download-targz/file1.txt',
+        './download-targz/file2.txt',
       ]
       const contents = ['Content 1', 'Content 2']
 
       // 创建文件
       for (let i = 0; i < files.length; i++) {
-        await devboxInstance.writeFile(files[i], contents[i])
+        const file = files[i] as string
+        const content = contents[i] as string
+        await devboxInstance.writeFile(file, content)
       }
 
       // 下载为 tar.gz 格式
-      const buffer = await devboxInstance.downloadFile(files, { format: 'tar.gz' })
+      const buffer = await devboxInstance.downloadFiles(files, { format: 'tar.gz' })
 
       expect(buffer).toBeInstanceOf(Buffer)
       expect(buffer.length).toBeGreaterThan(0)
@@ -319,25 +357,27 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
 
     it('应该能够下载多个文件（multipart 格式）', async () => {
       const files = [
-        '/download-multipart/file1.txt',
-        '/download-multipart/file2.txt',
+        './download-multipart/file1.txt',
+        './download-multipart/file2.txt',
       ]
       const contents = ['Content 1', 'Content 2']
 
       // 创建文件
       for (let i = 0; i < files.length; i++) {
-        await devboxInstance.writeFile(files[i], contents[i])
+        const file = files[i] as string
+        const content = contents[i] as string
+        await devboxInstance.writeFile(file, content)
       }
 
       // 下载为 multipart 格式
-      const buffer = await devboxInstance.downloadFile(files, { format: 'multipart' })
+      const buffer = await devboxInstance.downloadFiles(files, { format: 'multipart' })
 
       expect(buffer).toBeInstanceOf(Buffer)
       expect(buffer.length).toBeGreaterThan(0)
     }, 15000)
 
     it('下载不存在的文件应该抛出错误', async () => {
-      const nonExistentPath = '/download/non-existent.txt'
+      const nonExistentPath = './download/non-existent.txt'
 
       await expect(
         devboxInstance.downloadFile(nonExistentPath)
@@ -345,7 +385,7 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     }, 5000)
 
     it('应该能够处理空文件下载', async () => {
-      const emptyFilePath = '/download/empty-file.txt'
+      const emptyFilePath = './download/empty-file.txt'
 
       // 创建空文件
       await devboxInstance.writeFile(emptyFilePath, '')
@@ -362,7 +402,6 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     it('应该能够获取监听端口列表', async () => {
       const result = await devboxInstance.getPorts()
 
-      expect(result.success).toBe(true)
       expect(result.ports).toBeDefined()
       expect(Array.isArray(result.ports)).toBe(true)
       expect(result.lastUpdatedAt).toBeDefined()
@@ -391,22 +430,32 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
   })
 
   describe('组合操作', () => {
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './combo', './combo-ports'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
+
     it('应该能够移动、重命名和下载文件', async () => {
-      const originalPath = '/combo/original.txt'
-      const movedPath = '/combo/moved.txt'
-      const renamedPath = '/combo/final.txt'
+      const originalPath = './combo/original.txt'
+      const movedPath = './combo/moved.txt'
+      const renamedPath = './combo/final.txt'
       const content = 'Combined operations test'
 
       // 创建文件
       await devboxInstance.writeFile(originalPath, content)
 
       // 移动文件
-      const moveResult = await devboxInstance.moveFile(originalPath, movedPath)
-      expect(moveResult.success).toBe(true)
+      await devboxInstance.moveFile(originalPath, movedPath)
 
       // 重命名文件
-      const renameResult = await devboxInstance.renameFile(movedPath, renamedPath)
-      expect(renameResult.success).toBe(true)
+      await devboxInstance.renameFile(movedPath, renamedPath)
 
       // 下载文件
       const buffer = await devboxInstance.downloadFile(renamedPath)
@@ -414,7 +463,7 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
     }, 15000)
 
     it('应该能够处理文件操作和端口监控的组合', async () => {
-      const filePath = '/combo-ports/test.txt'
+      const filePath = './combo-ports/test.txt'
       const content = 'Test content'
 
       // 创建文件
@@ -436,27 +485,27 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
 
   describe('错误处理和边界情况', () => {
     it('应该处理路径遍历攻击（移动操作）', async () => {
-      const maliciousPaths = ['../../../etc/passwd', '/../../../etc/hosts']
+      const maliciousPaths = ['../../../etc/passwd', './../../../etc/hosts']
 
       for (const path of maliciousPaths) {
         await expect(
-          devboxInstance.moveFile('/test/source.txt', path)
+          devboxInstance.moveFile('./test/source.txt', path)
         ).rejects.toThrow()
       }
     }, 5000)
 
     it('应该处理路径遍历攻击（重命名操作）', async () => {
-      const maliciousPaths = ['../../../etc/passwd', '/../../../etc/hosts']
+      const maliciousPaths = ['../../../etc/passwd', './../../../etc/hosts']
 
       for (const path of maliciousPaths) {
         await expect(
-          devboxInstance.renameFile('/test/source.txt', path)
+          devboxInstance.renameFile('./test/source.txt', path)
         ).rejects.toThrow()
       }
     }, 5000)
 
     it('应该处理路径遍历攻击（下载操作）', async () => {
-      const maliciousPaths = ['../../../etc/passwd', '/../../../etc/hosts']
+      const maliciousPaths = ['../../../etc/passwd', './../../../etc/hosts']
 
       for (const path of maliciousPaths) {
         await expect(
@@ -467,11 +516,11 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
 
     it('应该处理空路径', async () => {
       await expect(
-        devboxInstance.moveFile('', '/test/dest.txt')
+        devboxInstance.moveFile('', './test/dest.txt')
       ).rejects.toThrow()
 
       await expect(
-        devboxInstance.renameFile('', '/test/new.txt')
+        devboxInstance.renameFile('', './test/new.txt')
       ).rejects.toThrow()
 
       await expect(

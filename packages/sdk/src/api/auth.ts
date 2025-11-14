@@ -10,13 +10,13 @@ export class KubeconfigAuthenticator {
         ERROR_CODES.INVALID_KUBECONFIG
       )
     }
-    this.token = kubeconfig
+    // URL encoding is required because the devbox API expects it;
+    this.token = encodeURIComponent(kubeconfig)
   }
 
   getAuthHeaders(): Record<string, string> {
     return {
       Authorization: this.token,
-      'Content-Type': 'application/json',
     }
   }
 }

@@ -310,11 +310,12 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       if (result.processes.length > 0) {
         const process = result.processes[0]
-        expect(process.id).toBeDefined()
-        expect(process.pid).toBeGreaterThan(0)
-        expect(process.command).toBeDefined()
-        expect(process.status).toBeDefined()
-        expect(process.startTime).toBeGreaterThan(0)
+        console.log('process', process);
+        expect(process?.id).toBeDefined()
+        expect(process?.pid).toBeGreaterThan(0)
+        expect(process?.command).toBeDefined()
+        expect(process?.status).toBeDefined() // todo go server fix this
+        expect(process?.startTime).toBeGreaterThan(0)
       }
     }, 15000)
   })
@@ -515,10 +516,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
         command: 'nonexistent-command-xyz123',
       }
 
-      const result = await devboxInstance.execSync(options)
-      // 应该返回错误信息
-      expect(result.success).toBeDefined()
-      expect(result.exitCode).not.toBe(0)
+      await expect(devboxInstance.execSync(options)).rejects.toThrow()
     }, 15000)
   })
 })

@@ -462,10 +462,10 @@ describe('Devbox 生命周期管理', () => {
 
       if (monitorData.length > 0) {
         const dataPoint = monitorData[0]
-        expect(typeof dataPoint.cpu).toBe('number')
-        expect(typeof dataPoint.memory).toBe('number')
-        expect(typeof dataPoint.network).toBe('object')
-        expect(typeof dataPoint.disk).toBe('object')
+        expect(typeof dataPoint?.cpu).toBe('number')
+        expect(typeof dataPoint?.memory).toBe('number')
+        expect(typeof dataPoint?.network).toBe('object')
+        expect(typeof dataPoint?.disk).toBe('object')
       }
     }, 120000)
   })

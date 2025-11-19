@@ -171,11 +171,7 @@ export interface MoveFileOptions {
 }
 
 // File move response
-export interface MoveFileResponse {
-  success: boolean
-  source: string
-  destination: string
-}
+export type MoveFileResponse = Record<string, never>
 
 // File rename options
 export interface RenameFileOptions {
@@ -184,11 +180,7 @@ export interface RenameFileOptions {
 }
 
 // File rename response
-export interface RenameFileResponse {
-  success: boolean
-  oldPath: string
-  newPath: string
-}
+export type RenameFileResponse = Record<string, never>
 
 // File download options
 export interface DownloadFileOptions {

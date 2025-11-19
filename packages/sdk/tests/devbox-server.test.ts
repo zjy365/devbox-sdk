@@ -86,6 +86,16 @@ describe('Devbox SDK 端到端集成测试', () => {
     devboxInstance = await sdk.createDevbox(config)
     await devboxInstance.start()
     await waitForDevboxReady(devboxInstance)
+
+    // 清理之前测试可能留下的文件和目录
+    try {
+      await devboxInstance.execSync({
+        command: 'rm',
+        args: ['-rf', './test', './test-directory', './batch', './large', './metadata', './meta', './concurrent', './perf', './many'],
+      })
+    } catch (error) {
+      // 忽略清理错误
+    }
   }, 30000)
 
   afterEach(async () => {
@@ -103,6 +113,18 @@ describe('Devbox SDK 端到端集成测试', () => {
   }, 10000)
 
   describe('文件基础操作', () => {
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './test'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
+
     it('应该能够写入文件', async () => {
       const options: WriteOptions = {
         encoding: 'utf-8',
@@ -160,6 +182,18 @@ describe('Devbox SDK 端到端集成测试', () => {
   })
 
   describe('文件删除操作', () => {
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './test'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
+
     it('应该能够删除文件', async () => {
       // 创建文件
       await devboxInstance.writeFile(TEST_FILE_PATH, TEST_FILE_CONTENT)
@@ -188,10 +222,22 @@ describe('Devbox SDK 端到端集成测试', () => {
     const FILES = [`${TEST_DIR}/file1.txt`, `${TEST_DIR}/file2.txt`, `${SUB_DIR}/file3.txt`]
 
     beforeEach(async () => {
-      // 创建测试目录结构
-      await devboxInstance.writeFile(FILES[0], 'Content 1')
-      await devboxInstance.writeFile(FILES[1], 'Content 2')
-      await devboxInstance.writeFile(FILES[2], 'Content 3')
+      // 创建测试目录结构 
+      await devboxInstance.writeFile(FILES[0] as string, 'Content 1')
+      await devboxInstance.writeFile(FILES[1] as string, 'Content 2')
+      await devboxInstance.writeFile(FILES[2] as string, 'Content 3')
+    })
+
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './test-directory'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
     })
 
     it('应该能够列出目录内容', async () => {
@@ -208,8 +254,8 @@ describe('Devbox SDK 端到端集成测试', () => {
       const fileList = await devboxInstance.listFiles(SUB_DIR)
 
       expect(fileList.files).toHaveLength(1)
-      expect(fileList.files[0].name).toBe('file3.txt')
-      expect(fileList.files[0].isDir).toBe(false)
+      expect(fileList.files[0]?.name).toBe('file3.txt')
+      expect(fileList.files[0]?.isDir).toBe(false)
     }, 10000)
 
     it('应该能够列出根目录', async () => {
@@ -232,6 +278,18 @@ describe('Devbox SDK 端到端集成测试', () => {
       './batch/file3.txt': 'Batch content 3',
       './batch/subdir/file4.txt': 'Batch content 4',
     }
+
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './batch', './large'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
 
     it('应该能够批量上传文件', async () => {
       const result = await devboxInstance.uploadFiles(FILES)
@@ -292,6 +350,18 @@ describe('Devbox SDK 端到端集成测试', () => {
   })
 
   describe('文件元数据', () => {
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './metadata', './meta'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
+
     it('应该能够获取文件信息', async () => {
       const filePath = './metadata/test.txt'
       const content = 'Test content for metadata'
@@ -325,6 +395,18 @@ describe('Devbox SDK 端到端集成测试', () => {
   })
 
   describe('并发操作', () => {
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './concurrent'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
+
     it('应该能够并发读写不同文件', async () => {
       const CONCURRENT_FILES = 10
       const files: string[] = []
@@ -338,7 +420,7 @@ describe('Devbox SDK 端到端集成测试', () => {
 
       // 并发写入文件
       const writePromises = files.map((path, index) =>
-        devboxInstance.writeFile(path, contents[index])
+        devboxInstance.writeFile(path as string, contents[index] as string)
       )
       await Promise.all(writePromises)
 
@@ -363,6 +445,18 @@ describe('Devbox SDK 端到端集成测试', () => {
   })
 
   describe('安全与错误处理', () => {
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './test'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
+
     it('应该处理路径遍历攻击', async () => {
       const maliciousPaths = ['../../../etc/passwd', '/../../../etc/hosts', '../root/.ssh/id_rsa']
 
@@ -385,6 +479,18 @@ describe('Devbox SDK 端到端集成测试', () => {
   })
 
   describe('性能测试', () => {
+    // 在每个测试后清理测试目录
+    afterEach(async () => {
+      try {
+        await devboxInstance.execSync({
+          command: 'rm',
+          args: ['-rf', './perf', './many'],
+        })
+      } catch (error) {
+        // 忽略清理错误
+      }
+    })
+
     it('应该在合理时间内完成文件操作', async () => {
       const LARGE_CONTENT = 'Performance test content '.repeat(50000) // ~1MB
 
@@ -414,15 +520,6 @@ describe('Devbox SDK 端到端集成测试', () => {
 
       expect(result.successCount).toBe(FILE_COUNT)
       expect(endTime - startTime).toBeLessThan(30000) // 30秒内完成
-
-      // 清理：删除所有上传的文件，保持测试环境干净
-      const deletePromises = Object.keys(files).map(path =>
-        devboxInstance.deleteFile(path).catch(err => {
-          // 忽略删除失败的错误，避免影响测试结果
-          console.warn(`Failed to delete ${path}:`, err)
-        })
-      )
-      await Promise.all(deletePromises)
     }, 35000)
   })
 })

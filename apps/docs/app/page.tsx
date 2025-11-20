@@ -8,7 +8,7 @@ import { Header } from "@/components/landing/header"
 
 export default function HomePage() {
   return (
-    <main className="flex flex-col min-h-screen bg-background text-foreground overflow-hidden">
+    <main className="landing-page flex flex-col min-h-screen overflow-hidden">
       <Header />
       <HeroSection />
       

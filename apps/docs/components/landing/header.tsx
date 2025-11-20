@@ -12,7 +12,7 @@ export function Header() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20)
+      setIsScrolled(window.scrollY > 10)
     }
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
@@ -28,14 +28,18 @@ export function Header() {
     <>
       <header
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-          isScrolled ? "bg-background/80 backdrop-blur-md border-b py-4" : "bg-transparent py-6"
+          "fixed top-0 left-0 right-0 z-50 transition-all duration-200 ease-in-out",
+          isScrolled 
+            ? "bg-white/80 backdrop-blur-md border-b border-black/[0.03] py-4" 
+            : "bg-white py-6"
         )}
       >
         <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 z-50">
-            <span className="text-xl font-bold tracking-tight">Devbox SDK</span>
+          <Link href="/" className="flex items-center gap-2 z-50 group">
+            <span className="text-xl font-bold tracking-tight text-black group-hover:opacity-80 transition-opacity">
+              Devbox SDK
+            </span>
           </Link>
 
           {/* Desktop Nav */}
@@ -44,7 +48,7 @@ export function Header() {
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-[#666] hover:text-black transition-colors duration-200"
               >
                 {item.name}
               </Link>
@@ -57,13 +61,13 @@ export function Header() {
               href="https://github.com/zjy365/devbox-sdk"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="text-[#666] hover:text-black transition-colors"
             >
               <Github className="w-5 h-5" />
             </a>
             <Link
               href="/docs"
-              className="inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4"
+              className="inline-flex items-center justify-center rounded text-sm font-medium transition-all bg-black text-white hover:bg-[#333] px-4 py-2 h-9"
             >
               Get Started
             </Link>
@@ -71,7 +75,8 @@ export function Header() {
 
           {/* Mobile Menu Toggle */}
           <button
-            className="md:hidden z-50 p-2 text-muted-foreground hover:text-foreground"
+            type="button"
+            className="md:hidden z-50 p-2 text-[#666] hover:text-black transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -83,26 +88,38 @@ export function Header() {
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 z-40 bg-background pt-24 px-6 md:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-white pt-24 px-6 md:hidden"
           >
             <nav className="flex flex-col gap-6">
-              {navItems.map((item) => (
-                <Link
+              {navItems.map((item, i) => (
+                <motion.div
                   key={item.name}
-                  href={item.href}
-                  className="text-lg font-medium text-foreground border-b pb-4"
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 + i * 0.05 }}
                 >
-                  {item.name}
-                </Link>
+                  <Link
+                    href={item.href}
+                    className="text-lg font-medium text-[#666] hover:text-black block py-2 border-b border-black/[0.05]"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                </motion.div>
               ))}
-              <div className="flex flex-col gap-4 mt-4">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="flex flex-col gap-4 mt-6"
+              >
                 <Link
                   href="/docs"
-                  className="w-full inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4"
+                  className="w-full inline-flex items-center justify-center rounded-md text-base font-medium bg-black text-white py-3 hover:bg-[#333] transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Get Started
@@ -111,12 +128,12 @@ export function Header() {
                   href="https://github.com/zjy365/devbox-sdk"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-10 px-4 gap-2"
+                  className="w-full inline-flex items-center justify-center rounded-md text-base font-medium bg-[#f5f5f5] text-black py-3 gap-2 hover:bg-[#eaeaea] transition-colors"
                 >
-                  <Github className="w-4 h-4" />
+                  <Github className="w-5 h-5" />
                   View on GitHub
                 </a>
-              </div>
+              </motion.div>
             </nav>
           </motion.div>
         )}
@@ -124,4 +141,3 @@ export function Header() {
     </>
   )
 }
-

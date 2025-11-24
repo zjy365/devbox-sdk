@@ -10,9 +10,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "fumadocs-core": "^16.0.11",
+    "fumadocs-core": "^16.1.0",
     "fumadocs-mdx": "^13.0.8",
-    "fumadocs-ui": "^16.0.11",
+    "fumadocs-ui": "^16.1.0",
     "motion": "^11.0.0",
     "clsx": "^2.1.0",
     "tailwind-merge": "^2.2.0",

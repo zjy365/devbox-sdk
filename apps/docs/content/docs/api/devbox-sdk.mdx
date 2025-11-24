@@ -1,0 +1,252 @@
+---
+title: DevboxSDK API
+description: Complete API reference for DevboxSDK class
+---
+
+# DevboxSDK API
+
+The main SDK class for creating and managing sandboxes.
+
+## Constructor
+
+```typescript
+new DevboxSDK(config: DevboxSDKConfig)
+```
+
+### Parameters
+
+- `config.kubeconfig` (string, required) - Kubernetes configuration file path or content
+- `config.baseUrl` (string, optional) - API base URL
+- `config.http` (object, optional) - HTTP client configuration
+  - `http.timeout` (number) - Request timeout in milliseconds (default: 30000)
+  - `http.retries` (number) - Number of retry attempts (default: 3)
+  - `http.rejectUnauthorized` (boolean) - SSL verification (default: true)
+
+### Example
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+const sdk = new DevboxSDK({
+  kubeconfig: process.env.KUBECONFIG,
+  baseUrl: 'https://api.sealos.io',
+  http: {
+    timeout: 60000,
+    retries: 5
+  }
+})
+```
+
+## Methods
+
+### createDevbox
+
+Creates a new sandbox instance.
+
+```typescript
+createDevbox(config: DevboxCreateConfig): Promise<DevboxInstance>
+```
+
+#### Parameters
+
+- `config.name` (string, required) - Unique name for the sandbox
+- `config.runtime` (string, required) - Runtime environment (e.g., 'node.js', 'python')
+- `config.resource` (object, required) - Resource allocation
+  - `resource.cpu` (number) - CPU cores
+  - `resource.memory` (number) - Memory in MB
+- `config.ports` (array, optional) - Port mappings
+- `config.env` (array, optional) - Environment variables
+
+#### Returns
+
+`Promise<DevboxInstance>` - The created sandbox instance
+
+#### Example
+
+```typescript
+const sandbox = await sdk.createDevbox({
+  name: 'my-sandbox',
+  runtime: 'node.js',
+  resource: { cpu: 2, memory: 4096 },
+  ports: [{ number: 3000, protocol: 'HTTP' }],
+  env: [{ name: 'NODE_ENV', value: 'production' }]
+})
+```
+
+### getDevbox
+
+Gets an existing sandbox by name.
+
+```typescript
+getDevbox(name: string): Promise<DevboxInstance>
+```
+
+#### Parameters
+
+- `name` (string, required) - Sandbox name
+
+#### Returns
+
+`Promise<DevboxInstance>` - The sandbox instance
+
+#### Example
+
+```typescript
+const sandbox = await sdk.getDevbox('my-sandbox')
+```
+
+### listDevboxes
+
+Lists all available sandboxes.
+
+```typescript
+listDevboxes(): Promise<DevboxInstance[]>
+```
+
+#### Returns
+
+`Promise<DevboxInstance[]>` - Array of sandbox instances
+
+#### Example
+
+```typescript
+const sandboxes = await sdk.listDevboxes()
+sandboxes.forEach(sandbox => {
+  console.log(`${sandbox.name}: ${sandbox.status}`)
+})
+```
+
+### getMonitorData
+
+Gets monitoring data for a sandbox.
+
+```typescript
+getMonitorData(
+  devboxName: string,
+  timeRange?: TimeRange
+): Promise<MonitorData[]>
+```
+
+#### Parameters
+
+- `devboxName` (string, required) - Sandbox name
+- `timeRange` (object, optional) - Time range for monitoring data
+  - `timeRange.start` (number) - Start timestamp
+  - `timeRange.end` (number) - End timestamp
+
+#### Returns
+
+`Promise<MonitorData[]>` - Array of monitoring data points
+
+#### Example
+
+```typescript
+const monitorData = await sdk.getMonitorData('my-sandbox', {
+  start: Date.now() - 3600000, // 1 hour ago
+  end: Date.now()
+})
+
+monitorData.forEach(data => {
+  console.log(`CPU: ${data.cpu}%, Memory: ${data.memory}MB`)
+})
+```
+
+### close
+
+Closes all connections and cleans up resources.
+
+```typescript
+close(): Promise<void>
+```
+
+#### Example
+
+```typescript
+await sdk.close()
+```
+
+### getAPIClient
+
+Gets the underlying API client instance.
+
+```typescript
+getAPIClient(): DevboxAPI
+```
+
+### getUrlResolver
+
+Gets the URL resolver instance.
+
+```typescript
+getUrlResolver(): ContainerUrlResolver
+```
+
+## Error Handling
+
+The SDK throws specific error types:
+
+- `DevboxSDKError` - Base error class
+- `AuthenticationError` - Authentication failures
+- `ConnectionError` - Connection failures
+- `DevboxNotFoundError` - Sandbox not found
+- `ValidationError` - Validation errors
+
+```typescript
+import {
+  DevboxSDKError,
+  AuthenticationError,
+  DevboxNotFoundError
+} from 'devbox-sdk'
+
+try {
+  const sandbox = await sdk.getDevbox('nonexistent')
+} catch (error) {
+  if (error instanceof DevboxNotFoundError) {
+    console.error('Sandbox not found')
+  } else if (error instanceof AuthenticationError) {
+    console.error('Authentication failed')
+  }
+}
+```
+
+## Complete Example
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+async function main() {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  try {
+    // List all sandboxes
+    const sandboxes = await sdk.listDevboxes()
+    console.log(`Found ${sandboxes.length} sandboxes`)
+
+    // Create a new sandbox
+    const sandbox = await sdk.createDevbox({
+      name: 'test-sandbox',
+      runtime: 'python',
+      resource: { cpu: 1, memory: 512 }
+    })
+
+    // Get monitoring data
+    const monitorData = await sdk.getMonitorData(sandbox.name)
+    console.log('Monitor data:', monitorData)
+
+    // Clean up
+    await sandbox.delete()
+  } finally {
+    await sdk.close()
+  }
+}
+
+main().catch(console.error)
+```
+
+## Next Steps
+
+- Read [DevboxInstance API](/docs/api/devbox-instance)
+- Explore [Type Definitions](/docs/api/types)
+

@@ -1,40 +1,22 @@
 ---
-title: Welcome to Devbox SDK
-description: Enterprise TypeScript SDK for Sealos Devbox management
+title: Devbox SDK
+description: Secure Sandbox SDK for Isolated Code Execution
 ---
 
-# Devbox SDK Documentation
+# Devbox SDK
 
-Welcome to the Devbox SDK documentation! This is an enterprise-grade TypeScript SDK for managing Sealos Devbox, built with HTTP API + Bun runtime architecture.
+**Secure Sandbox SDK for Isolated Code Execution.** Execute AI-generated code, run automation tasks, and test untrusted code with zero risk to your infrastructure.
 
-## 🏗️ Architecture
+## Why Devbox SDK?
 
-This project is a monorepo containing two main packages:
+Devbox SDK provides **container-based isolation** for safe code execution. Each sandbox runs in an isolated Kubernetes Pod, ensuring:
 
-- **devbox-sdk** - TypeScript SDK for Devbox management
-- **devbox-server** - HTTP server for Devbox runtime (built on Bun)
+- **Zero cross-contamination** - Each execution is completely isolated
+- **Resource limits** - CPU and memory constraints prevent resource exhaustion  
+- **Path validation** - Prevents directory traversal attacks
+- **Enterprise security** - Built on Kubernetes with Kubeconfig authentication
 
-## 📦 Package Overview
-
-### devbox-sdk
-
-TypeScript/Node.js SDK providing high-level APIs for Devbox management:
-
-- Devbox lifecycle management
-- HTTP connection pooling
-- Adaptive strategy file transfer
-- Security and monitoring
-
-### devbox-server
-
-High-performance HTTP server running in Devbox containers:
-
-- File operation APIs
-- Process execution
-- Real-time file monitoring via WebSocket
-- Built on Bun runtime
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -42,61 +24,113 @@ High-performance HTTP server running in Devbox containers:
 npm install devbox-sdk
 ```
 
-### Basic Usage
+### Your First Sandbox
 
 ```typescript
 import { DevboxSDK } from 'devbox-sdk'
 
+// Initialize SDK
 const sdk = new DevboxSDK({
   kubeconfig: process.env.KUBECONFIG
 })
 
-// Create a Devbox
-const devbox = await sdk.createDevbox({
-  name: 'my-app',
-  runtime: 'node.js',
-  resource: { cpu: 1, memory: 2 }
+// Create a secure sandbox
+const sandbox = await sdk.createDevbox({
+  name: 'my-first-sandbox',
+  runtime: 'python',
+  resource: { cpu: 1, memory: 512 }
 })
 
-// Write a file
-await devbox.writeFile('index.js', 'console.log("Hello World")')
+// Execute code safely in isolation
+const result = await sandbox.codeRun('print("Hello from secure sandbox!")')
+console.log(result.stdout) // "Hello from secure sandbox!"
 
-// Execute a command
-const result = await devbox.executeCommand('node index.js')
-console.log(result.stdout)
+// Clean up
+await sandbox.delete()
+await sdk.close()
 ```
 
-## 📚 Documentation Navigation
+## Core Features
 
-- [API Reference](/docs/api) - Complete API documentation
-- [Server Documentation](/docs/server) - HTTP server API documentation
-- [Examples](/docs/examples) - Usage examples and best practices
+### 🛡️ Secure Code Execution
 
-## 🔧 Configuration
+Execute AI-generated or untrusted code safely in isolated environments:
 
-### Environment Variables
+```typescript
+// Execute AI-generated code
+const aiCode = await llm.generateCode(prompt)
+const result = await sandbox.codeRun(aiCode)
+```
 
-#### Server (devbox-server)
-- `PORT` - Server port (default: 3000)
-- `HOST` - Server host (default: 0.0.0.0)
-- `WORKSPACE_PATH` - Workspace directory (default: /workspace)
-- `ENABLE_CORS` - Enable CORS (default: false)
-- `MAX_FILE_SIZE` - Maximum file size in bytes (default: 100MB)
+### ⚡ Process Management
 
-#### SDK (devbox-sdk)
-- `KUBECONFIG` - Kubernetes configuration for Devbox API access
+Execute commands synchronously or asynchronously with real-time output:
 
-## 📄 License
+```typescript
+// Synchronous execution
+const result = await sandbox.execSync({
+  command: 'npm install',
+  cwd: '/workspace',
+  timeout: 60000
+})
 
-Apache-2.0
+// Asynchronous execution
+const process = await sandbox.executeCommand({
+  command: 'npm run dev'
+})
+```
 
-## 🤝 Contributing
+### 📁 File Operations
 
-Contributions are welcome! Please read our contribution guidelines and submit a Pull Request.
+Full CRUD operations with support for text and binary content:
 
-## 📞 Support
+```typescript
+// Write files
+await sandbox.writeFile('app.js', 'console.log("Hello")')
 
-For questions and issues:
-- Create an Issue on GitHub
-- Check the documentation
-- Contact the maintainers
+// Read files
+const content = await sandbox.readFile('app.js')
+
+// Batch upload
+await sandbox.batchUpload({
+  files: {
+    'src/index.js': 'console.log("Hello")',
+    'package.json': JSON.stringify({ name: 'my-app' })
+  }
+})
+```
+
+### 🔐 Git Integration
+
+Clone, pull, push, and manage Git repositories securely:
+
+```typescript
+// Clone repository
+await sandbox.git.clone({
+  url: 'https://github.com/user/repo.git',
+  targetDir: '/workspace/repo'
+})
+
+// Pull changes
+await sandbox.git.pull('/workspace/repo')
+```
+
+## Use Cases
+
+- **AI Agents** - Execute AI-generated code safely
+- **Automation** - Run untrusted automation scripts
+- **CI/CD** - Execute build and test tasks in isolation
+- **Code Evaluation** - Test and evaluate code submissions
+
+## Documentation
+
+- **[Getting Started](/docs/getting-started/installation)** - Installation and setup
+- **[Guides](/docs/guides/secure-code-execution)** - Usage guides and best practices
+- **[API Reference](/docs/api/devbox-sdk)** - Complete API documentation
+- **[Examples](/docs/examples/ai-agent-workflow)** - Real-world examples
+
+## Next Steps
+
+- Read the [Installation Guide](/docs/getting-started/installation)
+- Try the [Quick Start](/docs/getting-started/quick-start)
+- Explore [API Reference](/docs/api/devbox-sdk)

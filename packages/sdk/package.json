@@ -1,6 +1,6 @@
 {
   "name": "devbox-sdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Enterprise TypeScript SDK for Sealos Devbox management",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

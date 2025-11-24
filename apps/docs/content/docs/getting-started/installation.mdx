@@ -1,0 +1,104 @@
+---
+title: Installation
+description: Install and configure Devbox SDK
+---
+
+# Installation
+
+## Requirements
+
+- **Node.js** >= 22.0.0
+- **npm** >= 11.0.0 (or yarn/pnpm)
+- **Kubernetes cluster access** - You need access to a Kubernetes cluster with Devbox API
+- **Kubeconfig** - Kubernetes configuration file or environment variable
+
+## Install the Package
+
+```bash
+npm install devbox-sdk
+```
+
+Or with yarn:
+
+```bash
+yarn add devbox-sdk
+```
+
+Or with pnpm:
+
+```bash
+pnpm add devbox-sdk
+```
+
+## Kubernetes Configuration
+
+Devbox SDK requires Kubernetes cluster access. You need to provide your Kubernetes configuration in one of the following ways:
+
+### Option 1: Environment Variable
+
+```bash
+export KUBECONFIG=/path/to/your/kubeconfig
+```
+
+### Option 2: File Path
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+const sdk = new DevboxSDK({
+  kubeconfig: '/path/to/your/kubeconfig'
+})
+```
+
+### Option 3: Kubeconfig Content
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+import fs from 'fs'
+
+const kubeconfigContent = fs.readFileSync('/path/to/kubeconfig', 'utf-8')
+
+const sdk = new DevboxSDK({
+  kubeconfig: kubeconfigContent
+})
+```
+
+## Verify Installation
+
+Create a simple test file to verify your installation:
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+const sdk = new DevboxSDK({
+  kubeconfig: process.env.KUBECONFIG
+})
+
+// Test connection
+const devboxes = await sdk.listDevboxes()
+console.log(`Found ${devboxes.length} devboxes`)
+
+await sdk.close()
+```
+
+## TypeScript Support
+
+Devbox SDK is written in TypeScript and includes full type definitions. No additional `@types` package is needed.
+
+If you're using TypeScript, make sure your `tsconfig.json` includes:
+
+```json
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ES2022",
+    "moduleResolution": "node"
+  }
+}
+```
+
+## Next Steps
+
+- Read the [Quick Start Guide](/docs/getting-started/quick-start)
+- Learn about [Configuration](/docs/getting-started/configuration)
+

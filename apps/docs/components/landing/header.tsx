@@ -20,8 +20,8 @@ export function Header() {
 
   const navItems = [
     { name: "Documentation", href: "/docs" },
-    { name: "API Reference", href: "/docs/api" },
-    { name: "Examples", href: "https://github.com/zjy365/devbox-sdk/tree/main/examples" },
+    { name: "API Reference", href: "/docs/api/devbox-sdk" },
+    { name: "Examples", href: "/docs/examples/ai-agent-workflow" },
   ]
 
   return (

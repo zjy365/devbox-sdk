@@ -92,7 +92,7 @@ export function HeroSection() {
               <div className="p-6 text-left overflow-x-auto bg-[#0a0a0a]">
                 <pre className="font-mono text-sm leading-relaxed text-[#e5e5e5]">
                   <code>
-                    <span className="text-[#ff79c6]">import</span> <span className="text-[#f8f8f2]">{'{ DevboxSDK }'}</span> <span className="text-[#ff79c6]">from</span> <span className="text-[#f1fa8c]">'@sealos/devbox-sdk'</span>
+                    <span className="text-[#ff79c6]">import</span> <span className="text-[#f8f8f2]">{'{ DevboxSDK }'}</span> <span className="text-[#ff79c6]">from</span> <span className="text-[#f1fa8c]">'devbox-sdk'</span>
                     {"\n\n"}
                     <span className="text-[#6272a4]">{'// Initialize SDK'}</span>
                     {"\n"}

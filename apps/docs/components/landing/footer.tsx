@@ -18,7 +18,7 @@ export function Footer() {
             <ul className="space-y-4 text-sm text-[#666]">
               <li><Link href="/docs" className="hover:text-black transition-colors">Documentation</Link></li>
               <li><a href="https://github.com/zjy365/devbox-sdk" className="hover:text-black transition-colors">GitHub</a></li>
-              <li><a href="https://www.npmjs.com/package/@sealos/devbox-sdk" className="hover:text-black transition-colors">NPM</a></li>
+              <li><a href="https://www.npmjs.com/package/devbox-sdk" className="hover:text-black transition-colors">NPM</a></li>
             </ul>
           </div>
           

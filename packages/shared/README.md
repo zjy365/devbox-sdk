@@ -1,4 +1,4 @@
-# @sealos/devbox-shared
+# devbox-shared
 
 Shared types, errors, and utilities for Sealos Devbox SDK.
 
@@ -30,7 +30,7 @@ This package provides the **single source of truth** for all type definitions, e
 ## Installation
 
 ```bash
-npm install @sealos/devbox-shared
+npm install devbox-shared
 ```
 
 ## Usage
@@ -38,7 +38,7 @@ npm install @sealos/devbox-shared
 ### Error Handling
 
 ```typescript
-import { DevboxError, ErrorCode } from '@sealos/devbox-shared/errors'
+import { DevboxError, ErrorCode } from 'devbox-shared/errors'
 
 // Create a custom error
 throw new DevboxError('File not found', ErrorCode.FILE_NOT_FOUND, {
@@ -90,7 +90,7 @@ const execRequest: ProcessExecRequest = {
 ### Logging
 
 ```typescript
-import { createLogger, createTraceContext } from '@sealos/devbox-shared/logger'
+import { createLogger, createTraceContext } from 'devbox-shared/logger'
 
 const logger = createLogger({
   level: 'info',
@@ -142,9 +142,9 @@ This package uses sub-path exports for better tree-shaking:
 
 ```typescript
 // Import only what you need
-import { DevboxError, ErrorCode } from '@sealos/devbox-shared/errors'
-import type { WriteFileRequest } from '@sealos/devbox-shared/types'
-import { createLogger } from '@sealos/devbox-shared/logger'
+import { DevboxError, ErrorCode } from 'devbox-shared/errors'
+import type { WriteFileRequest } from 'devbox-shared/types'
+import { createLogger } from 'devbox-shared/logger'
 ```
 
 ## Type Safety

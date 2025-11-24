@@ -6,12 +6,12 @@ Enterprise TypeScript SDK for Sealos Devbox management with HTTP API + Bun runti
 
 This project is a monorepo containing two main packages:
 
-- **@sealos/devbox-sdk** - TypeScript SDK for Devbox management
-- **@sealos/devbox-server** - HTTP server for Devbox runtime (Bun-based)
+- **devbox-sdk** - TypeScript SDK for Devbox management
+- **devbox-server** - HTTP server for Devbox runtime (Bun-based)
 
 ## 📦 Packages
 
-### @sealos/devbox-sdk
+### devbox-sdk
 
 TypeScript/Node.js SDK providing high-level APIs for Devbox management:
 
@@ -20,7 +20,7 @@ TypeScript/Node.js SDK providing high-level APIs for Devbox management:
 - File transfer with adaptive strategies
 - Security and monitoring
 
-### @sealos/devbox-server
+### devbox-server
 
 High-performance HTTP server running in Devbox containers:
 
@@ -34,13 +34,13 @@ High-performance HTTP server running in Devbox containers:
 ### Installation
 
 ```bash
-npm install @sealos/devbox-sdk
+npm install devbox-sdk
 ```
 
 ### Basic Usage
 
 ```typescript
-import { DevboxSDK } from '@sealos/devbox-sdk'
+import { DevboxSDK } from 'devbox-sdk'
 
 const sdk = new DevboxSDK({
   kubeconfig: process.env.KUBECONFIG
@@ -129,14 +129,14 @@ devbox-sdk/
 
 ### Environment Variables
 
-#### Server (@sealos/devbox-server)
+#### Server (devbox-server)
 - `PORT` - Server port (default: 3000)
 - `HOST` - Server host (default: 0.0.0.0)
 - `WORKSPACE_PATH` - Workspace directory (default: /workspace)
 - `ENABLE_CORS` - Enable CORS (default: false)
 - `MAX_FILE_SIZE` - Max file size in bytes (default: 100MB)
 
-#### SDK (@sealos/devbox-sdk)
+#### SDK (devbox-sdk)
 - `KUBECONFIG` - Kubernetes configuration for Devbox API access
 
 ## 🧪 Testing

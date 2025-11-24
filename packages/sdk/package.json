@@ -1,6 +1,6 @@
 {
-  "name": "@sealos/devbox-sdk",
-  "version": "1.0.0",
+  "name": "devbox-sdk",
+  "version": "0.1.0",
   "description": "Enterprise TypeScript SDK for Sealos Devbox management",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -61,7 +61,7 @@
     "directory": "packages/sdk"
   },
   "dependencies": {
-    "@sealos/devbox-shared": "file:../shared",
+    "devbox-shared": "file:../shared",
     "ws": "^8.18.3"
   },
   "devDependencies": {

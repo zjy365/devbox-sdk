@@ -1,5 +1,5 @@
 {
-  "name": "@sealos/devbox-docs",
+  "name": "devbox-docs",
   "version": "1.0.0",
   "description": "Documentation website for Devbox SDK",
   "private": true,

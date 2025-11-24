@@ -1,5 +1,5 @@
 {
-  "name": "@sealos/devbox-shared",
+  "name": "devbox-shared",
   "version": "1.0.0",
   "description": "Shared types, errors, and utilities for Sealos Devbox SDK",
   "type": "module",

@@ -3,7 +3,7 @@
  */
 
 // FormData and File are globally available in Node.js 22+ (via undici)
-import type { ListFilesResponse } from '@sealos/devbox-shared/types'
+import type { ListFilesResponse } from 'devbox-shared/types'
 import type { DevboxSDK } from './devbox-sdk'
 import type {
   BatchUploadOptions,

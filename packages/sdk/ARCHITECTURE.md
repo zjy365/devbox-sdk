@@ -553,7 +553,7 @@ interface PortConfig {
 
 **DownloadFileOptions**: 下载文件选项（paths、format）
 
-**PortsResponse**: 端口响应（success、ports、lastUpdatedAt）
+**PortsResponse**: 端口响应（ports、lastUpdatedAt）
 
 #### 3.4.4 监控和进程类型
 

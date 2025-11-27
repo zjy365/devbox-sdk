@@ -190,7 +190,6 @@ export interface DownloadFileOptions {
 
 // Ports response
 export interface PortsResponse {
-  success: boolean
   ports: number[]
   lastUpdatedAt: number
 }

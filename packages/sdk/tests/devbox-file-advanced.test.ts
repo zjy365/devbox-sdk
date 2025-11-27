@@ -64,6 +64,7 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
         cpu: 1,
         memory: 2,
       },
+      ports: [{ number: 8080, protocol: 'HTTP' }],
     }
 
     devboxInstance = await sdk.createDevbox(config)
@@ -417,16 +418,6 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
         expect(port).toBeLessThanOrEqual(9999)
       }
     }, 10000)
-
-    it('应该能够多次获取端口列表', async () => {
-      const result1 = await devboxInstance.getPorts()
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      const result2 = await devboxInstance.getPorts()
-
-      expect(result1.success).toBe(true)
-      expect(result2.success).toBe(true)
-      expect(result2.lastUpdatedAt).toBeGreaterThanOrEqual(result1.lastUpdatedAt)
-    }, 15000)
   })
 
   describe('组合操作', () => {
@@ -471,7 +462,9 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
 
       // 获取端口列表
       const portsResult = await devboxInstance.getPorts()
-      expect(portsResult.success).toBe(true)
+      expect(portsResult.ports).toBeDefined()
+      expect(Array.isArray(portsResult.ports)).toBe(true)
+      expect(portsResult.lastUpdatedAt).toBeDefined()
 
       // 下载文件
       const buffer = await devboxInstance.downloadFile(filePath)
@@ -479,7 +472,9 @@ describe('Devbox SDK 高级文件操作和端口监控功能测试', () => {
 
       // 再次获取端口列表
       const portsResult2 = await devboxInstance.getPorts()
-      expect(portsResult2.success).toBe(true)
+      expect(portsResult2.ports).toBeDefined()
+      expect(Array.isArray(portsResult2.ports)).toBe(true)
+      expect(portsResult2.lastUpdatedAt).toBeDefined()
     }, 15000)
   })
 

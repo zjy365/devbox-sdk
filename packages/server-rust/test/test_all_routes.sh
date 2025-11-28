@@ -248,7 +248,7 @@ if run_test "POST" "/api/v1/files/batch-upload" "" "400" "Batch Upload (no multi
 
 # Test Process Operations
 echo -e "\n${YELLOW}=== Process Operations ===${NC}"
-if run_test "POST" "/api/v1/process/exec" '{"command":"echo hello world"}' "200" "Execute Process" "true"; then ((PASSED_TESTS++)); fi
+if run_test "POST" "/api/v1/process/exec" '{"command":"sleep","args":["300"]}' "200" "Execute Long-Running Process" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
 # Test exec-sync endpoint
@@ -279,7 +279,15 @@ if [ -n "$PROCESS_ID" ]; then
     if run_test "GET" "/api/v1/process/$PROCESS_ID/logs" "" "200" "Get Process Logs (valid)" "true"; then ((PASSED_TESTS++)); fi
     ((TOTAL_TESTS++))
 
-    if run_test "POST" "/api/v1/process/$PROCESS_ID/kill" "" "200" "Kill Process (valid)" "true"; then ((PASSED_TESTS++)); fi
+    # Kill running process - should succeed (HTTP 200, JSON status: 0)
+    if run_test "POST" "/api/v1/process/$PROCESS_ID/kill" "" "200" "Kill Process (running)" "true"; then ((PASSED_TESTS++)); fi
+    ((TOTAL_TESTS++))
+
+    # Wait for process to be marked as exited
+    sleep 2
+
+    # Try to kill again - should fail with conflict (HTTP 200, JSON status: 1409)
+    if run_test "POST" "/api/v1/process/$PROCESS_ID/kill" "" "200" "Kill Process (already exited)" "false"; then ((PASSED_TESTS++)); fi
     ((TOTAL_TESTS++))
 else
     echo -e "${YELLOW}Warning: Could not extract process ID, skipping process-specific tests${NC}"

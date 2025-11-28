@@ -19,16 +19,13 @@ async function waitForDevboxReady(devbox: DevboxInstance, timeout = 120000): Pro
     while (Date.now() - startTime < timeout) {
         try {
             await devbox.refreshInfo()
-            console.log(devbox.status, 'devbox');
 
             if (devbox.status === 'Running') {
                 const healthy = await devbox.isHealthy()
                 if (healthy) {
-                    console.log(`✅ Devbox ${devbox.name} is ready`)
                     return
                 }
             }
-            console.log(`⏳ Waiting for ${devbox.name}... (status: ${devbox.status})`)
         } catch (error) {
             console.warn('Health check failed, retrying...')
         }
@@ -45,18 +42,7 @@ describe('Devbox SDK 后台进程执行测试', () => {
 
     beforeEach(async () => {
         sdk = new DevboxSDK(TEST_CONFIG)
-
-        // 获取已存在的 Devbox
-        console.log(`📦 Getting existing devbox: ${devboxName}`)
         devboxInstance = await sdk.getDevbox(devboxName)
-
-        console.log(`✅ Got devbox: ${devboxInstance.name}`)
-        console.log(`   Status: ${devboxInstance.status}`)
-        console.log(`   Runtime: ${devboxInstance.runtime}`)
-
-        // 跳过健康检查，直接使用
-        // 因为我们使用的是 mockServerUrl，健康检查总是成功
-        console.log('🚀 Ready to run tests (skipping health check loop)')
     }, 30000) // 30秒超时
 
     afterEach(async () => {
@@ -124,52 +110,40 @@ process.on('unhandledRejection', (reason, promise) => {
 })
 `
 
-            console.log('📝 Writing hello_world.js...')
             await devboxInstance.writeFile('/home/devbox/project/hello_world.js', helloWorldCode)
 
             // 验证文件已创建
             const content = await devboxInstance.readFile('/home/devbox/project/hello_world.js')
             expect(content.toString()).toContain('Hello, World!')
             expect(content.toString()).toContain('http.createServer')
-            console.log('✅ File created successfully')
 
             // 2. 清理可能占用 3000 端口的进程
-            console.log('🧹 Cleaning up processes that may be using port 3000...')
             try {
-                // 列出所有进程
                 const processList = await devboxInstance.listProcesses()
-                console.log(`   Found ${processList.processes.length} processes`)
-                
+
                 // 找到所有运行中的 node 进程，特别是 hello_world.js
                 const nodeProcesses = processList.processes.filter(p => {
                     const cmd = p.command || ''
-                    return (cmd.includes('node') && cmd.includes('hello_world')) || 
-                           (p.status === 'running' && cmd.includes('node'))
+                    return (cmd.includes('node') && cmd.includes('hello_world')) ||
+                        (p.processStatus === 'running' && cmd.includes('node'))
                 })
-                
+
                 if (nodeProcesses.length > 0) {
-                    console.log(`   Found ${nodeProcesses.length} node processes to kill:`)
                     for (const proc of nodeProcesses) {
-                        console.log(`      - Killing process ${proc.id} (PID: ${proc.pid}, Command: ${proc.command})`)
                         try {
-                            await devboxInstance.killProcess(proc.id, { signal: 'SIGKILL' })
+                            await devboxInstance.killProcess(proc.processId, { signal: 'SIGKILL' })
                         } catch (killError) {
-                            console.log(`      ⚠️ Failed to kill process ${proc.id}:`, killError)
+                            // 忽略清理错误
                         }
                     }
                     // 等待进程终止
                     await new Promise(resolve => setTimeout(resolve, 2000))
-                    console.log('✅ Old processes killed')
-                } else {
-                    console.log('   No node processes found to kill')
                 }
             } catch (error) {
                 // 如果清理失败，继续尝试启动（可能端口没有被占用）
-                console.log('⚠️ Process cleanup failed (may not be needed):', error)
             }
 
             // 3. 使用 executeCommand 在后台执行
-            console.log('🚀 Starting background process: node hello_world.js')
             const execResult = await devboxInstance.executeCommand({
                 command: 'node',
                 args: ['hello_world.js'],
@@ -182,42 +156,29 @@ process.on('unhandledRejection', (reason, promise) => {
             expect(execResult.processStatus).toBeDefined()
             expect(execResult.processStatus).toBe('running')
 
-            console.log('✅ Process started:')
-            console.log(`   Process ID: ${execResult.processId}`)
-            console.log(`   PID: ${execResult.pid}`)
-            console.log(`   Status: ${execResult.processStatus}`)
-
             // 4. 等待进程运行并多次检查状态，验证进程持续运行
-            console.log('⏳ Waiting 3 seconds for process to start...')
             await new Promise(resolve => setTimeout(resolve, 3000))
 
             // 第一次检查 - 应该还在运行
-            console.log('🔍 First status check (after 3s)...')
             const status1 = await devboxInstance.getProcessStatus(execResult.processId)
             // 注意：服务器可能不返回 success 字段，只验证必要字段
             expect(status1.processId).toBe(execResult.processId)
             expect(status1.pid).toBe(execResult.pid)
-            
+
             // 如果进程失败了，获取日志来诊断问题
             if (status1.processStatus !== 'running') {
-                console.log(`   ⚠️ Process status: ${status1.processStatus} (expected: running)`)
                 try {
                     const errorLogs = await devboxInstance.getProcessLogs(execResult.processId)
-                    console.log('   📋 Error logs:')
-                    for (const log of errorLogs.logs) {
-                        console.log(`      ${log}`)
-                    }
+                    console.error('Error logs:', errorLogs.logs)
                 } catch (logError) {
-                    console.log('   ⚠️ Could not fetch error logs:', logError)
+                    // 忽略日志获取错误
                 }
                 throw new Error(`Process failed to start. Status: ${status1.processStatus}`)
             }
-            
+
             expect(status1.processStatus).toBe('running')
-            console.log(`   ✅ Status: ${status1.processStatus} (expected: running)`)
 
             // 获取初始日志
-            console.log('📋 Fetching initial process logs...')
             const logs1 = await devboxInstance.getProcessLogs(execResult.processId)
             // 注意：服务器可能不返回 success 字段
             expect(logs1.processId).toBe(execResult.processId)
@@ -226,75 +187,47 @@ process.on('unhandledRejection', (reason, promise) => {
             const logContent1 = logs1.logs.join('\n')
             expect(logContent1).toContain('Hello, World!')
             expect(logContent1).toMatch(/Server is running|HTTP Server started/)
-            console.log(`   ✅ Initial logs (${logs1.logs.length} lines):`)
-            for (const log of logs1.logs.slice(-5)) {
-                console.log(`      ${log}`)
-            }
 
             // 等待更长时间，验证进程仍在运行
-            console.log('⏳ Waiting 5 more seconds to verify process is still running...')
             await new Promise(resolve => setTimeout(resolve, 5000))
 
             // 第二次检查 - 应该还在运行（验证进程没有自动退出）
-            console.log('🔍 Second status check (after 8s total)...')
             const status2 = await devboxInstance.getProcessStatus(execResult.processId)
             expect(status2.processStatus).toBe('running')
-            console.log(`   ✅ Status: ${status2.processStatus} (expected: running - process is still alive!)`)
 
             // 获取更新的日志（HTTP 服务器在没有请求时不会产生新日志，这是正常的）
-            console.log('📋 Fetching updated process logs...')
             const logs2 = await devboxInstance.getProcessLogs(execResult.processId)
             // HTTP 服务器在没有请求时不会产生新日志，所以日志数量可能相同
             expect(logs2.logs.length).toBeGreaterThanOrEqual(logs1.logs.length)
-            console.log(`   ✅ Updated logs (${logs2.logs.length} lines, same or more than initial ${logs1.logs.length})`)
-            for (const log of logs2.logs.slice(-5)) {
-                console.log(`      ${log}`)
-            }
 
             // 验证日志中有服务器运行的信息
             const logContent2 = logs2.logs.join('\n')
             expect(logContent2).toMatch(/Server is running|HTTP Server|0\.0\.0\.0/)
 
             // 再等待一次，进行第三次检查
-            console.log('⏳ Waiting 3 more seconds for final verification...')
             await new Promise(resolve => setTimeout(resolve, 3000))
 
             // 第三次检查 - 确认进程持续运行
-            console.log('🔍 Third status check (after 11s total)...')
             const status3 = await devboxInstance.getProcessStatus(execResult.processId)
             expect(status3.processStatus).toBe('running')
-            console.log(`   ✅ Status: ${status3.processStatus} (expected: running - process is still alive!)`)
-
-            // 最终验证：进程确实在持续运行，没有自动退出
-            console.log('✅ Verification complete: Process is running continuously (not exiting automatically)')
 
             // 6. 手动终止进程（验证可以正常终止）
-            console.log('🛑 Terminating process with SIGTERM...')
             await devboxInstance.killProcess(execResult.processId, { signal: 'SIGTERM' })
-            
+
             // 等待进程终止，使用重试机制
             let finalStatus = await devboxInstance.getProcessStatus(execResult.processId)
             let retries = 0
             const maxRetries = 5
-            
+
             while (finalStatus.processStatus === 'running' && retries < maxRetries) {
-                console.log(`   ⏳ Waiting for process to terminate... (attempt ${retries + 1}/${maxRetries})`)
                 await new Promise(resolve => setTimeout(resolve, 2000))
                 finalStatus = await devboxInstance.getProcessStatus(execResult.processId)
                 retries++
             }
-            
+
             // 验证进程已终止（允许 completed, failed，或者如果还在 running 也接受，因为可能正在优雅关闭）
             const validStatuses = ['completed', 'failed', 'running']
             expect(validStatuses).toContain(finalStatus.processStatus)
-            console.log(`   ✅ Process termination initiated. Final status: ${finalStatus.processStatus}`)
-
-            // 获取最终日志，应该看到优雅关闭的消息
-            const finalLogs = await devboxInstance.getProcessLogs(execResult.processId)
-            const finalLogContent = finalLogs.logs.join('\n')
-            if (finalLogContent.includes('SIGTERM') || finalLogContent.includes('shutting down')) {
-                console.log('   ✅ Process handled SIGTERM gracefully')
-            }
         }, 90000) // 90秒超时（给足够时间验证持续运行）
 
         it('应该能够列出所有后台进程', async () => {
@@ -314,19 +247,15 @@ setTimeout(() => {
                 cwd: '/home/devbox/project'
             })
 
-            console.log(`🚀 Started process: ${result.processId}`)
-
             // 列出所有进程
             const processList = await devboxInstance.listProcesses()
 
             // 服务器不返回 success 字段，只验证 processes 数组
             expect(Array.isArray(processList.processes)).toBe(true)
-
-            console.log(`📋 Total processes: ${processList.processes.length}`)
-
+            console.log(processList.processes, 'processList.processes');
 
             // 验证我们的进程在列表中
-            const ourProcess = processList.processes.find(p => p.id === result.processId)
+            const ourProcess = processList.processes.find(p => p.processId === result.processId)
             expect(ourProcess).toBeDefined()
             expect(ourProcess?.command).toContain('node')
 
@@ -353,20 +282,14 @@ setInterval(() => {
                 cwd: '/home/devbox/project'
             })
 
-            console.log(`🚀 Started infinite process: ${result.processId}`)
-
             // 等待进程运行
             await new Promise(resolve => setTimeout(resolve, 3000))
 
             // 使用 SIGTERM 终止
-            console.log('🛑 Sending SIGTERM...')
             await devboxInstance.killProcess(result.processId, { signal: 'SIGTERM' })
 
             // 等待一下
             await new Promise(resolve => setTimeout(resolve, 1000))
-
-            // 验证进程已终止（可能需要检查状态）
-            console.log('✅ Process terminated with SIGTERM')
         }, 30000)
     })
 
@@ -398,7 +321,7 @@ setInterval(() => {
             // 查询进程状态，应该已经失败或完成
             const status = await devboxInstance.getProcessStatus(result.processId)
             // 进程应该不再是 running 状态
-            console.log(`Process status after error: ${status.processStatus}`)
+            expect(status.processStatus).not.toBe('running')
         }, 15000)
     })
 })

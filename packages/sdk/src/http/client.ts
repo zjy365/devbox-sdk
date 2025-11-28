@@ -91,10 +91,10 @@ export class DevboxContainerClient {
         } catch (e) {
           // error
         }
-        
+
         const errorMessage = errorData.error || response.statusText
         const errorCode = errorData.code || ERROR_CODES.CONNECTION_FAILED
-        
+
         throw new DevboxSDKError(
           errorMessage,
           errorCode,
@@ -112,27 +112,21 @@ export class DevboxContainerClient {
 
       if (contentType.includes('application/json')) {
         const jsonData = (await response.json()) as ServerResponse<T>
-        // Parse server response and check for errors in response body
-        // This will throw if server returned error status
         data = parseServerResponse(jsonData)
-      } else if (contentType.includes('application/octet-stream') || 
-                 contentType.includes('application/gzip') ||
-                 contentType.includes('application/x-tar') ||
-                 contentType.includes('multipart/') ||
-                 contentType.includes('image/') || 
-                 contentType.includes('video/') ||
-                 contentType.includes('audio/')) {
-        // Binary data - return as Buffer
+      } else if (contentType.includes('application/octet-stream') ||
+        contentType.includes('application/gzip') ||
+        contentType.includes('application/x-tar') ||
+        contentType.includes('multipart/') ||
+        contentType.includes('image/') ||
+        contentType.includes('video/') ||
+        contentType.includes('audio/')) {
         const arrayBuffer = await response.arrayBuffer()
         data = (Buffer.from(arrayBuffer) as unknown) as T
       } else {
-        // Text data (text/plain, text/html, etc.) - return as Buffer
-        // This ensures consistent Buffer return type for file downloads
         const arrayBuffer = await response.arrayBuffer()
         data = (Buffer.from(arrayBuffer) as unknown) as T
       }
-      
-      // Log original response for debugging
+
       console.log('url', url.toString())
       console.log('response', {
         status: response.status,
@@ -147,12 +141,13 @@ export class DevboxContainerClient {
         url: response.url,
       }
     } catch (error) {
+      console.log('error', error)
       clearTimeout(timeoutId)
-      
+
       if (error instanceof DevboxSDKError) {
         throw error
       }
-      
+
       throw new DevboxSDKError(
         `Request failed: ${(error as Error).message}`,
         ERROR_CODES.CONNECTION_FAILED,

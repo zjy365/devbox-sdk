@@ -120,7 +120,17 @@ export class DevboxInstance {
       // 1. JSON mode (application/json): For text and base64-encoded small files
       // 2. Binary mode (other Content-Type): For binary files, path via query parameter
       // 3. Multipart mode (multipart/form-data): For browser FormData
-      
+
+      // Determine content size
+      const contentSize = Buffer.isBuffer(content)
+        ? content.length
+        : Buffer.byteLength(content, 'utf-8')
+
+      // Use binary mode for large files (>1MB) to avoid JSON buffering issues
+      // JSON mode requires Go server to buffer entire request body in memory
+      const LARGE_FILE_THRESHOLD = 1 * 1024 * 1024 // 1MB
+      const useBinaryMode = contentSize > LARGE_FILE_THRESHOLD
+
       if (Buffer.isBuffer(content)) {
         // For Buffer, use Binary mode by default (more efficient, ~25% less bandwidth)
         // Unless user explicitly requests base64 encoding
@@ -147,8 +157,19 @@ export class DevboxInstance {
           })
         }
       } else {
-        // For string content, use JSON mode
-        if (options?.encoding === 'base64') {
+        // For string content
+        if (useBinaryMode && !options?.encoding) {
+          // Convert large string to Buffer and use binary mode
+          // This avoids JSON parser buffering entire request body in Go server
+          const buffer = Buffer.from(content, 'utf-8')
+          await client.post('/api/v1/files/write', {
+            params: { path },
+            headers: {
+              'Content-Type': 'application/octet-stream',
+            },
+            body: buffer,
+          })
+        } else if (options?.encoding === 'base64') {
           // User explicitly wants base64 encoding
           const base64Content = Buffer.from(content, 'utf-8').toString('base64')
           await client.post('/api/v1/files/write', {
@@ -184,7 +205,7 @@ export class DevboxInstance {
         params: { path, ...options },
       })
       console.log('response,readFile', response)
-  
+
 
       // HTTP client handles response based on Content-Type:
       // - Binary content types -> Buffer
@@ -192,12 +213,12 @@ export class DevboxInstance {
       // Note: Go server's ReadFile endpoint does NOT support encoding parameter
       // It always returns raw file content. Base64 encoding is only used during
       // write operations for JSON mode transmission.
-      
+
       if (Buffer.isBuffer(response.data)) {
         // Binary content already in Buffer format
         return response.data
       }
-      
+
       // If it's a string, convert to Buffer
       if (typeof response.data === 'string') {
         // Go server returns raw file content as text/plain for text files
@@ -205,7 +226,7 @@ export class DevboxInstance {
         // Note: encoding option is ignored for readFile - server doesn't support it
         return Buffer.from(response.data, 'utf-8')
       }
-      
+
       // Handle ArrayBuffer if present (fallback for safety)
       if (response.data instanceof ArrayBuffer) {
         return Buffer.from(new Uint8Array(response.data))
@@ -213,7 +234,7 @@ export class DevboxInstance {
       if (response.data instanceof Uint8Array) {
         return Buffer.from(response.data)
       }
-      
+
       // Log the actual type for debugging
       const dataType = typeof response.data
       const dataConstructor = response.data?.constructor?.name || 'unknown'
@@ -473,7 +494,7 @@ export class DevboxInstance {
     callback: (event: FileChangeEvent) => void
   ): Promise<FileWatchWebSocket> {
     const urlResolver = this.sdk.getUrlResolver()
-      const serverUrl = await urlResolver.getServerUrl(this.name)
+    const serverUrl = await urlResolver.getServerUrl(this.name)
     const { default: WebSocket } = await import('ws')
     const ws = new WebSocket(`ws://${serverUrl.replace('http://', '')}/ws`) as unknown as FileWatchWebSocket
 
@@ -552,7 +573,7 @@ export class DevboxInstance {
   async codeRun(code: string, options?: CodeRunOptions): Promise<SyncExecutionResponse> {
     const language = options?.language || this.detectLanguage(code)
     const command = this.buildCodeCommand(code, language, options?.argv)
-    
+
     return this.execSync({
       command,
       cwd: options?.cwd,

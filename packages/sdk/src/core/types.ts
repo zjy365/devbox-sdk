@@ -318,10 +318,10 @@ export interface SyncExecutionResponse {
 
 // Process information
 export interface ProcessInfo {
-  id: string
+  processId: string
   pid: number
   command: string
-  status: string
+  processStatus: string
   startTime: number
   endTime?: number
   exitCode?: number
@@ -339,7 +339,7 @@ export interface GetProcessStatusResponse {
   processId: string
   pid: number
   processStatus: string
-  startedAt: number // Unix timestamp (seconds)
+  // startedAt: number // Unix timestamp (seconds)
 }
 
 // Process logs response

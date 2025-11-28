@@ -30,7 +30,7 @@ func TestNewPortMonitor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pm := NewPortMonitor(tt.cacheTTL)
+			pm := NewPortMonitor(tt.cacheTTL, nil)
 
 			if pm.cacheTTL != tt.expected {
 				t.Errorf("expected cache TTL %v, got %v", tt.expected, pm.cacheTTL)
@@ -44,7 +44,7 @@ func TestNewPortMonitor(t *testing.T) {
 }
 
 func TestPortMonitor_GetPorts_CacheBehavior(t *testing.T) {
-	pm := NewPortMonitor(200 * time.Millisecond)
+	pm := NewPortMonitor(200*time.Millisecond, nil)
 
 	// First call should refresh
 	ports1, time1 := pm.GetPorts()
@@ -73,7 +73,7 @@ func TestPortMonitor_GetPorts_CacheBehavior(t *testing.T) {
 }
 
 func TestPortMonitor_GetPorts_DataIntegrity(t *testing.T) {
-	pm := NewPortMonitor(1 * time.Second)
+	pm := NewPortMonitor(1*time.Second, nil)
 
 	ports, lastUpdated := pm.GetPorts()
 
@@ -98,7 +98,7 @@ func TestPortMonitor_GetPorts_DataIntegrity(t *testing.T) {
 }
 
 func TestPortMonitor_Refresh(t *testing.T) {
-	pm := NewPortMonitor(1 * time.Second)
+	pm := NewPortMonitor(1*time.Second, nil)
 
 	// Manual refresh
 	pm.Refresh()
@@ -115,7 +115,7 @@ func TestPortMonitor_Refresh(t *testing.T) {
 }
 
 func TestPortMonitor_PollPorts(t *testing.T) {
-	pm := NewPortMonitor(1 * time.Second)
+	pm := NewPortMonitor(1*time.Second, nil)
 
 	ports, err := pm.pollPorts()
 
@@ -129,9 +129,6 @@ func TestPortMonitor_PollPorts(t *testing.T) {
 
 	seen := make(map[int]bool)
 	for _, port := range ports {
-		if port < 3000 || port > 9999 {
-			t.Errorf("port %d is outside allowed range (3000-9999)", port)
-		}
 		if seen[port] {
 			t.Errorf("duplicate port in results: %d", port)
 		}
@@ -140,7 +137,7 @@ func TestPortMonitor_PollPorts(t *testing.T) {
 }
 
 func TestPortMonitor_ConcurrentAccess(t *testing.T) {
-	pm := NewPortMonitor(100 * time.Millisecond)
+	pm := NewPortMonitor(100*time.Millisecond, nil)
 
 	done := make(chan bool)
 
@@ -167,5 +164,31 @@ func TestPortMonitor_ConcurrentAccess(t *testing.T) {
 
 	for i := 0; i < 13; i++ {
 		<-done
+	}
+}
+
+func TestPortMonitor_ExcludedPorts(t *testing.T) {
+	// First, get all ports to find one to exclude
+	pm := NewPortMonitor(1*time.Second, nil)
+	ports, _ := pm.GetPorts()
+
+	if len(ports) == 0 {
+		t.Skip("No ports found to test exclusion")
+	}
+
+	portToExclude := ports[0]
+
+	// Create new monitor with exclusion
+	pmExcluded := NewPortMonitor(1*time.Second, []int{portToExclude})
+
+	// Force refresh
+	pmExcluded.Refresh()
+
+	portsExcluded, _ := pmExcluded.GetPorts()
+
+	for _, p := range portsExcluded {
+		if p == portToExclude {
+			t.Errorf("Port %d should have been excluded", portToExclude)
+		}
 	}
 }

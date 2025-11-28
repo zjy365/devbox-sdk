@@ -275,6 +275,10 @@ func (h *FileHandler) BatchUpload(w http.ResponseWriter, r *http.Request) {
 			successCount++
 			results = append(results, BatchUploadResult{Path: uploadedFile.Path, Success: true, Size: &uploadedFile.Size})
 		}
+	} else {
+		// No files provided - return 400 Bad Request
+		common.WriteErrorResponse(w, common.StatusInvalidRequest, "No files provided in multipart form (expected 'files' field)")
+		return
 	}
 
 	resp := BatchUploadResponse{

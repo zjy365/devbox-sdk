@@ -12,9 +12,9 @@ type PortHandler struct {
 	monitor *monitor.PortMonitor
 }
 
-func NewPortHandler() *PortHandler {
+func NewPortHandler(excludedPorts []int) *PortHandler {
 	return &PortHandler{
-		monitor: monitor.NewPortMonitor(1 * time.Second),
+		monitor: monitor.NewPortMonitor(1*time.Second, excludedPorts),
 	}
 }
 

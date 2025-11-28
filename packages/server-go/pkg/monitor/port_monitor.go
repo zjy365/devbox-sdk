@@ -1,9 +1,8 @@
 package monitor
 
 import (
-	"bytes"
 	"log/slog"
-	"os/exec"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -11,20 +10,22 @@ import (
 )
 
 type PortMonitor struct {
-	ports       []int
-	mutex       sync.RWMutex
-	lastUpdated time.Time
-	cacheTTL    time.Duration
+	ports         []int
+	mutex         sync.RWMutex
+	lastUpdated   time.Time
+	cacheTTL      time.Duration
+	excludedPorts []int
 }
 
-func NewPortMonitor(cacheTTL time.Duration) *PortMonitor {
+func NewPortMonitor(cacheTTL time.Duration, excludedPorts []int) *PortMonitor {
 	if cacheTTL <= 0 {
 		cacheTTL = 1 * time.Second
 	}
 
 	return &PortMonitor{
-		ports:    make([]int, 0),
-		cacheTTL: cacheTTL,
+		ports:         make([]int, 0),
+		cacheTTL:      cacheTTL,
+		excludedPorts: excludedPorts,
 	}
 }
 
@@ -63,36 +64,64 @@ func (pm *PortMonitor) Refresh() {
 }
 
 func (pm *PortMonitor) pollPorts() ([]int, error) {
-	cmd := exec.Command("sh", "-c", `awk 'NR>1{split($2,a,":");ip=a[1];port=strtonum("0x"a[2]);if(ip=="00000000"||ip=="00000000000000000000000000000000")print port}' /proc/net/tcp /proc/net/tcp6`)
+	var ports []int
+	files := []string{"/proc/net/tcp", "/proc/net/tcp6"}
 
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			continue
+		}
 
-	if err := cmd.Run(); err != nil {
-		return nil, err
+		lines := strings.Split(string(content), "\n")
+		// Skip header
+		if len(lines) > 0 {
+			lines = lines[1:]
+		}
+
+		for _, line := range lines {
+			fields := strings.Fields(line)
+			if len(fields) < 2 {
+				continue
+			}
+
+			// local_address is field[1], format "IP:PORT"
+			localAddr := fields[1]
+			parts := strings.Split(localAddr, ":")
+			if len(parts) != 2 {
+				continue
+			}
+
+			ipHex := parts[0]
+			portHex := parts[1]
+
+			// Check for 0.0.0.0 or ::
+			if ipHex == "00000000" || ipHex == "00000000000000000000000000000000" {
+				port, err := strconv.ParseInt(portHex, 16, 64)
+				if err == nil {
+					ports = append(ports, int(port))
+				}
+			}
+		}
 	}
 
-	ports := make([]int, 0)
+	result := make([]int, 0)
 	seen := make(map[int]bool)
 
-	lines := strings.Split(stdout.String(), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
+	for _, port := range ports {
+		isExcluded := false
+		for _, excluded := range pm.excludedPorts {
+			if port == excluded {
+				isExcluded = true
+				break
+			}
 		}
 
-		port, err := strconv.Atoi(line)
-		if err != nil {
-			slog.Warn("Failed to parse port", slog.String("line", line), slog.String("error", err.Error()))
-			continue
-		}
-
-		if !seen[port] && port >= 3000 && port <= 9999 {
-			ports = append(ports, port)
+		if !isExcluded && !seen[port] {
+			result = append(result, port)
 			seen[port] = true
 		}
 	}
 
-	return ports, nil
+	return result, nil
 }

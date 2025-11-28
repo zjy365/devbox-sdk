@@ -53,7 +53,7 @@ fi
 
 # Test 3: Verify source file no longer exists
 echo -e "\n${GREEN}Test 3: Verifying source file deleted${NC}"
-RESPONSE=$(api_call POST "/api/v1/files/read" '{"path":"'"$WORKSPACE"'/test_move.txt"}')
+RESPONSE=$(api_call GET "/api/v1/files/read?path=$WORKSPACE/test_move.txt")
 if echo "$RESPONSE" | grep -q '"error_type":"file_not_found"' || echo "$RESPONSE" | grep -q '"error"'; then
     echo -e "${GREEN}✓ Source file correctly deleted${NC}"
 else
@@ -63,7 +63,7 @@ fi
 
 # Test 4: Verify destination file exists
 echo -e "\n${GREEN}Test 4: Verifying destination file exists${NC}"
-RESPONSE=$(api_call POST "/api/v1/files/read" '{"path":"'"$WORKSPACE"'/test_moved.txt"}')
+RESPONSE=$(api_call GET "/api/v1/files/read?path=$WORKSPACE/test_moved.txt")
 if echo "$RESPONSE" | grep -q '"success":true' && echo "$RESPONSE" | grep -q "Test content for move operation"; then
     echo -e "${GREEN}✓ Destination file exists with correct content${NC}"
 else
@@ -84,7 +84,7 @@ fi
 
 # Test 6: Verify renamed file exists
 echo -e "\n${GREEN}Test 6: Verifying renamed file exists${NC}"
-RESPONSE=$(api_call POST "/api/v1/files/read" '{"path":"'"$WORKSPACE"'/test_renamed.txt"}')
+RESPONSE=$(api_call GET "/api/v1/files/read?path=$WORKSPACE/test_renamed.txt")
 if echo "$RESPONSE" | grep -q '"success":true' && echo "$RESPONSE" | grep -q "Test content for move operation"; then
     echo -e "${GREEN}✓ Renamed file exists with correct content${NC}"
 else

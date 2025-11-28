@@ -12,13 +12,6 @@ import (
 	"github.com/labring/devbox-sdk-server/pkg/common"
 )
 
-type ListFilesRequest struct {
-	Path       string `json:"path"`
-	ShowHidden bool   `json:"showHidden,omitempty"`
-	Limit      int    `json:"limit,omitempty"`
-	Offset     int    `json:"offset,omitempty"`
-}
-
 type DeleteFileRequest struct {
 	Path      string `json:"path"`
 	Recursive bool   `json:"recursive,omitempty"`
@@ -43,6 +36,11 @@ type FileInfo struct {
 	MimeType    *string `json:"mimeType,omitempty"`
 	Permissions *string `json:"permissions,omitempty"`
 	Modified    *string `json:"modified,omitempty"`
+}
+
+// ListFileResponse represents the response for listing files
+type ListFileResponse struct {
+	Files []FileInfo `json:"files"`
 }
 
 // DeleteFile handles file deletion operations
@@ -175,10 +173,8 @@ func (h *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
 	pagedFiles := files[offset:end]
 
 	// Response format compatible with previous version
-	response := map[string]any{
-		"success": true,
-		"files":   pagedFiles,
-		"count":   len(pagedFiles),
+	response := &ListFileResponse{
+		Files: pagedFiles,
 	}
 	common.WriteSuccessResponse(w, response)
 }
@@ -266,7 +262,7 @@ func (h *FileHandler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := os.Stat(newPath); err == nil {
-		common.WriteErrorResponse(w, common.StatusValidationError, "New path already exists")
+		common.WriteErrorResponse(w, common.StatusConflict, "New path already exists")
 		return
 	}
 

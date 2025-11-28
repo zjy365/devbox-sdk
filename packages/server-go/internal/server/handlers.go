@@ -2,7 +2,9 @@ package server
 
 import (
 	"log/slog"
+	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/labring/devbox-sdk-server/pkg/handlers"
 	"github.com/labring/devbox-sdk-server/pkg/handlers/file"
@@ -27,7 +29,17 @@ func (s *Server) registerRoutes(r *router.Router, middlewareChain func(http.Hand
 	processHandler := process.NewProcessHandler()
 	sessionHandler := session.NewSessionHandler()
 	healthHandler := handlers.NewHealthHandler()
-	portHandler := port.NewPortHandler()
+
+	// Parse server port from config
+	excludedPorts := []int{22}
+	_, portStr, err := net.SplitHostPort(s.config.Addr)
+	if err == nil {
+		if p, err := strconv.Atoi(portStr); err == nil {
+			excludedPorts = append(excludedPorts, p)
+		}
+	}
+	portHandler := port.NewPortHandler(excludedPorts)
+
 	websocketHandler := websocket.NewWebSocketHandlerWithDeps(processHandler, sessionHandler, nil)
 
 	routes := []routeConfig{

@@ -157,7 +157,7 @@ API Prefix: `/api/v1`
 
 ### File Management (`/api/v1/files/`)
 - `POST /api/v1/files/write` - Write file with path validation and size limits
-- `POST /api/v1/files/read` - Read file (supports query parameter or JSON body)
+- `GET /api/v1/files/read?path=<file-path>` - Read file content as binary stream
 - `POST /api/v1/files/delete` - Delete file or directory with recursive option
 - `POST /api/v1/files/batch-upload` - Multipart batch file upload
 - `GET /api/v1/files/list` - Directory listing with pagination and filtering

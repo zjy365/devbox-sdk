@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewPortHandler(t *testing.T) {
-	handler := NewPortHandler()
+	handler := NewPortHandler(nil)
 
 	if handler == nil {
 		t.Fatal("handler should not be nil")
@@ -20,7 +20,7 @@ func TestNewPortHandler(t *testing.T) {
 }
 
 func TestPortHandler_GetPorts(t *testing.T) {
-	handler := NewPortHandler()
+	handler := NewPortHandler(nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/ports", nil)
 	w := httptest.NewRecorder()
@@ -49,7 +49,7 @@ func TestPortHandler_GetPorts(t *testing.T) {
 }
 
 func TestPortHandler_GetPorts_WithData(t *testing.T) {
-	handler := NewPortHandler()
+	handler := NewPortHandler(nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/ports", nil)
 	w := httptest.NewRecorder()
@@ -75,7 +75,7 @@ func TestPortHandler_GetPorts_WithData(t *testing.T) {
 
 func TestPortHandler_ResponseStructure(t *testing.T) {
 
-	handler := NewPortHandler()
+	handler := NewPortHandler(nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/ports", nil)
 	w := httptest.NewRecorder()
@@ -108,7 +108,7 @@ func TestPortHandler_ResponseStructure(t *testing.T) {
 }
 
 func TestPortHandler_MultipleRequests(t *testing.T) {
-	handler := NewPortHandler()
+	handler := NewPortHandler(nil)
 
 	for i := range 10 {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/ports", nil)

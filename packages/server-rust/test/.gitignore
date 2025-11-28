@@ -1,0 +1,21 @@
+# Test output files
+*.log
+*.pid
+*.tmp
+
+# Session test artifacts
+*.json
+*.txt
+*.out
+
+# Server runtime files
+server.log
+server.pid
+response.tmp
+
+# Temporary files created during testing
+*.tmp.*
+
+# Test artifacts
+test-results/
+coverage/

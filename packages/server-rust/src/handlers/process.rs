@@ -207,16 +207,14 @@ pub async fn exec_process(
         };
 
         if let Some(mut child) = child {
-            let wait_result = if let Some(t) = timeout_val {
-                match timeout(Duration::from_secs(t), child.wait()).await {
-                    Ok(res) => res,
-                    Err(_) => {
-                        let _ = child.start_kill();
-                        child.wait().await
-                    }
+            let timeout_duration = Duration::from_secs(timeout_val.unwrap_or(7200)); // Default 2h
+
+            let wait_result = match timeout(timeout_duration, child.wait()).await {
+                Ok(res) => res,
+                Err(_) => {
+                    let _ = child.start_kill();
+                    child.wait().await
                 }
-            } else {
-                child.wait().await
             };
 
             // Update status

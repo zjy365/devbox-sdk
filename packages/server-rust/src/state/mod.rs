@@ -26,7 +26,7 @@ impl AppState {
             processes: Arc::new(RwLock::new(HashMap::new())),
             sessions: Arc::new(RwLock::new(HashMap::new())),
             port_monitor: Arc::new(crate::monitor::port::PortMonitor::new(
-                std::time::Duration::from_millis(500),
+                std::time::Duration::from_millis(100),
                 excluded_ports,
             )),
             start_time: std::time::Instant::now(),

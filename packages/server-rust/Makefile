@@ -15,7 +15,7 @@ help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 build: ## Build release binary
-	@cargo cross build -t x86_64-unknown-linux-musl $(BUILD_FLAGS)
+	@cargo cross build --toolchain nightly --build-std -Z build-std-features="optimize_for_size" --release --target x86_64-unknown-linux-musl
 	@echo "Binary: $(BUILD_DIR)/$(BINARY_NAME)"
 
 build-release-upx: build ## Build release binary and compress with UPX

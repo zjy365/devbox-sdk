@@ -13,11 +13,34 @@ use flate2::write::GzEncoder;
 use flate2::Compression;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use tokio_util::io::ReaderStream;
+
+struct ChannelWriter {
+    tx: tokio::sync::mpsc::Sender<Result<Vec<u8>, std::io::Error>>,
+}
+
+impl std::io::Write for ChannelWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let data = buf.to_vec();
+        let len = data.len();
+        match self.tx.blocking_send(Ok(data)) {
+            Ok(_) => Ok(len),
+            Err(_) => Err(std::io::Error::new(
+                std::io::ErrorKind::BrokenPipe,
+                "Channel closed",
+            )),
+        }
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -172,17 +195,18 @@ pub async fn batch_download(
         valid_paths.push(valid_path);
     }
 
-    // Create a tar.gz archive in memory.
-    // For true streaming with large files, we would need a more complex setup.
-    // Here we use spawn_blocking for the synchronous tar creation.
-
     let format = req.format.as_deref().unwrap_or("tar.gz");
     let workspace_path = state.config.workspace_path.clone();
 
     match format {
         "tar" => {
-            let tar_data = tokio::task::spawn_blocking(move || -> Result<Vec<u8>, AppError> {
-                let mut tar = tar::Builder::new(Vec::new());
+            let (tx, rx) = tokio::sync::mpsc::channel::<Result<Vec<u8>, std::io::Error>>(10);
+            let valid_paths = valid_paths.clone();
+            let tx_err = tx.clone();
+
+            tokio::task::spawn_blocking(move || {
+                let writer = ChannelWriter { tx };
+                let mut tar = tar::Builder::new(writer);
                 for path in valid_paths {
                     let rel_path = match path.strip_prefix(&workspace_path) {
                         Ok(p) => p,
@@ -191,24 +215,33 @@ pub async fn batch_download(
                         }
                     };
                     if path.is_dir() {
-                        tar.append_dir_all(rel_path, &path).map_err(|e| {
-                            AppError::InternalServerError(format!("Failed to append dir: {}", e))
-                        })?;
+                        if let Err(e) = tar.append_dir_all(rel_path, &path) {
+                            let _ = tx_err.blocking_send(Err(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                format!("Failed to append dir: {}", e),
+                            )));
+                            return;
+                        }
                     } else {
-                        tar.append_path_with_name(&path, rel_path).map_err(|e| {
-                            AppError::InternalServerError(format!("Failed to append file: {}", e))
-                        })?;
+                        if let Err(e) = tar.append_path_with_name(&path, rel_path) {
+                            let _ = tx_err.blocking_send(Err(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                format!("Failed to append file: {}", e),
+                            )));
+                            return;
+                        }
                     }
                 }
-                tar.finish().map_err(|e| {
-                    AppError::InternalServerError(format!("Failed to finish tar: {}", e))
-                })?;
-                tar.into_inner().map_err(|e| {
-                    AppError::InternalServerError(format!("Failed to get tar data: {}", e))
-                })
-            })
-            .await
-            .map_err(|e| AppError::InternalServerError(format!("Task join error: {}", e)))??;
+                if let Err(e) = tar.finish() {
+                    let _ = tx_err.blocking_send(Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Failed to finish tar: {}", e),
+                    )));
+                }
+            });
+
+            let stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+            let body = Body::from_stream(stream);
 
             let headers = [
                 (header::CONTENT_TYPE, "application/x-tar".to_string()),
@@ -217,42 +250,57 @@ pub async fn batch_download(
                     "attachment; filename=\"download.tar\"".to_string(),
                 ),
             ];
-            Ok((headers, tar_data).into_response())
+            Ok((headers, body).into_response())
         }
         "multipart" | "mixed" => {
             let boundary = crate::utils::common::generate_id();
-            let mut body = Vec::new();
+            let boundary_clone = boundary.clone();
+            let (tx, rx) = tokio::sync::mpsc::channel::<Result<Vec<u8>, std::io::Error>>(10);
+            let valid_paths = valid_paths.clone();
+            let tx_err = tx.clone();
 
-            // Use a stack for recursive traversal
-            let mut stack = valid_paths.clone();
+            tokio::task::spawn_blocking(move || {
+                let mut writer = ChannelWriter { tx };
+                let mut stack = valid_paths.clone();
 
-            while let Some(path) = stack.pop() {
-                if path.is_dir() {
-                    let mut entries = fs::read_dir(&path).await?;
-                    while let Some(entry) = entries.next_entry().await? {
-                        stack.push(entry.path());
+                while let Some(path) = stack.pop() {
+                    if path.is_dir() {
+                        if let Ok(entries) = std::fs::read_dir(&path) {
+                            for entry in entries.flatten() {
+                                stack.push(entry.path());
+                            }
+                        }
+                    } else {
+                        let mime = crate::utils::common::mime_guess(&path);
+                        let header = format!(
+                            "--{}\r\nContent-Disposition: attachment; filename=\"{}\"\r\nContent-Type: {}\r\n\r\n",
+                            boundary_clone,
+                            path.to_string_lossy(),
+                            mime
+                        );
+                        if writer.write_all(header.as_bytes()).is_err() {
+                            return;
+                        }
+
+                        if let Ok(mut file) = std::fs::File::open(&path) {
+                            if std::io::copy(&mut file, &mut writer).is_err() {
+                                let _ = tx_err.blocking_send(Err(std::io::Error::new(
+                                    std::io::ErrorKind::Other,
+                                    "Failed to read file",
+                                )));
+                                return;
+                            }
+                        }
+                        if writer.write_all(b"\r\n").is_err() {
+                            return;
+                        }
                     }
-                } else {
-                    let mime = crate::utils::common::mime_guess(&path);
-
-                    let content = fs::read(&path).await.map_err(|e| {
-                        AppError::InternalServerError(format!("Failed to read file: {}", e))
-                    })?;
-
-                    body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
-                    body.extend_from_slice(
-                        format!(
-                            "Content-Disposition: attachment; filename=\"{}\"\r\n",
-                            path.to_string_lossy()
-                        )
-                        .as_bytes(),
-                    );
-                    body.extend_from_slice(format!("Content-Type: {}\r\n\r\n", mime).as_bytes());
-                    body.extend_from_slice(&content);
-                    body.extend_from_slice(b"\r\n");
                 }
-            }
-            body.extend_from_slice(format!("--{}--\r\n", boundary).as_bytes());
+                let _ = writer.write_all(format!("--{}--\r\n", boundary_clone).as_bytes());
+            });
+
+            let stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+            let body = Body::from_stream(stream);
 
             let headers = [
                 (
@@ -268,8 +316,13 @@ pub async fn batch_download(
         }
         _ => {
             // tar.gz
-            let tar_data = tokio::task::spawn_blocking(move || -> Result<Vec<u8>, AppError> {
-                let mut enc = GzEncoder::new(Vec::new(), Compression::default());
+            let (tx, rx) = tokio::sync::mpsc::channel::<Result<Vec<u8>, std::io::Error>>(10);
+            let valid_paths = valid_paths.clone();
+            let tx_err = tx.clone();
+
+            tokio::task::spawn_blocking(move || {
+                let writer = ChannelWriter { tx };
+                let mut enc = GzEncoder::new(writer, Compression::default());
                 {
                     let mut tar = tar::Builder::new(&mut enc);
                     for path in valid_paths {
@@ -280,31 +333,41 @@ pub async fn batch_download(
                             }
                         };
                         if path.is_dir() {
-                            tar.append_dir_all(rel_path, &path).map_err(|e| {
-                                AppError::InternalServerError(format!(
-                                    "Failed to append dir: {}",
-                                    e
-                                ))
-                            })?;
+                            if let Err(e) = tar.append_dir_all(rel_path, &path) {
+                                let _ = tx_err.blocking_send(Err(std::io::Error::new(
+                                    std::io::ErrorKind::Other,
+                                    format!("Failed to append dir: {}", e),
+                                )));
+                                return;
+                            }
                         } else {
-                            tar.append_path_with_name(&path, rel_path).map_err(|e| {
-                                AppError::InternalServerError(format!(
-                                    "Failed to append file: {}",
-                                    e
-                                ))
-                            })?;
+                            if let Err(e) = tar.append_path_with_name(&path, rel_path) {
+                                let _ = tx_err.blocking_send(Err(std::io::Error::new(
+                                    std::io::ErrorKind::Other,
+                                    format!("Failed to append file: {}", e),
+                                )));
+                                return;
+                            }
                         }
                     }
-                    tar.finish().map_err(|e| {
-                        AppError::InternalServerError(format!("Failed to finish tar: {}", e))
-                    })?;
+                    if let Err(e) = tar.finish() {
+                        let _ = tx_err.blocking_send(Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("Failed to finish tar: {}", e),
+                        )));
+                        return;
+                    }
                 }
-                enc.finish().map_err(|e| {
-                    AppError::InternalServerError(format!("Failed to finish gzip: {}", e))
-                })
-            })
-            .await
-            .map_err(|e| AppError::InternalServerError(format!("Task join error: {}", e)))??;
+                if let Err(e) = enc.finish() {
+                    let _ = tx_err.blocking_send(Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Failed to finish gzip: {}", e),
+                    )));
+                }
+            });
+
+            let stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+            let body = Body::from_stream(stream);
 
             let headers = [
                 (header::CONTENT_TYPE, "application/gzip".to_string()),
@@ -313,7 +376,7 @@ pub async fn batch_download(
                     "attachment; filename=\"download.tar.gz\"".to_string(),
                 ),
             ];
-            Ok((headers, tar_data).into_response())
+            Ok((headers, body).into_response())
         }
     }
 }

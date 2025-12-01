@@ -425,7 +425,7 @@ mod tests {
         let response = CreateSessionResponse {
             session_id: "test-id".to_string(),
             shell: "/bin/bash".to_string(),
-            cwd: "/workspace".to_string(),
+            cwd: "/home/devbox/project".to_string(),
             session_status: "active".to_string(),
         };
 
@@ -435,6 +435,6 @@ mod tests {
         assert!(json.contains("\"sessionId\":\"test-id\""));
         assert!(json.contains("\"sessionStatus\":\"active\""));
         assert!(json.contains("\"shell\":\"/bin/bash\""));
-        assert!(json.contains("\"cwd\":\"/workspace\""));
+        assert!(json.contains("\"cwd\":\"/home/devbox/project\""));
     }
 }

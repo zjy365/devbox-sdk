@@ -90,7 +90,7 @@ struct ListMessage {
     subscriptions: Vec<SubscriptionInfo>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct SubscriptionInfo {
     id: String,
@@ -100,6 +100,11 @@ struct SubscriptionInfo {
     log_levels: Vec<String>,
     created_at: i64,
     active: bool,
+}
+
+struct ActiveSubscriptionEntry {
+    info: SubscriptionInfo,
+    handle: tokio::task::JoinHandle<()>,
 }
 
 pub async fn ws_handler(
@@ -117,9 +122,15 @@ fn parse_log_entry(raw_log: &str) -> (String, String) {
     } else if raw_log.starts_with("[system] ") {
         ("system".to_string(), raw_log[9..].to_string())
     } else if raw_log.starts_with("[exec] ") {
-        ("system".to_string(), format!("Executing: {}", &raw_log[7..]))
+        (
+            "system".to_string(),
+            format!("Executing: {}", &raw_log[7..]),
+        )
     } else if raw_log.starts_with("[cd] ") {
-        ("system".to_string(), format!("Changed directory to: {}", &raw_log[5..]))
+        (
+            "system".to_string(),
+            format!("Changed directory to: {}", &raw_log[5..]),
+        )
     } else {
         ("unknown".to_string(), raw_log.to_string())
     }
@@ -131,7 +142,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
     // Keep track of active subscriptions for this client
     // Key: "type:target_id"
-    let mut active_subscriptions: HashMap<String, SubscriptionInfo> = HashMap::new();
+    let mut active_subscriptions: HashMap<String, ActiveSubscriptionEntry> = HashMap::new();
 
     // Spawn a task to write to the websocket
     let send_task = tokio::spawn(async move {
@@ -158,7 +169,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                         let sub_key = format!("{}:{}", target_type, target_id);
 
                         if active_subscriptions.contains_key(&sub_key) {
-                             let _ = tx
+                            let _ = tx
                                 .send(
                                     serde_json::to_string(&ErrorMessage {
                                         status: 1400,
@@ -172,7 +183,11 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
                         let state_clone = state.clone();
                         let tx_clone = tx.clone();
-                        let levels = req.options.as_ref().and_then(|o| o.levels.clone()).unwrap_or_default();
+                        let levels = req
+                            .options
+                            .as_ref()
+                            .and_then(|o| o.levels.clone())
+                            .unwrap_or_default();
                         let tail = req.options.as_ref().and_then(|o| o.tail).unwrap_or(0);
 
                         // Subscribe logic
@@ -183,7 +198,11 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                                     // Send historical logs if requested
                                     if tail > 0 {
                                         let logs = proc.logs.read().await;
-                                        let start_idx = if logs.len() > tail { logs.len() - tail } else { 0 };
+                                        let start_idx = if logs.len() > tail {
+                                            logs.len() - tail
+                                        } else {
+                                            0
+                                        };
                                         for (i, log) in logs.iter().skip(start_idx).enumerate() {
                                             let (level, content) = parse_log_entry(log);
                                             if !levels.is_empty() && !levels.contains(&level) {
@@ -206,7 +225,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                                                 },
                                                 sequence: i as i64,
                                                 is_history: Some(true),
-                                            }).unwrap();
+                                            })
+                                            .unwrap();
                                             let _ = tx_clone.send(msg).await;
                                         }
                                     }
@@ -221,7 +241,11 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                                     // Send historical logs if requested
                                     if tail > 0 {
                                         let logs = sess.logs.read().await;
-                                        let start_idx = if logs.len() > tail { logs.len() - tail } else { 0 };
+                                        let start_idx = if logs.len() > tail {
+                                            logs.len() - tail
+                                        } else {
+                                            0
+                                        };
                                         for (i, log) in logs.iter().skip(start_idx).enumerate() {
                                             let (level, content) = parse_log_entry(log);
                                             if !levels.is_empty() && !levels.contains(&level) {
@@ -244,7 +268,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                                                 },
                                                 sequence: i as i64,
                                                 is_history: Some(true),
-                                            }).unwrap();
+                                            })
+                                            .unwrap();
                                             let _ = tx_clone.send(msg).await;
                                         }
                                     }
@@ -278,7 +303,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                             // This is a limitation of the current Rust implementation structure compared to Go's centralized manager.
                             // We will accept this for now as it matches the previous behavior, just with better data format.
 
-                            tokio::spawn(async move {
+                            let handle = tokio::spawn(async move {
                                 let mut sequence = 0;
                                 while let Ok(log) = rx.recv().await {
                                     let (level, content) = parse_log_entry(&log);
@@ -290,7 +315,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                                     let timestamp = SystemTime::now()
                                         .duration_since(UNIX_EPOCH)
                                         .unwrap_or_default()
-                                        .as_secs() as i64;
+                                        .as_secs()
+                                        as i64;
 
                                     let msg = serde_json::to_string(&LogMessage {
                                         msg_type: "log".to_string(),
@@ -319,14 +345,20 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                             });
 
                             // Add to active subscriptions
-                            active_subscriptions.insert(sub_key.clone(), SubscriptionInfo {
-                                id: sub_key,
-                                target_type: target_type.clone(),
-                                target_id: target_id.clone(),
-                                log_levels: levels.clone(),
-                                created_at: timestamp,
-                                active: true,
-                            });
+                            active_subscriptions.insert(
+                                sub_key.clone(),
+                                ActiveSubscriptionEntry {
+                                    info: SubscriptionInfo {
+                                        id: sub_key,
+                                        target_type: target_type.clone(),
+                                        target_id: target_id.clone(),
+                                        log_levels: levels.clone(),
+                                        created_at: timestamp,
+                                        active: true,
+                                    },
+                                    handle,
+                                },
+                            );
 
                             // Send confirmation
                             let mut levels_map = HashMap::new();
@@ -365,8 +397,9 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                         (req.target_type.clone(), req.target_id.clone())
                     {
                         let sub_key = format!("{}:{}", target_type, target_id);
-                        if active_subscriptions.remove(&sub_key).is_some() {
-                             let _ = tx
+                        if let Some(entry) = active_subscriptions.remove(&sub_key) {
+                            entry.handle.abort();
+                            let _ = tx
                                 .send(
                                     serde_json::to_string(&SubscriptionResult {
                                         action: "unsubscribed".to_string(),
@@ -380,7 +413,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                                 )
                                 .await;
                         } else {
-                             let _ = tx
+                            let _ = tx
                                 .send(
                                     serde_json::to_string(&ErrorMessage {
                                         status: 1404,
@@ -392,15 +425,9 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                         }
                     }
                 } else if req.action == "list" {
-                    let subscriptions: Vec<SubscriptionInfo> = active_subscriptions.values()
-                        .map(|s| SubscriptionInfo {
-                            id: s.id.clone(),
-                            target_type: s.target_type.clone(),
-                            target_id: s.target_id.clone(),
-                            log_levels: s.log_levels.clone(),
-                            created_at: s.created_at,
-                            active: s.active,
-                        })
+                    let subscriptions: Vec<SubscriptionInfo> = active_subscriptions
+                        .values()
+                        .map(|s| s.info.clone())
                         .collect();
 
                     let _ = tx

@@ -23,7 +23,7 @@ async fn main() {
         println!();
         println!("OPTIONS:");
         println!("    --addr=<ADDRESS>            Sets the server listening address. [env: ADDR] [default: 0.0.0.0:9757]");
-        println!("    --workspace-path=<PATH>     Sets the base workspace directory. [env: WORKSPACE_PATH] [default: /workspace]");
+        println!("    --workspace-path=<PATH>     Sets the base workspace directory. [env: WORKSPACE_PATH] [default: /home/devbox/project]");
         println!("    --max-file-size=<BYTES>     Sets the maximum file size for uploads in bytes. [env: MAX_FILE_SIZE] [default: 104857600]");
         println!("    --token=<TOKEN>             Sets the authentication token. [env: TOKEN] [default: a random token if not provided]");
         println!();
@@ -37,9 +37,6 @@ async fn main() {
     let config = config::Config::load();
 
     // Initialize logging
-    // tracing removed in favor of simple println! for size optimization
-
-    println!("Starting server on {}", config.addr);
     println!("Workspace path: {:?}", config.workspace_path);
 
     // Initialize state

@@ -12,9 +12,9 @@ pub struct SessionStatus {
     pub shell: String,
     pub cwd: String,
     pub env: HashMap<String, String>,
-    pub session_status: String,       // "active", "terminated"
-    pub created_at: String,   // RFC3339
-    pub last_used_at: String, // RFC3339
+    pub session_status: String, // "active", "terminated"
+    pub created_at: String,     // RFC3339
+    pub last_used_at: String,   // RFC3339
 }
 
 pub struct SessionInfo {
@@ -97,7 +97,7 @@ mod tests {
         let status = SessionStatus {
             session_id: "test-id".to_string(),
             shell: "/bin/bash".to_string(),
-            cwd: "/workspace".to_string(),
+            cwd: "/home/devbox/project".to_string(),
             env: HashMap::new(),
             session_status: "active".to_string(),
             created_at: "2023-01-01T00:00:00Z".to_string(),

@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_validate_path() {
-        let base = Path::new("/workspace");
+        let base = Path::new("/home/devbox/project");
 
         // Test absolute path (allowed as per insecure policy)
         let res = validate_path(base, "/etc/passwd").unwrap();
@@ -96,11 +96,11 @@ mod tests {
 
         // Test relative path
         let res = validate_path(base, "src/main.rs").unwrap();
-        assert_eq!(res, PathBuf::from("/workspace/src/main.rs"));
+        assert_eq!(res, PathBuf::from("/home/devbox/project/src/main.rs"));
 
         // Test relative path with traversal
         let res = validate_path(base, "src/../lib.rs").unwrap();
-        assert_eq!(res, PathBuf::from("/workspace/lib.rs"));
+        assert_eq!(res, PathBuf::from("/home/devbox/project/lib.rs"));
 
         // Test traversal escaping workspace (allowed as per insecure policy)
         let res = validate_path(base, "../../etc/passwd").unwrap();

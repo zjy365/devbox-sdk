@@ -2,23 +2,22 @@ use rand::Rng;
 use std::borrow::Cow;
 use std::path::Path;
 
-/// NanoID alphabet (64 characters)
-/// Compatible with Go server: _-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
-const NANOID_ALPHABET: &[u8] = b"_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+/// NanoID alphabet (38 characters, lowercase alphanumeric + _-)
+/// Compatible with URL paths: _-0123456789abcdefghijklmnopqrstuvwxyz
+const NANOID_ALPHABET: &[u8] = b"_-0123456789abcdefghijklmnopqrstuvwxyz";
 
 /// Default ID length (matches Go server)
 const DEFAULT_ID_LENGTH: usize = 8;
 
 /// Generate a NanoID (8 chars) compatible with Go server
 ///
-/// Uses a 64-character alphabet and cryptographically secure random bytes.
-/// Total possibilities: 64^8 = 281,474,976,710,656 (281 trillion)
+/// Uses a 36-character alphabet (0-9, a-z).
 ///
 /// # Examples
 /// ```
 /// let id = generate_id();
 /// assert_eq!(id.len(), 8);
-/// // Examples: "x3k_9a-w", "5lcgne3p", "zqm38t_z"
+/// // Examples: "x3k9a2w1", "5lcgne3p"
 /// ```
 pub fn generate_id() -> String {
     generate_nanoid(DEFAULT_ID_LENGTH)
@@ -36,16 +35,13 @@ pub fn generate_id() -> String {
 /// ```
 pub fn generate_nanoid(length: usize) -> String {
     let mut rng = rand::rng();
-    let mut bytes = vec![0u8; length];
-    rng.fill(&mut bytes[..]);
-
     let mut id = String::with_capacity(length);
-    for &byte in &bytes {
-        // Bitwise AND with 63 (0b111111) to get index 0-63
-        let idx = (byte & 63) as usize;
+    let len = NANOID_ALPHABET.len();
+
+    for _ in 0..length {
+        let idx = rng.random_range(0..len);
         id.push(NANOID_ALPHABET[idx] as char);
     }
-
     id
 }
 
@@ -183,7 +179,7 @@ mod tests {
     #[test]
     fn test_generate_id_charset() {
         let id = generate_id();
-        let alphabet = "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        let alphabet = "_-0123456789abcdefghijklmnopqrstuvwxyz";
         for c in id.chars() {
             assert!(alphabet.contains(c), "ID contains invalid character: {}", c);
         }

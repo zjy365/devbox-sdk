@@ -11,7 +11,6 @@ pub struct PortsResponse {
     last_updated_at: i64,
 }
 
-
 pub async fn get_ports(
     axum::extract::State(state): axum::extract::State<Arc<crate::state::AppState>>,
 ) -> Result<Json<ApiResponse<PortsResponse>>, AppError> {

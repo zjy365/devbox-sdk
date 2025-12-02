@@ -1,12 +1,14 @@
 use crate::error::AppError;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::fs;
+use tokio::sync::{Mutex, RwLock};
 
 #[derive(Clone)]
 pub struct PortMonitor {
     ports: Arc<RwLock<Vec<u16>>>,
     last_updated: Arc<RwLock<Instant>>,
+    refresh_mutex: Arc<Mutex<()>>,
     cache_ttl: Duration,
     excluded_ports: Vec<u16>,
 }
@@ -16,22 +18,35 @@ impl PortMonitor {
         Self {
             ports: Arc::new(RwLock::new(Vec::new())),
             last_updated: Arc::new(RwLock::new(Instant::now() - cache_ttl * 2)), // Ensure initial refresh
+            refresh_mutex: Arc::new(Mutex::new(())),
             cache_ttl,
             excluded_ports,
         }
     }
 
     pub async fn get_ports(&self) -> Result<(Vec<u16>, i64), AppError> {
+        // First check (optimistic read)
         let should_refresh = {
-            let last_updated = self.last_updated.read().unwrap();
+            let last_updated = self.last_updated.read().await;
             last_updated.elapsed() > self.cache_ttl
         };
 
         if should_refresh {
-            self.refresh().await?;
+            // Acquire lock to serialize refresh attempts
+            let _guard = self.refresh_mutex.lock().await;
+
+            // Double check after acquiring lock
+            let really_needs_refresh = {
+                let last_updated = self.last_updated.read().await;
+                last_updated.elapsed() > self.cache_ttl
+            };
+
+            if really_needs_refresh {
+                self.refresh().await?;
+            }
         }
 
-        let ports = self.ports.read().unwrap().clone();
+        let ports = self.ports.read().await.clone();
         let last_updated_ts = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -44,11 +59,11 @@ impl PortMonitor {
         let ports = self.poll_ports().await?;
 
         {
-            let mut p = self.ports.write().unwrap();
+            let mut p = self.ports.write().await;
             *p = ports;
         }
         {
-            let mut l = self.last_updated.write().unwrap();
+            let mut l = self.last_updated.write().await;
             *l = Instant::now();
         }
 
@@ -56,37 +71,19 @@ impl PortMonitor {
     }
 
     async fn poll_ports(&self) -> Result<Vec<u16>, AppError> {
+        let (tcp_res, tcp6_res) = tokio::join!(
+            fs::read_to_string("/proc/net/tcp"),
+            fs::read_to_string("/proc/net/tcp6")
+        );
+
         let mut ports = Vec::new();
-        let files = ["/proc/net/tcp", "/proc/net/tcp6"];
 
-        for path in files {
-            let content = match fs::read_to_string(path).await {
-                Ok(c) => c,
-                Err(_) => continue,
-            };
+        if let Ok(content) = tcp_res {
+            Self::parse_proc_net_tcp(&content, &mut ports);
+        }
 
-            for line in content.lines().skip(1) {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() < 2 {
-                    continue;
-                }
-
-                let local_address = parts[1];
-                let addr_parts: Vec<&str> = local_address.split(':').collect();
-                if addr_parts.len() != 2 {
-                    continue;
-                }
-
-                let ip_hex = addr_parts[0];
-                let port_hex = addr_parts[1];
-
-                // Check if IP is 0.0.0.0 (00000000) or :: (00000000000000000000000000000000)
-                if ip_hex == "00000000" || ip_hex == "00000000000000000000000000000000" {
-                    if let Ok(port) = u16::from_str_radix(port_hex, 16) {
-                        ports.push(port);
-                    }
-                }
-            }
+        if let Ok(content) = tcp6_res {
+            Self::parse_proc_net_tcp(&content, &mut ports);
         }
 
         let mut filtered_ports = Vec::new();
@@ -100,5 +97,34 @@ impl PortMonitor {
         }
 
         Ok(filtered_ports)
+    }
+
+    fn parse_proc_net_tcp(content: &str, ports: &mut Vec<u16>) {
+        for line in content.lines().skip(1) {
+            let mut parts = line.split_whitespace();
+            // Skip 'sl' column
+            if parts.next().is_none() {
+                continue;
+            }
+
+            let Some(local_address) = parts.next() else {
+                continue;
+            };
+
+            let mut addr_parts = local_address.split(':');
+            let Some(ip_hex) = addr_parts.next() else {
+                continue;
+            };
+            let Some(port_hex) = addr_parts.next() else {
+                continue;
+            };
+
+            // Check if IP is 0.0.0.0 (00000000) or :: (00000000000000000000000000000000)
+            if ip_hex == "00000000" || ip_hex == "00000000000000000000000000000000" {
+                if let Ok(port) = u16::from_str_radix(port_hex, 16) {
+                    ports.push(port);
+                }
+            }
+        }
     }
 }

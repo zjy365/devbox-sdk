@@ -116,19 +116,20 @@ The server supports flexible configuration through environment variables and com
 | Variable | CLI Argument | Default | Description |
 |----------|--------------|---------|-------------|
 | `ADDR` | `--addr` | `0.0.0.0:9757` | Server listening address |
-| `WORKSPACE_PATH` | `--workspace-path` | `/workspace` | Base workspace directory |
+| `WORKSPACE_PATH` | `--workspace-path` | `/home/devbox/project` | Base workspace directory |
 | `MAX_FILE_SIZE` | - | `104857600` | Max file size (100MB) |
 | `TOKEN` | `--token` | auto-generated | Authentication token |
+| `SEALOS_DEVBOX_JWT_TOKEN` | - | - | Alternative authentication token (fallback for TOKEN) |
 
 ### Usage Examples
 ```bash
 # Using environment variables
 export ADDR=0.0.0.0:9757
-export WORKSPACE_PATH=/my/workspace
+export WORKSPACE_PATH=/home/devbox/project
 ./server-rust
 
 # Using command-line arguments
-./server-rust --addr=0.0.0.0:9757 --workspace-path=/my/workspace --token=my-secret-token
+./server-rust --addr=0.0.0.0:9757 --workspace-path=/home/devbox/project --token=my-secret-token
 
 # Mixed approach (CLI args take precedence)
 ADDR=:8080 ./server-rust --addr=0.0.0.0:9757
@@ -177,7 +178,7 @@ API Prefix: `/api/v1`
 
 ### Process Management (`/api/v1/process/`)
 - `POST /api/v1/process/exec` - Execute command with output capture
-  - Body: `{ "command": "ls -la", "cwd": "/workspace" }`
+  - Body: `{ "command": "ls -la", "cwd": "/home/devbox/project" }`
 - `GET /api/v1/process/list` - List all tracked processes with status
 - `GET /api/v1/process/:id/status` - Get process status by ID
 - `POST /api/v1/process/:id/kill` - Terminate process with signal support
@@ -187,7 +188,7 @@ API Prefix: `/api/v1`
 
 ### Shell Sessions (`/api/v1/sessions/`)
 - `POST /api/v1/sessions/create` - Create interactive shell session
-  - Body: `{ "shell": "/bin/bash", "workingDir": "/workspace" }` (both optional)
+  - Body: `{ "shell": "/bin/bash", "workingDir": "/home/devbox/project" }` (both optional)
 - `GET /api/v1/sessions` - List all active sessions
 - `GET /api/v1/sessions/:id` - Get session details by ID
 - `POST /api/v1/sessions/:id/env` - Update session environment variables
@@ -344,7 +345,7 @@ cargo build --release --target x86_64-unknown-linux-musl
 ```bash
 # Production environment variables
 export ADDR=0.0.0.0:9757
-export WORKSPACE_PATH=/data/workspace
+export WORKSPACE_PATH=/home/devbox/project
 export MAX_FILE_SIZE=52428800  # 50MB
 export TOKEN=your-secure-token
 ```

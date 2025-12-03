@@ -1,0 +1,78 @@
+name: server-rust release
+
+on:
+  workflow_dispatch:
+
+concurrency: server-rust-release-${{ github.ref }}
+
+jobs:
+  release:
+    name: Build and Release server-rust
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install nightly toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+
+      - name: Install cargo-cross
+        run: cargo install cargo-cross
+
+      - name: Read crate version
+        id: crate
+        working-directory: packages/server-rust
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "devbox-sdk-server") | .version')
+          if [ -z "$VERSION" ]; then
+            echo "Unable to read version from Cargo metadata" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build release binary
+        working-directory: packages/server-rust
+        run: make build
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          VERSION="${{ steps.crate.outputs.version }}"
+          SHA=$(git rev-parse HEAD)
+          {
+            echo "## devbox-sdk-server v$VERSION"
+            echo ""
+            echo "- Commit: $SHA"
+            echo "- Target: x86_64-unknown-linux-musl"
+            echo ""
+            echo "### Changes"
+            git log -20 --pretty=format:'- %h %s'
+            echo ""
+          } > release-notes.md
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: devbox-sdk-server-v${{ steps.crate.outputs.version }}
+          release_name: devbox-sdk-server v${{ steps.crate.outputs.version }}
+          body_path: release-notes.md
+
+      - name: Upload devbox-sdk-server binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: packages/server-rust/target/x86_64-unknown-linux-musl/release/devbox-sdk-server
+          asset_name: devbox-sdk-server-x86_64-unknown-linux-musl
+          asset_content_type: application/octet-stream

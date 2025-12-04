@@ -66,7 +66,7 @@ jobs:
                 DEST_NAME=devbox-sdk-server-linux-amd64
                 ;;
               aarch64-unknown-linux-musl)
-                DEST_NAME=devbox-sdk-server-linux-arm64
+                DEST_NAME=devbox-sdk-server-linux-aarch64
                 ;;
               *)
                 DEST_NAME=devbox-sdk-server-$TARGET
@@ -112,5 +112,5 @@ jobs:
           body_path: release-notes.md
           files: |
             packages/server-rust/dist/devbox-sdk-server-linux-amd64
-            packages/server-rust/dist/devbox-sdk-server-linux-arm64
+            packages/server-rust/dist/devbox-sdk-server-linux-aarch64
           fail_on_unmatched_files: true

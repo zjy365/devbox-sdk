@@ -57,22 +57,13 @@ jobs:
           } > release-notes.md
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: devbox-sdk-server-v${{ steps.crate.outputs.version }}
-          release_name: devbox-sdk-server v${{ steps.crate.outputs.version }}
+          name: devbox-sdk-server v${{ steps.crate.outputs.version }}
           body_path: release-notes.md
-
-      - name: Upload devbox-sdk-server binary
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: packages/server-rust/target/x86_64-unknown-linux-musl/release/devbox-sdk-server
-          asset_name: devbox-sdk-server-x86_64-unknown-linux-musl
-          asset_content_type: application/octet-stream
+          files: |
+            packages/server-rust/target/x86_64-unknown-linux-musl/release/devbox-sdk-server#devbox-sdk-server-x86_64-unknown-linux-musl

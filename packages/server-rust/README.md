@@ -83,8 +83,10 @@ packages/server-rust/
 
 2. **Build an optimized release binary**:
    ```bash
-   make build
-   # Binary will be created at: ./target/x86_64-unknown-linux-musl/release/server-rust
+  make build                               # defaults to TARGET=x86_64-unknown-linux-musl
+  make build TARGET=aarch64-unknown-linux-musl
+  # Binary will be created at: ./target/<target>/release/devbox-sdk-server
+  # Build both release binaries at once: make build-all
    ```
 
 3. **Build with UPX compression** (optional, requires UPX):
@@ -97,8 +99,19 @@ packages/server-rust/
    ```bash
    make run
    # Or using the built binary:
-   ./target/release/server-rust
+  ./target/<target>/release/devbox-sdk-server
    ```
+
+### Multi-architecture builds
+
+Cross-compilation is handled through `cargo cross`. Use the `TARGET` variable (defaults to `x86_64-unknown-linux-musl`) to select an architecture:
+
+| TARGET | Platform | Output binary |
+|--------|----------|----------------|
+| `x86_64-unknown-linux-musl` | Linux x86_64 (glibc-compatible, fully static) | `./target/x86_64-unknown-linux-musl/release/devbox-sdk-server` |
+| `aarch64-unknown-linux-musl` | Linux ARM64 (fully static) | `./target/aarch64-unknown-linux-musl/release/devbox-sdk-server` |
+
+Run `make build TARGET=<triple>` to produce a single binary or `make build-all` to generate both release artifacts in one pass.
 
 ### Binary Size Optimizations
 The release build is heavily optimized for size:

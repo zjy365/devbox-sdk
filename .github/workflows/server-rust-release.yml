@@ -11,11 +11,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      SERVER_RUST_TARGETS: x86_64-unknown-linux-musl aarch64-unknown-linux-musl
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Cache cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/server-rust/target
+          key: ${{ runner.os }}-server-rust-${{ hashFiles('packages/server-rust/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-server-rust-
 
       - name: Install nightly toolchain
         uses: dtolnay/rust-toolchain@master
@@ -36,9 +49,37 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build release binary
+      - name: Build release binaries
         working-directory: packages/server-rust
-        run: make build
+        run: |
+          for TARGET in $SERVER_RUST_TARGETS; do
+            make build TARGET=$TARGET
+          done
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p packages/server-rust/dist
+          for TARGET in $SERVER_RUST_TARGETS; do
+            SRC="packages/server-rust/target/$TARGET/release/devbox-sdk-server"
+            case "$TARGET" in
+              x86_64-unknown-linux-musl)
+                DEST_NAME=devbox-sdk-server-linux-amd64
+                ;;
+              aarch64-unknown-linux-musl)
+                DEST_NAME=devbox-sdk-server-linux-arm64
+                ;;
+              *)
+                DEST_NAME=devbox-sdk-server-$TARGET
+                ;;
+            esac
+            DEST="packages/server-rust/dist/$DEST_NAME"
+            if [ ! -f "$SRC" ]; then
+              echo "Expected binary not found at $SRC" >&2
+              exit 1
+            fi
+            cp "$SRC" "$DEST"
+            chmod +x "$DEST"
+          done
 
       - name: Generate release notes
         id: notes
@@ -49,7 +90,11 @@ jobs:
             echo "## devbox-sdk-server v$VERSION"
             echo ""
             echo "- Commit: $SHA"
-            echo "- Target: x86_64-unknown-linux-musl"
+            echo ""
+            echo "### Targets"
+            for TARGET in $SERVER_RUST_TARGETS; do
+              echo "- $TARGET"
+            done
             echo ""
             echo "### Changes"
             git log -20 --pretty=format:'- %h %s'
@@ -65,5 +110,7 @@ jobs:
           tag_name: devbox-sdk-server-v${{ steps.crate.outputs.version }}
           name: devbox-sdk-server v${{ steps.crate.outputs.version }}
           body_path: release-notes.md
-          files: packages/server-rust/target/x86_64-unknown-linux-musl/release/devbox-sdk-server
+          files: |
+            packages/server-rust/dist/devbox-sdk-server-linux-amd64
+            packages/server-rust/dist/devbox-sdk-server-linux-arm64
           fail_on_unmatched_files: true

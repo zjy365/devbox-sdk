@@ -65,5 +65,5 @@ jobs:
           tag_name: devbox-sdk-server-v${{ steps.crate.outputs.version }}
           name: devbox-sdk-server v${{ steps.crate.outputs.version }}
           body_path: release-notes.md
-          files: |
-            packages/server-rust/target/x86_64-unknown-linux-musl/release/devbox-sdk-server#devbox-sdk-server-x86_64-unknown-linux-musl
+          files: packages/server-rust/target/x86_64-unknown-linux-musl/release/devbox-sdk-server
+          fail_on_unmatched_files: true

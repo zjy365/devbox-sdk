@@ -63,7 +63,7 @@ jobs:
             SRC="packages/server-rust/target/$TARGET/release/devbox-sdk-server"
             case "$TARGET" in
               x86_64-unknown-linux-musl)
-                DEST_NAME=devbox-sdk-server-linux-amd64
+                DEST_NAME=devbox-sdk-server-linux-x86_64
                 ;;
               aarch64-unknown-linux-musl)
                 DEST_NAME=devbox-sdk-server-linux-aarch64
@@ -111,6 +111,6 @@ jobs:
           name: devbox-sdk-server v${{ steps.crate.outputs.version }}
           body_path: release-notes.md
           files: |
-            packages/server-rust/dist/devbox-sdk-server-linux-amd64
+            packages/server-rust/dist/devbox-sdk-server-linux-x86_64
             packages/server-rust/dist/devbox-sdk-server-linux-aarch64
           fail_on_unmatched_files: true

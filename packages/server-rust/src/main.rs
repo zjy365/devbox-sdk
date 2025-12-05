@@ -52,6 +52,33 @@ async fn main() {
         .expect("Failed to bind to address");
     println!("Server running on {}", addr);
     axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("Failed to start server");
+}
+
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+
+        let mut terminate = signal(SignalKind::terminate()).expect("Failed to install SIGTERM handler");
+        tokio::select! {
+            _ = wait_for_ctrl_c() => {},
+            _ = terminate.recv() => {},
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        wait_for_ctrl_c().await;
+    }
+
+    println!("Shutdown signal received, stopping server...");
+}
+
+async fn wait_for_ctrl_c() {
+    tokio::signal::ctrl_c()
+        .await
+        .expect("Failed to install Ctrl+C handler");
 }

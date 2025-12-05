@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "ws", "multipart", "tokio", "query"] }
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "net", "fs", "process", "sync", "time", "io-util"] }
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "net", "fs", "process", "sync", "time", "io-util", "signal"] }
 serde = { version = "1", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
 base64 = { version = "0.22.1", default-features = false, features = ["std"] }

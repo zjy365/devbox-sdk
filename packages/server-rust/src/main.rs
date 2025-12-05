@@ -25,7 +25,7 @@ async fn main() {
         println!("    --addr=<ADDRESS>            Sets the server listening address. [env: ADDR] [default: 0.0.0.0:9757]");
         println!("    --workspace-path=<PATH>     Sets the base workspace directory. [env: WORKSPACE_PATH] [default: /home/devbox/project]");
         println!("    --max-file-size=<BYTES>     Sets the maximum file size for uploads in bytes. [env: MAX_FILE_SIZE] [default: 104857600]");
-        println!("    --token=<TOKEN>             Sets the authentication token. [env: TOKEN / SEALOS_DEVBOX_JWT_SECRET] [default: a random token if not provided]");
+        println!("    --token=<TOKEN>             Sets the authentication token. [env: TOKEN / DEVBOX_JWT_SECRET] [default: a random token if not provided]");
         println!();
         println!("    --help                      Prints this help information.");
         println!();

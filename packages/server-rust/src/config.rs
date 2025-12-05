@@ -26,7 +26,7 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(104857600);
         let mut token = std::env::var("TOKEN")
-            .or_else(|_| std::env::var("SEALOS_DEVBOX_JWT_SECRET"))
+            .or_else(|_| std::env::var("DEVBOX_JWT_SECRET"))
             .ok();
 
         // Check command line args for overrides (simple implementation)
@@ -89,7 +89,7 @@ mod tests {
 
         // 1. Test TOKEN preference
         env::set_var("TOKEN", "test_token_1");
-        env::set_var("SEALOS_DEVBOX_JWT_SECRET", "test_jwt_1");
+        env::set_var("DEVBOX_JWT_SECRET", "test_jwt_1");
 
         let config = Config::load();
         // We can't easily control args() here, but hopefully no --token arg is passed to test runner
@@ -107,13 +107,13 @@ mod tests {
 
         // 2. Test Fallback
         env::remove_var("TOKEN");
-        env::set_var("SEALOS_DEVBOX_JWT_SECRET", "test_jwt_2");
+        env::set_var("DEVBOX_JWT_SECRET", "test_jwt_2");
 
         let config = Config::load();
         assert_eq!(config.token, Some("test_jwt_2".to_string()));
 
         // Cleanup
         env::remove_var("TOKEN");
-        env::remove_var("SEALOS_DEVBOX_JWT_SECRET");
+        env::remove_var("DEVBOX_JWT_SECRET");
     }
 }

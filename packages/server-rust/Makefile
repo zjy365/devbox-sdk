@@ -18,7 +18,10 @@ help: ## Show available commands
 
 build: ## Build release binary (override TARGET=<triple> for other arches)
 	@echo "Building target $(TARGET)"
-	@cargo cross build --toolchain nightly --build-std -Z build-std-features="optimize_for_size" --release --target $(TARGET)
+	@cargo cross +nightly build \
+		--build-std --build-std-features="optimize_for_size" \
+		--panic-immediate-abort \
+		--release --target $(TARGET)
 	@echo "Binary: $(BUILD_DIR)/$(BINARY_NAME)"
 
 build-all: ## Build release binaries for all supported targets

@@ -11,12 +11,12 @@ export class ContainerUrlResolver {
   private cache: Map<string, { data: unknown; timestamp: number }> = new Map()
   private readonly CACHE_TTL = 60000
   private mockServerUrl?: string
-  private devboxServerUrl?: string
+  private baseUrl: string
   private timeout: number
 
   constructor(config: DevboxSDKConfig) {
     this.mockServerUrl = config.mockServerUrl || process.env.MOCK_SERVER_URL
-    this.devboxServerUrl = config.devboxServerUrl || process.env.DEVBOX_SERVER_URL
+    this.baseUrl = config.baseUrl || process.env.DEVBOX_API_URL || 'https://devbox.usw.sealos.io'
     this.timeout = config.http?.timeout || 30000
   }
 
@@ -28,8 +28,22 @@ export class ContainerUrlResolver {
     devboxName: string,
     operation: (client: DevboxContainerClient) => Promise<T>
   ): Promise<T> {
-    const serverUrl = await this.getServerUrl(devboxName)
-    const client = new DevboxContainerClient(serverUrl, this.timeout)
+    const devboxInfo = await this.getDevboxInfo(devboxName)
+    const serverUrl = this.extractUrlFromDevboxInfo(devboxInfo!)
+    if (!serverUrl) {
+      throw new DevboxSDKError(
+        `Devbox '${devboxName}' does not have an accessible URL`,
+        ERROR_CODES.CONNECTION_FAILED
+      )
+    }
+    const token = devboxInfo?.agentServer?.token
+    if (!token) {
+      throw new DevboxSDKError(
+        `Devbox '${devboxName}' does not have an agent server token`,
+        ERROR_CODES.INTERNAL_ERROR
+      )
+    }
+    const client = new DevboxContainerClient(serverUrl, this.timeout, token)
     return await operation(client)
   }
 
@@ -71,9 +85,6 @@ export class ContainerUrlResolver {
     if (this.mockServerUrl) {
       return this.mockServerUrl
     }
-    if (this.devboxServerUrl) {
-      return this.devboxServerUrl
-    }
     return null
   }
 
@@ -96,6 +107,18 @@ export class ContainerUrlResolver {
   }
 
   private extractUrlFromDevboxInfo(devboxInfo: DevboxInfo): string | null {
+    // Priority 1: Use agentServer URL if available
+    if (devboxInfo.agentServer?.url) {
+      const serviceName = devboxInfo.agentServer.url
+      // 从 baseUrl 中提取域名部分
+      // 例如: https://devbox.staging-usw-1.sealos.io -> staging-usw-1.sealos.io
+      const urlObj = new URL(this.baseUrl)
+      const domain = urlObj.hostname.replace(/^devbox\./, '') // 移除 devbox. 前缀
+      // 构建完整的 URL: https://devbox-{serviceName}-agent.{domain}/
+      return `${urlObj.protocol}//devbox-${serviceName}-agent.${domain}`
+    }
+
+    // Priority 2: Use port addresses
     if (devboxInfo.ports && devboxInfo.ports.length > 0) {
       const port = devboxInfo.ports[0]
       if (port?.publicAddress) {
@@ -106,6 +129,7 @@ export class ContainerUrlResolver {
       }
     }
 
+    // Priority 3: Fallback to podIP
     if (devboxInfo.podIP) {
       return `http://${devboxInfo.podIP}:3000`
     }
@@ -160,8 +184,12 @@ export class ContainerUrlResolver {
 
   async checkDevboxHealth(devboxName: string): Promise<boolean> {
     try {
-      const serverUrl = await this.getServerUrl(devboxName)
-      const client = new DevboxContainerClient(serverUrl, this.timeout)
+      const devboxInfo = await this.getDevboxInfo(devboxName)
+      const serverUrl = this.extractUrlFromDevboxInfo(devboxInfo!)
+      if (!serverUrl) return false
+      const token = devboxInfo?.agentServer?.token
+      if (!token) return false
+      const client = new DevboxContainerClient(serverUrl, this.timeout, token)
       const response = await client.get<{ status?: string }>('/health')
       return response.data?.status === 'healthy'
     } catch (error) {

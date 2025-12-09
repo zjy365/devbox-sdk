@@ -33,7 +33,7 @@ class SealosAPIClient {
   private rejectUnauthorized: boolean
   private getAuthHeaders?: () => Record<string, string>
 
-  constructor(config: { 
+  constructor(config: {
     baseUrl?: string
     timeout?: number
     retries?: number
@@ -43,7 +43,7 @@ class SealosAPIClient {
     this.baseUrl = config.baseUrl || 'https://devbox.usw.sealos.io'
     this.timeout = config.timeout || 30000
     this.retries = config.retries || 3
-    this.rejectUnauthorized = config.rejectUnauthorized ?? 
+    this.rejectUnauthorized = config.rejectUnauthorized ??
       (process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0')
     this.getAuthHeaders = config.getAuthHeaders
     if (!this.rejectUnauthorized) {
@@ -91,13 +91,13 @@ class SealosAPIClient {
         const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
         // console.log('fetchOptions',fetchOptions)
- 
+
         const response = await fetch(url.toString(), {
           ...fetchOptions,
           signal: controller.signal,
         })
 
-        // console.log('response.url',response.ok,url.toString(),fetchOptions,)
+        // console.log('response.url', response.ok, url.toString(), fetchOptions,)
 
         clearTimeout(timeoutId)
 
@@ -109,20 +109,20 @@ class SealosAPIClient {
               errorData = (await response.json()) as { error?: string; code?: string; timestamp?: number }
             } else {
               const errorText = await response.text().catch(() => 'Unable to read error response')
-            try {
+              try {
                 errorData = JSON.parse(errorText) as { error?: string; code?: string; timestamp?: number }
               } catch {
-                
+
                 errorData = { error: errorText }
               }
             }
           } catch (e) {
             // 忽略解析错误，使用默认错误信息
           }
-          
+
           const errorMessage = errorData.error || response.statusText
           const errorCode = errorData.code || this.getErrorCodeFromStatus(response.status)
-          
+
           throw new DevboxSDKError(
             errorMessage,
             errorCode,
@@ -139,8 +139,8 @@ class SealosAPIClient {
         const data = contentType?.includes('application/json')
           ? await response.json()
           : await response.text()
-        
-        // console.log('response.data',data)
+
+        console.log('response.data', url.toString(), data)
 
         return {
           data,
@@ -150,7 +150,7 @@ class SealosAPIClient {
         }
       } catch (error) {
         lastError = error as Error
-        
+
         if (error instanceof Error && 'cause' in error && error.cause instanceof Error) {
           const cause = error.cause
           if (cause.message.includes('certificate') || (cause as any).code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
@@ -526,11 +526,11 @@ export class DevboxAPI {
       podIP: sshInfo.podIP,
       ssh: sshInfo.ssh
         ? {
-            host: sshInfo.ssh.host,
-            port: sshInfo.ssh.port,
-            user: sshInfo.ssh.user,
-            privateKey: sshInfo.ssh.privateKey,
-          }
+          host: sshInfo.ssh.host,
+          port: sshInfo.ssh.port,
+          user: sshInfo.ssh.user,
+          privateKey: sshInfo.ssh.privateKey,
+        }
         : undefined,
     }
   }
@@ -588,7 +588,7 @@ export class DevboxAPI {
    */
   private transformDetailToDevboxInfo(detail: DevboxDetail): DevboxInfo {
     // 处理 runtime：可能是字符串或枚举值
-    const runtime = typeof detail.runtime === 'string' 
+    const runtime = typeof detail.runtime === 'string'
       ? this.stringToRuntime(detail.runtime)
       : detail.runtime
 
@@ -615,6 +615,7 @@ export class DevboxAPI {
       podIP,
       ssh,
       ports: detail.ports,
+      agentServer: detail.agentServer,
     }
   }
 
@@ -623,8 +624,8 @@ export class DevboxAPI {
    */
   private transformGetResponseToDevboxInfo(getResponse: DevboxGetResponse): DevboxInfo {
     // 处理 status：可能是字符串或对象
-    const status = typeof getResponse.status === 'string' 
-      ? getResponse.status 
+    const status = typeof getResponse.status === 'string'
+      ? getResponse.status
       : getResponse.status.value
 
     // 处理 resources：优先使用 resources 对象，否则使用直接的 cpu/memory 字段
@@ -634,7 +635,7 @@ export class DevboxAPI {
     }
 
     // 处理 runtime：优先使用 runtime 字段，否则使用 iconId
-    const runtime = getResponse.runtime 
+    const runtime = getResponse.runtime
       ? this.stringToRuntime(getResponse.runtime)
       : (getResponse.iconId ? this.stringToRuntime(getResponse.iconId) : DevboxRuntime.NODE_JS)
 

@@ -4,10 +4,12 @@ import type { HTTPResponse, RequestOptions } from './types'
 export class DevboxContainerClient {
   private baseUrl: string
   private timeout: number
+  private token: string
 
-  constructor(baseUrl: string, timeout = 30000) {
+  constructor(baseUrl: string, timeout: number, token: string) {
     this.baseUrl = baseUrl
     this.timeout = timeout
+    this.token = token
   }
 
   async get<T = unknown>(path: string, options?: RequestOptions): Promise<HTTPResponse<T>> {
@@ -51,7 +53,8 @@ export class DevboxContainerClient {
       headers: {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...options?.headers,
-        "Authorization": "Bearer 1234",//TODO: remove this
+        // Base64 解码 token 后作为 Bearer token
+        "Authorization": `Bearer ${Buffer.from(this.token, 'base64').toString('utf-8')}`,
       },
       signal: options?.signal,
     }

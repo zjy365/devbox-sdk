@@ -295,6 +295,16 @@ export interface DevboxListApiResponse {
 }
 
 /**
+ * Agent server configuration
+ */
+export interface AgentServer {
+  /** Service URL or hostname for the agent server */
+  url: string
+  /** Authentication token for agent server */
+  token: string
+}
+
+/**
  * Detailed devbox information
  */
 export interface DevboxDetail {
@@ -332,6 +342,7 @@ export interface DevboxDetail {
     name: string
     status: string
   }>
+  agentServer?: AgentServer
 }
 
 /**

@@ -64,7 +64,7 @@ describe('Devbox SDK Process Management Tests', () => {
 
     const config: DevboxCreateConfig = {
       name: TEST_DEVBOX_NAME,
-      runtime: DevboxRuntime.NODE_JS,
+      runtime: DevboxRuntime.TEST_AGENT,
       resource: {
         cpu: 1,
         memory: 2,

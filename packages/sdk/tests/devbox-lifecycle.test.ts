@@ -48,7 +48,7 @@ describe('Devbox Lifecycle Management', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: {
           cpu: 1,
           memory: 2,
@@ -87,7 +87,7 @@ describe('Devbox Lifecycle Management', () => {
     }, 120000)
 
     it('should create Devboxes with different runtimes', async () => {
-      const runtimes = [DevboxRuntime.NODE_JS, DevboxRuntime.PYTHON, DevboxRuntime.NEXT_JS, DevboxRuntime.REACT]
+      const runtimes = [DevboxRuntime.TEST_AGENT, DevboxRuntime.PYTHON, DevboxRuntime.NEXT_JS, DevboxRuntime.REACT]
       const devboxes: DevboxInstance[] = []
 
       for (const runtime of runtimes) {
@@ -111,7 +111,7 @@ describe('Devbox Lifecycle Management', () => {
       // Create first one
       await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -120,7 +120,7 @@ describe('Devbox Lifecycle Management', () => {
       await expect(
         sdk.createDevbox({
           name,
-          runtime: DevboxRuntime.NODE_JS,
+          runtime: DevboxRuntime.TEST_AGENT,
           resource: { cpu: 1, memory: 2 },
         })
       ).rejects.toThrow()
@@ -134,7 +134,7 @@ describe('Devbox Lifecycle Management', () => {
       // Create first
       await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -151,7 +151,7 @@ describe('Devbox Lifecycle Management', () => {
       // Create Devbox
       const created = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -182,7 +182,7 @@ describe('Devbox Lifecycle Management', () => {
         const name = generateDevboxName(`list-${i}`)
         await sdk.createDevbox({
           name,
-          runtime: DevboxRuntime.NODE_JS,
+          runtime: DevboxRuntime.TEST_AGENT,
           resource: { cpu: 1, memory: 2 },
         })
         createdDevboxes.push(name)
@@ -211,7 +211,7 @@ describe('Devbox Lifecycle Management', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -252,7 +252,7 @@ describe('Devbox Lifecycle Management', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -277,7 +277,7 @@ describe('Devbox Lifecycle Management', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -306,7 +306,7 @@ describe('Devbox Lifecycle Management', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -335,7 +335,7 @@ describe('Devbox Lifecycle Management', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
@@ -367,7 +367,7 @@ describe('Devbox Lifecycle Management', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
 
@@ -396,7 +396,7 @@ describe('Devbox Lifecycle Management', () => {
       // 1. Create
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
         ports: [{ number: 3000, protocol: 'HTTP' }],
       })
@@ -440,7 +440,7 @@ describe('Devbox Lifecycle Management', () => {
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)

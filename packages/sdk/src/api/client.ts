@@ -140,7 +140,7 @@ class SealosAPIClient {
           ? await response.json()
           : await response.text()
 
-        console.log('response.data', url.toString(), data)
+        // console.log('response.data', url.toString(), data)
 
         return {
           data,
@@ -550,7 +550,7 @@ export class DevboxAPI {
    */
   private stringToRuntime(value: string | null | undefined): DevboxRuntime {
     if (!value) {
-      return DevboxRuntime.NODE_JS // Default fallback
+      return DevboxRuntime.TEST_AGENT // Default fallback
     }
     // Check if the value matches any enum value
     const runtimeValues = Object.values(DevboxRuntime) as string[]
@@ -558,7 +558,7 @@ export class DevboxAPI {
       return value as DevboxRuntime
     }
     // If not found, return default
-    return DevboxRuntime.NODE_JS
+    return DevboxRuntime.TEST_AGENT
   }
 
   private transformCreateResponseToDevboxInfo(
@@ -637,7 +637,7 @@ export class DevboxAPI {
     // Handle runtime: prefer runtime field, otherwise use iconId
     const runtime = getResponse.runtime
       ? this.stringToRuntime(getResponse.runtime)
-      : (getResponse.iconId ? this.stringToRuntime(getResponse.iconId) : DevboxRuntime.NODE_JS)
+      : (getResponse.iconId ? this.stringToRuntime(getResponse.iconId) : DevboxRuntime.TEST_AGENT)
 
     return {
       name: getResponse.name,

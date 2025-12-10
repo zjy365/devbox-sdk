@@ -1,6 +1,6 @@
 name: build-server-go
 
-# 手动触发构建 server-go 的二进制
+# Manually trigger build of server-go binary
 on:
   workflow_dispatch:
 

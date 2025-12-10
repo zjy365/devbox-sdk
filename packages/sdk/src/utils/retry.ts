@@ -1,10 +1,10 @@
 /**
- * 重试策略工具
- * 为网络请求和关键操作提供自动重试能力
+ * Retry strategy utilities
+ * Provides automatic retry capability for network requests and critical operations
  */
 
 /**
- * 可重试的错误接口
+ * Retryable error interface
  */
 export interface RetryableError {
   code?: string
@@ -15,19 +15,19 @@ export interface RetryableError {
 }
 
 export interface RetryOptions {
-  /** 最大重试次数 */
+  /** Maximum number of retries */
   maxRetries: number
-  /** 初始延迟时间（毫秒） */
+  /** Initial delay time in milliseconds */
   initialDelay: number
-  /** 最大延迟时间（毫秒） */
+  /** Maximum delay time in milliseconds */
   maxDelay: number
-  /** 延迟增长因子（指数退避） */
+  /** Delay growth factor (exponential backoff) */
   factor: number
-  /** 总超时时间（毫秒），可选 */
+  /** Total timeout in milliseconds, optional */
   timeout?: number
-  /** 自定义重试条件判断函数 */
+  /** Custom retry condition function */
   shouldRetry?: (error: unknown) => boolean
-  /** 重试前的回调 */
+  /** Callback before retry */
   onRetry?: (error: unknown, attempt: number) => void
 }
 
@@ -39,7 +39,7 @@ export const DEFAULT_RETRY_OPTIONS: RetryOptions = {
 }
 
 /**
- * 执行带重试的异步操作
+ * Execute async operation with retry
  *
  * @example
  * ```ts
@@ -50,7 +50,7 @@ export const DEFAULT_RETRY_OPTIONS: RetryOptions = {
  * ```
  */
 /**
- * 检查是否超时
+ * Check if operation has timed out
  */
 function checkTimeout(startTime: number, timeout?: number): void {
   if (timeout && Date.now() - startTime > timeout) {
@@ -59,14 +59,14 @@ function checkTimeout(startTime: number, timeout?: number): void {
 }
 
 /**
- * 计算重试延迟时间
+ * Calculate retry delay time
  */
 function calculateDelay(attempt: number, opts: RetryOptions): number {
   return Math.min(opts.initialDelay * opts.factor ** attempt, opts.maxDelay)
 }
 
 /**
- * 处理重试日志和回调
+ * Handle retry logging and callbacks
  */
 function handleRetryCallback(error: unknown, attempt: number, opts: RetryOptions): void {
   const errorObj = error as Error
@@ -94,31 +94,31 @@ export async function withRetry<T>(
     } catch (error) {
       const lastError = error as Error
 
-      // 最后一次尝试，直接抛出错误
+      // Last attempt, throw error directly
       if (attempt === opts.maxRetries) {
         throw lastError
       }
 
-      // 判断是否可重试
+      // Determine if error is retryable
       const shouldRetry = opts.shouldRetry ? opts.shouldRetry(error) : isRetryable(error)
 
       if (!shouldRetry) {
         throw lastError
       }
 
-      // 计算延迟并等待
+      // Calculate delay and wait
       const delay = calculateDelay(attempt, opts)
       handleRetryCallback(error, attempt, opts)
       await sleep(delay)
     }
   }
 
-  // 这里不应该到达，但为了类型安全
+  // This should not be reached, but for type safety
   throw new Error('Unexpected error in retry logic')
 }
 
 /**
- * 检查是否为可重试的网络错误
+ * Check if error is a retryable network error
  */
 function isRetryableNetworkError(errorObj: RetryableError): boolean {
   const retryableNetworkErrors = [
@@ -134,7 +134,7 @@ function isRetryableNetworkError(errorObj: RetryableError): boolean {
 }
 
 /**
- * 检查是否为可重试的HTTP状态码
+ * Check if error is a retryable HTTP status code
  */
 function isRetryableHTTPStatus(errorObj: RetryableError): boolean {
   const status = errorObj.status || errorObj.statusCode
@@ -143,17 +143,17 @@ function isRetryableHTTPStatus(errorObj: RetryableError): boolean {
     return false
   }
 
-  // 5xx 服务器错误可重试
+  // 5xx server errors are retryable
   if (status >= 500 && status < 600) {
     return true
   }
 
-  // 429 Too Many Requests 可重试
+  // 429 Too Many Requests is retryable
   if (status === 429) {
     return true
   }
 
-  // 408 Request Timeout 可重试
+  // 408 Request Timeout is retryable
   if (status === 408) {
     return true
   }
@@ -162,7 +162,7 @@ function isRetryableHTTPStatus(errorObj: RetryableError): boolean {
 }
 
 /**
- * 检查是否为超时错误
+ * Check if error is a timeout error
  */
 function isTimeoutError(errorObj: RetryableError): boolean {
   if (!errorObj.message) {
@@ -177,7 +177,7 @@ function isTimeoutError(errorObj: RetryableError): boolean {
 }
 
 /**
- * 判断错误是否可重试
+ * Determine if error is retryable
  */
 function isRetryable(error: unknown): boolean {
   const errorObj = error as RetryableError
@@ -254,14 +254,14 @@ function isRetryable(error: unknown): boolean {
 }
 
 /**
- * 延迟函数
+ * Sleep/delay function
  */
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 /**
- * 带重试的批量操作
+ * Batch operations with retry
  *
  * @example
  * ```ts
@@ -279,7 +279,7 @@ export async function retryBatch<T>(
 }
 
 /**
- * 带重试的批量操作（允许部分失败）
+ * Batch operations with retry (allows partial failures)
  *
  * @example
  * ```ts
@@ -298,7 +298,7 @@ export async function retryBatchSettled<T>(
 }
 
 /**
- * 创建重试包装器
+ * Create retry wrapper
  *
  * @example
  * ```ts
@@ -320,31 +320,31 @@ export function createRetryWrapper<T extends (...args: unknown[]) => Promise<unk
 }
 
 /**
- * 断路器状态
+ * Circuit breaker state
  */
 enum CircuitState {
-  CLOSED = 'CLOSED', // 正常状态
-  OPEN = 'OPEN', // 断开状态（快速失败）
-  HALF_OPEN = 'HALF_OPEN', // 半开状态（尝试恢复）
+  CLOSED = 'CLOSED', // Normal state
+  OPEN = 'OPEN', // Open state (fast fail)
+  HALF_OPEN = 'HALF_OPEN', // Half-open state (attempting recovery)
 }
 
 /**
- * 断路器配置
+ * Circuit breaker configuration
  */
 export interface CircuitBreakerOptions {
-  /** 失败阈值 */
+  /** Failure threshold */
   failureThreshold: number
-  /** 成功阈值（用于从半开状态恢复） */
+  /** Success threshold (for recovery from half-open state) */
   successThreshold: number
-  /** 超时时间（毫秒） */
+  /** Timeout in milliseconds */
   timeout: number
-  /** 重置超时（毫秒） */
+  /** Reset timeout in milliseconds */
   resetTimeout: number
 }
 
 /**
- * 断路器实现
- * 防止对故障服务的重复调用
+ * Circuit breaker implementation
+ * Prevents repeated calls to failing services
  */
 export class CircuitBreaker<T extends (...args: unknown[]) => Promise<unknown>> {
   private state: CircuitState = CircuitState.CLOSED
@@ -362,7 +362,7 @@ export class CircuitBreaker<T extends (...args: unknown[]) => Promise<unknown>> 
       if (Date.now() < this.nextAttempt) {
         throw new Error('Circuit breaker is OPEN')
       }
-      // 尝试半开状态
+      // Attempt half-open state
       this.state = CircuitState.HALF_OPEN
       this.successCount = 0
     }
@@ -412,7 +412,7 @@ export class CircuitBreaker<T extends (...args: unknown[]) => Promise<unknown>> 
 }
 
 /**
- * 创建断路器
+ * Create circuit breaker
  */
 export function createCircuitBreaker<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,

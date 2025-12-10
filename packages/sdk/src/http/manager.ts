@@ -110,11 +110,11 @@ export class ContainerUrlResolver {
     // Priority 1: Use agentServer URL if available
     if (devboxInfo.agentServer?.url) {
       const serviceName = devboxInfo.agentServer.url
-      // 从 baseUrl 中提取域名部分
-      // 例如: https://devbox.staging-usw-1.sealos.io -> staging-usw-1.sealos.io
+      // Extract domain part from baseUrl
+      // Example: https://devbox.staging-usw-1.sealos.io -> staging-usw-1.sealos.io
       const urlObj = new URL(this.baseUrl)
-      const domain = urlObj.hostname.replace(/^devbox\./, '') // 移除 devbox. 前缀
-      // 构建完整的 URL: https://devbox-{serviceName}-agent.{domain}/
+      const domain = urlObj.hostname.replace(/^devbox\./, '') // Remove devbox. prefix
+      // Build complete URL: https://devbox-{serviceName}-agent.{domain}/
       return `${urlObj.protocol}//devbox-${serviceName}-agent.${domain}`
     }
 

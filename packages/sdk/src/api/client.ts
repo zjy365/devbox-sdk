@@ -117,7 +117,7 @@ class SealosAPIClient {
               }
             }
           } catch (e) {
-            // 忽略解析错误，使用默认错误信息
+            // Ignore parsing error, use default error message
           }
 
           const errorMessage = errorData.error || response.statusText
@@ -587,12 +587,12 @@ export class DevboxAPI {
    * Transform DevboxDetail (actual API response) to DevboxInfo
    */
   private transformDetailToDevboxInfo(detail: DevboxDetail): DevboxInfo {
-    // 处理 runtime：可能是字符串或枚举值
+    // Handle runtime: may be string or enum value
     const runtime = typeof detail.runtime === 'string'
       ? this.stringToRuntime(detail.runtime)
       : detail.runtime
 
-    // 处理 SSH 信息：只在 privateKey 存在时设置
+    // Handle SSH info: only set if privateKey exists
     const ssh = detail.ssh?.privateKey ? {
       host: detail.ssh.host,
       port: detail.ssh.port,
@@ -600,11 +600,11 @@ export class DevboxAPI {
       privateKey: detail.ssh.privateKey,
     } : undefined
 
-    // 提取 podIP（从 pods 数组中获取，如果存在）
+    // Extract podIP (from pods array if exists)
     let podIP: string | undefined
     if (detail.pods && detail.pods.length > 0) {
-      // 尝试从 pods 中提取 IP，这里可能需要根据实际 API 返回结构调整
-      // 如果 API 返回的 pods 包含 IP 信息，可以在这里提取
+      // Try to extract IP from pods, may need to adjust based on actual API response structure
+      // If API returns pods with IP info, can extract here
     }
 
     return {
@@ -623,18 +623,18 @@ export class DevboxAPI {
    * Transform DevboxGetResponse to DevboxInfo (legacy method, kept for backward compatibility)
    */
   private transformGetResponseToDevboxInfo(getResponse: DevboxGetResponse): DevboxInfo {
-    // 处理 status：可能是字符串或对象
+    // Handle status: may be string or object
     const status = typeof getResponse.status === 'string'
       ? getResponse.status
       : getResponse.status.value
 
-    // 处理 resources：优先使用 resources 对象，否则使用直接的 cpu/memory 字段
+    // Handle resources: prefer resources object, otherwise use direct cpu/memory fields
     const resources = getResponse.resources || {
       cpu: getResponse.cpu || 0,
       memory: getResponse.memory || 0,
     }
 
-    // 处理 runtime：优先使用 runtime 字段，否则使用 iconId
+    // Handle runtime: prefer runtime field, otherwise use iconId
     const runtime = getResponse.runtime
       ? this.stringToRuntime(getResponse.runtime)
       : (getResponse.iconId ? this.stringToRuntime(getResponse.iconId) : DevboxRuntime.NODE_JS)

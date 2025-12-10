@@ -1,36 +1,36 @@
 /**
- * Devbox SDK 端到端集成测试
+ * Devbox SDK End-to-End Integration Tests
  *
- * 测试目的：
- * 本测试文件用于验证 Devbox SDK 的核心功能，包括：
- * 1. Devbox 实例的生命周期管理（创建、启动、等待就绪）
- * 2. 通过 Go Server API 操作 Devbox 实例的完整流程
- * 3. SDK 的数据转换逻辑（Buffer ↔ base64 ↔ JSON）
- * 4. SDK 与 Go Server 的集成兼容性
+ * Test Purpose:
+ * This test file validates core Devbox SDK functionality, including:
+ * 1. Devbox instance lifecycle management (create, start, wait for ready)
+ * 2. Complete workflow for operating Devbox instances through the Go Server API
+ * 3. SDK data transformation logic (Buffer ↔ base64 ↔ JSON)
+ * 4. SDK integration compatibility with Go Server
  *
- * 测试架构：
- * - Devbox SDK → Devbox API (Kubernetes) → 创建/管理 Devbox 实例
- * - Devbox SDK → Go Server API → 操作实例中的文件/进程/会话
+ * Test Architecture:
+ * - Devbox SDK → Devbox API (Kubernetes) → Create/manage Devbox instances
+ * - Devbox SDK → Go Server API → Operate files/processes/sessions in instances
  *
- * 为什么使用 mockServerUrl：
- * 当前 Go Server 尚未内置到 Devbox 实例中，因此使用 mockServerUrl 指向本地运行的 Go Server
- * 进行端到端测试。当 Go Server 内置后，ConnectionManager 会自动从 Devbox 实例的 ports 信息中
- * 获取真实的 Server URL，测试无需修改即可适配。
+ * Why mockServerUrl is used:
+ * The Go Server is not yet built into Devbox instances, so mockServerUrl points to a locally running
+ * Go Server for end-to-end testing. Once Go Server is embedded, ConnectionManager will automatically
+ * retrieve the real Server URL from the Devbox instance's ports information, requiring no test modifications.
  *
- * 测试覆盖范围：
- * - 文件基础操作（读写、编码处理）
- * - 文件删除操作
- * - 目录操作
- * - 批量文件操作
- * - 文件元数据
- * - 并发操作
- * - 安全与错误处理
- * - 性能测试
+ * Test Coverage:
+ * - Basic file operations (read/write, encoding handling)
+ * - File deletion operations
+ * - Directory operations
+ * - Batch file operations
+ * - File metadata
+ * - Concurrent operations
+ * - Security and error handling
+ * - Performance testing
  *
- * 注意事项：
- * - 所有测试都需要真实的 Devbox 实例（通过 Kubernetes API 创建）
- * - 测试使用 mockServerUrl 连接到本地 Go Server（通过 DEVBOX_SERVER_URL 环境变量配置）
- * - 测试会创建和删除 Devbox 实例，确保测试环境有足够的资源
+ * Notes:
+ * - All tests require a real Devbox instance (created via Kubernetes API)
+ * - Tests use mockServerUrl to connect to local Go Server (configured via DEVBOX_SERVER_URL environment variable)
+ * - Tests create and delete Devbox instances, ensure test environment has sufficient resources
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -60,12 +60,12 @@ async function waitForDevboxReady(devbox: DevboxInstance, timeout = 120000): Pro
   throw new Error(`Devbox ${devbox.name} did not become ready within ${timeout}ms`)
 }
 
-describe('Devbox SDK 端到端集成测试', () => {
+describe('Devbox SDK End-to-End Integration Tests', () => {
   let sdk: DevboxSDK
   let devboxInstance: DevboxInstance
   const TEST_DEVBOX_NAME = `test-server-ops-${Date.now()}`
 
-  // 测试文件路径和内容常量
+  // Test file paths and content constants
   const TEST_FILE_PATH = './test/test-file.txt'
   const TEST_FILE_CONTENT = 'Hello, Devbox Server!'
   const TEST_UNICODE_CONTENT = '你好，Devbox 服务器！🚀'
@@ -84,17 +84,18 @@ describe('Devbox SDK 端到端集成测试', () => {
     }
 
     devboxInstance = await sdk.createDevbox(config)
+    // devboxInstance = await sdk.getDevbox("sdk")
     await devboxInstance.start()
     await waitForDevboxReady(devboxInstance)
 
-    // 清理之前测试可能留下的文件和目录
+    // Clean up files and directories that may have been left by previous tests
     try {
       await devboxInstance.execSync({
         command: 'rm',
         args: ['-rf', './test', './test-directory', './batch', './large', './metadata', './meta', './concurrent', './perf', './many'],
       })
     } catch (error) {
-      // 忽略清理错误
+      // Ignore cleanup errors
     }
   }, 30000)
 
@@ -112,8 +113,8 @@ describe('Devbox SDK 端到端集成测试', () => {
     }
   }, 10000)
 
-  describe('文件基础操作', () => {
-    // 在每个测试后清理测试目录
+  describe('Basic File Operations', () => {
+    // Clean up test directories after each test
     afterEach(async () => {
       try {
         await devboxInstance.execSync({
@@ -121,11 +122,11 @@ describe('Devbox SDK 端到端集成测试', () => {
           args: ['-rf', './test'],
         })
       } catch (error) {
-        // 忽略清理错误
+        // Ignore cleanup errors
       }
     })
 
-    it('应该能够写入文件', async () => {
+    it('should be able to write files', async () => {
       const options: WriteOptions = {
         encoding: 'utf-8',
         mode: 0o644,
@@ -136,13 +137,13 @@ describe('Devbox SDK 端到端集成测试', () => {
       ).resolves.not.toThrow()
     }, 10000)
 
-    it('应该能够读取文件', async () => {
+    it('should be able to read files', async () => {
       await devboxInstance.writeFile(TEST_FILE_PATH, TEST_FILE_CONTENT)
       const content = await devboxInstance.readFile(TEST_FILE_PATH)
       expect(content.toString()).toBe(TEST_FILE_CONTENT)
     }, 10000)
 
-    it('应该能够处理 Unicode 内容', async () => {
+    it('should be able to handle Unicode content', async () => {
       const unicodeFilePath = './test/unicode-test.txt'
 
       await devboxInstance.writeFile(unicodeFilePath, TEST_UNICODE_CONTENT)
@@ -150,7 +151,7 @@ describe('Devbox SDK 端到端集成测试', () => {
       expect(content.toString()).toBe(TEST_UNICODE_CONTENT)
     }, 10000)
 
-    it('应该能够上传二进制文件并读取二进制文件', async () => {
+    it('should be able to upload and read binary files', async () => {
       const binaryFilePath = './test/binary-test.png'
       const binaryData = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
@@ -162,7 +163,7 @@ describe('Devbox SDK 端到端集成测试', () => {
       expect(content.equals(binaryData)).toBe(true)
     }, 10000)
 
-    it('应该能够将字符串内容编码为 base64 上传', async () => {
+    it('should be able to encode string content as base64 and upload', async () => {
       const filePath = './test/base64-string.txt'
       const textContent = 'Hello, World!'
 
@@ -174,15 +175,15 @@ describe('Devbox SDK 端到端集成测试', () => {
       expect(content.toString('utf-8')).toBe(textContent)
     }, 10000)
 
-    it('读取不存在的文件应该抛出错误', async () => {
+    it('should throw error when reading non-existent file', async () => {
       const nonExistentPath = './test/non-existent-file.txt'
 
       await expect(devboxInstance.readFile(nonExistentPath)).rejects.toThrow()
     }, 5000)
   })
 
-  describe('文件删除操作', () => {
-    // 在每个测试后清理测试目录
+  describe('File Deletion Operations', () => {
+    // Clean up test directories after each test
     afterEach(async () => {
       try {
         await devboxInstance.execSync({
@@ -190,45 +191,45 @@ describe('Devbox SDK 端到端集成测试', () => {
           args: ['-rf', './test'],
         })
       } catch (error) {
-        // 忽略清理错误
+        // Ignore cleanup errors
       }
     })
 
-    it('应该能够删除文件', async () => {
-      // 创建文件
+    it('should be able to delete files', async () => {
+      // Create file
       await devboxInstance.writeFile(TEST_FILE_PATH, TEST_FILE_CONTENT)
 
-      // 验证文件存在
+      // Verify file exists
       const content = await devboxInstance.readFile(TEST_FILE_PATH)
       expect(content.toString()).toBe(TEST_FILE_CONTENT)
 
-      // 删除文件
+      // Delete file
       await devboxInstance.deleteFile(TEST_FILE_PATH)
 
-      // 验证文件已删除
+      // Verify file has been deleted
       await expect(devboxInstance.readFile(TEST_FILE_PATH)).rejects.toThrow()
     }, 10000)
 
-    it('删除不存在的文件应该抛出错误', async () => {
+    it('should throw error when deleting non-existent file', async () => {
       const nonExistentPath = './test/non-existent-delete.txt'
 
       await expect(devboxInstance.deleteFile(nonExistentPath)).rejects.toThrow()
     }, 5000)
   })
 
-  describe('目录操作', () => {
+  describe('Directory Operations', () => {
     const TEST_DIR = './test-directory'
     const SUB_DIR = `${TEST_DIR}/subdir`
     const FILES = [`${TEST_DIR}/file1.txt`, `${TEST_DIR}/file2.txt`, `${SUB_DIR}/file3.txt`]
 
     beforeEach(async () => {
-      // 创建测试目录结构 
+      // Create test directory structure
       await devboxInstance.writeFile(FILES[0] as string, 'Content 1')
       await devboxInstance.writeFile(FILES[1] as string, 'Content 2')
       await devboxInstance.writeFile(FILES[2] as string, 'Content 3')
     })
 
-    // 在每个测试后清理测试目录
+    // Clean up test directories after each test
     afterEach(async () => {
       try {
         await devboxInstance.execSync({
@@ -236,11 +237,11 @@ describe('Devbox SDK 端到端集成测试', () => {
           args: ['-rf', './test-directory'],
         })
       } catch (error) {
-        // 忽略清理错误
+        // Ignore cleanup errors
       }
     })
 
-    it('应该能够列出目录内容', async () => {
+    it('should be able to list directory contents', async () => {
       const fileList = await devboxInstance.listFiles(TEST_DIR)
 
       expect(fileList).toHaveProperty('files')
@@ -250,7 +251,7 @@ describe('Devbox SDK 端到端集成测试', () => {
       expect(fileList.files.some((f) => f.isDir === true && f.name === 'subdir')).toBe(true)
     }, 10000)
 
-    it('应该能够列出子目录内容', async () => {
+    it('should be able to list subdirectory contents', async () => {
       const fileList = await devboxInstance.listFiles(SUB_DIR)
 
       expect(fileList.files).toHaveLength(1)
@@ -258,20 +259,20 @@ describe('Devbox SDK 端到端集成测试', () => {
       expect(fileList.files[0]?.isDir).toBe(false)
     }, 10000)
 
-    it('应该能够列出根目录', async () => {
+    it('should be able to list root directory', async () => {
       const rootList = await devboxInstance.listFiles('.')
       expect(rootList.files).toBeDefined()
       expect(Array.isArray(rootList.files)).toBe(true)
     }, 10000)
 
-    it('列出不存在的目录应该抛出错误', async () => {
+    it('should throw error when listing non-existent directory', async () => {
       const nonExistentDir = './non-existent-directory'
 
       await expect(devboxInstance.listFiles(nonExistentDir)).rejects.toThrow()
     }, 5000)
   })
 
-  describe('批量文件操作', () => {
+  describe('Batch File Operations', () => {
     const FILES: Record<string, string> = {
       './batch/file1.txt': 'Batch content 1',
       './batch/file2.txt': 'Batch content 2',
@@ -279,7 +280,7 @@ describe('Devbox SDK 端到端集成测试', () => {
       './batch/subdir/file4.txt': 'Batch content 4',
     }
 
-    // 在每个测试后清理测试目录
+    // Clean up test directories after each test
     afterEach(async () => {
       try {
         await devboxInstance.execSync({
@@ -287,22 +288,22 @@ describe('Devbox SDK 端到端集成测试', () => {
           args: ['-rf', './batch', './large'],
         })
       } catch (error) {
-        // 忽略清理错误
+        // Ignore cleanup errors
       }
     })
 
-    it('应该能够批量上传文件', async () => {
+    it('should be able to batch upload files', async () => {
       const result = await devboxInstance.uploadFiles(FILES)
 
       expect(result.totalFiles).toBe(Object.keys(FILES).length)
       expect(result.successCount).toBe(Object.keys(FILES).length)
       expect(result.results.length).toBe(Object.keys(FILES).length)
 
-      // 验证文件都已上传，使用上传返回的路径
+      // Verify all files have been uploaded, using paths returned from upload
       for (const uploadResult of result.results) {
         if (uploadResult.success && uploadResult.path) {
           const uploadedContent = await devboxInstance.readFile(uploadResult.path)
-          // 根据文件名匹配原始内容
+          // Match original content based on filename
           const fileName = uploadResult.path.split('/').pop() || ''
           const originalEntry = Object.entries(FILES).find(([path]) => path.endsWith(fileName))
           if (originalEntry) {
@@ -312,7 +313,7 @@ describe('Devbox SDK 端到端集成测试', () => {
       }
     }, 15000)
 
-    it('应该能够处理部分失败的批量上传', async () => {
+    it('should be able to handle partially failed batch uploads', async () => {
       const mixedFiles = {
         ...FILES,
         '/invalid/path/file.txt': 'This should fail',
@@ -325,8 +326,8 @@ describe('Devbox SDK 端到端集成测试', () => {
       expect(result.results.filter(r => !r.success).length).toBeGreaterThan(0)
     }, 15000)
 
-    it('应该能够处理 10MB 大文件上传', async () => {
-      // 创建 10MB 文件
+    it('should be able to handle 10MB large file upload', async () => {
+      // Create 10MB file
       const content10MB = 'X'.repeat(10 * 1024 * 1024) // 10MB
       const filePath = './large/file-10mb.txt'
 
@@ -337,8 +338,8 @@ describe('Devbox SDK 端到端集成测试', () => {
       expect(readContent.toString()).toBe(content10MB)
     }, 60000)
 
-    it('应该能够处理 50MB 大文件上传', async () => {
-      // 创建 50MB 文件
+    it('should be able to handle 50MB large file upload', async () => {
+      // Create 50MB file
       const content50MB = 'Y'.repeat(50 * 1024 * 1024) // 50MB
       const filePath = './large/file-50mb.txt'
 
@@ -346,13 +347,13 @@ describe('Devbox SDK 端到端集成测试', () => {
       const readContent = await devboxInstance.readFile(filePath)
 
       expect(readContent.length).toBe(50 * 1024 * 1024)
-      // 只验证前后部分，避免完整字符串比较占用过多内存
+      // Only verify start and end parts to avoid full string comparison consuming too much memory
       expect(readContent.toString().substring(0, 1000)).toBe('Y'.repeat(1000))
       expect(readContent.toString().substring(readContent.length - 1000)).toBe('Y'.repeat(1000))
     }, 120000)
 
-    it('应该能够处理 100MB 大文件上传', async () => {
-      // 创建 100MB 文件
+    it('should be able to handle 100MB large file upload', async () => {
+      // Create 100MB file
       const content100MB = 'Z'.repeat(100 * 1024 * 1024) // 100MB
       const filePath = './large/file-100mb.txt'
 
@@ -360,15 +361,15 @@ describe('Devbox SDK 端到端集成测试', () => {
       const readContent = await devboxInstance.readFile(filePath)
 
       expect(readContent.length).toBe(100 * 1024 * 1024)
-      // 只验证前后部分和长度，避免完整字符串比较占用过多内存
+      // Only verify start and end parts and length to avoid full string comparison consuming too much memory
       expect(readContent.toString().substring(0, 1000)).toBe('Z'.repeat(1000))
       expect(readContent.toString().substring(readContent.length - 1000)).toBe('Z'.repeat(1000))
     }, 180000)
 
-    it('应该能够批量上传多个大文件', async () => {
+    it('should be able to batch upload multiple large files', async () => {
       const largeFiles: Record<string, string> = {}
 
-      // 创建 3 个 5MB 的文件
+      // Create 3 files of 5MB each
       for (let i = 0; i < 3; i++) {
         const largeContent = `File${i}-`.repeat(5 * 1024 * 1024 / 7) // ~5MB per file
         largeFiles[`./large/batch-file${i}.txt`] = largeContent
@@ -379,19 +380,19 @@ describe('Devbox SDK 端到端集成测试', () => {
       expect(result.successCount).toBe(Object.keys(largeFiles).length)
       expect(result.totalFiles).toBe(3)
 
-      // 验证文件大小
+      // Verify file sizes
       for (const uploadResult of result.results) {
         if (uploadResult.success && uploadResult.path) {
           const content = await devboxInstance.readFile(uploadResult.path)
-          expect(content.length).toBeGreaterThan(4 * 1024 * 1024) // 至少 4MB
-          expect(content.length).toBeLessThan(6 * 1024 * 1024) // 小于 6MB
+          expect(content.length).toBeGreaterThan(4 * 1024 * 1024) // At least 4MB
+          expect(content.length).toBeLessThan(6 * 1024 * 1024) // Less than 6MB
         }
       }
     }, 120000)
   })
 
-  describe('文件元数据', () => {
-    // 在每个测试后清理测试目录
+  describe('File Metadata', () => {
+    // Clean up test directories after each test
     afterEach(async () => {
       try {
         await devboxInstance.execSync({
@@ -399,11 +400,11 @@ describe('Devbox SDK 端到端集成测试', () => {
           args: ['-rf', './metadata', './meta'],
         })
       } catch (error) {
-        // 忽略清理错误
+        // Ignore cleanup errors
       }
     })
 
-    it('应该能够获取文件信息', async () => {
+    it('should be able to get file information', async () => {
       const filePath = './metadata/test.txt'
       const content = 'Test content for metadata'
 
@@ -418,7 +419,7 @@ describe('Devbox SDK 端到端集成测试', () => {
       expect(fileInfo?.modified).toBeDefined()
     }, 10000)
 
-    it('应该能够区分文件和目录', async () => {
+    it('should be able to distinguish files and directories', async () => {
       await devboxInstance.writeFile('./meta/file.txt', 'content')
 
       const metaList = await devboxInstance.listFiles('./meta')
@@ -433,8 +434,8 @@ describe('Devbox SDK 端到端集成测试', () => {
     }, 10000)
   })
 
-  describe('并发操作', () => {
-    // 在每个测试后清理测试目录
+  describe('Concurrent Operations', () => {
+    // Clean up test directories after each test
     afterEach(async () => {
       try {
         await devboxInstance.execSync({
@@ -442,28 +443,28 @@ describe('Devbox SDK 端到端集成测试', () => {
           args: ['-rf', './concurrent'],
         })
       } catch (error) {
-        // 忽略清理错误
+        // Ignore cleanup errors
       }
     })
 
-    it('应该能够并发读写不同文件', async () => {
+    it('should be able to concurrently read and write different files', async () => {
       const CONCURRENT_FILES = 10
       const files: string[] = []
       const contents: string[] = []
 
-      // 创建文件路径和内容
+      // Create file paths and contents
       for (let i = 0; i < CONCURRENT_FILES; i++) {
         files.push(`./concurrent/file${i}.txt`)
         contents.push(`Concurrent content ${i}`)
       }
 
-      // 并发写入文件
+      // Concurrently write files
       const writePromises = files.map((path, index) =>
         devboxInstance.writeFile(path as string, contents[index] as string)
       )
       await Promise.all(writePromises)
 
-      // 并发读取文件
+      // Concurrently read files
       const readPromises = files.map(async (path, index) => {
         const content = await devboxInstance.readFile(path)
         expect(content.toString()).toBe(contents[index])
@@ -471,10 +472,10 @@ describe('Devbox SDK 端到端集成测试', () => {
       await Promise.all(readPromises)
     }, 20000)
 
-    it('应该能够处理对同一文件的并发操作', async () => {
+    it('should be able to handle concurrent operations on the same file', async () => {
       const sharedFile = './concurrent/shared.txt'
 
-      // 顺序写入以避免竞争条件
+      // Write sequentially to avoid race conditions
       for (let i = 0; i < 5; i++) {
         await devboxInstance.writeFile(sharedFile, `Iteration ${i}`)
         const content = await devboxInstance.readFile(sharedFile)
@@ -483,8 +484,8 @@ describe('Devbox SDK 端到端集成测试', () => {
     }, 15000)
   })
 
-  describe('安全与错误处理', () => {
-    // 在每个测试后清理测试目录
+  describe('Security and Error Handling', () => {
+    // Clean up test directories after each test
     afterEach(async () => {
       try {
         await devboxInstance.execSync({
@@ -492,11 +493,11 @@ describe('Devbox SDK 端到端集成测试', () => {
           args: ['-rf', './test'],
         })
       } catch (error) {
-        // 忽略清理错误
+        // Ignore cleanup errors
       }
     })
 
-    it('应该处理路径遍历攻击', async () => {
+    it('should handle path traversal attacks', async () => {
       const maliciousPaths = ['../../../etc/passwd', '/../../../etc/hosts', '../root/.ssh/id_rsa']
 
       for (const path of maliciousPaths) {
@@ -504,21 +505,21 @@ describe('Devbox SDK 端到端集成测试', () => {
       }
     }, 5000)
 
-    it('应该处理过长的文件路径', async () => {
+    it('should handle overly long file paths', async () => {
       const longPath = `./${'a'.repeat(3000)}.txt`
 
       await expect(devboxInstance.writeFile(longPath, 'content')).rejects.toThrow()
     }, 5000)
 
-    it('应该处理空文件名', async () => {
+    it('should handle empty filenames', async () => {
       await expect(devboxInstance.writeFile('', 'content')).rejects.toThrow()
 
       await expect(devboxInstance.writeFile('./test/', 'content')).rejects.toThrow()
     }, 5000)
   })
 
-  describe('性能测试', () => {
-    // 在每个测试后清理测试目录
+  describe('Performance Tests', () => {
+    // Clean up test directories after each test
     afterEach(async () => {
       try {
         await devboxInstance.execSync({
@@ -526,11 +527,11 @@ describe('Devbox SDK 端到端集成测试', () => {
           args: ['-rf', './perf', './many'],
         })
       } catch (error) {
-        // 忽略清理错误
+        // Ignore cleanup errors
       }
     })
 
-    it('应该在合理时间内完成文件操作', async () => {
+    it('should complete file operations within reasonable time', async () => {
       const LARGE_CONTENT = 'Performance test content '.repeat(50000) // ~1MB
 
       const startTime = Date.now()
@@ -542,10 +543,10 @@ describe('Devbox SDK 端到端集成测试', () => {
       const duration = endTime - startTime
 
       expect(content.toString()).toBe(LARGE_CONTENT)
-      expect(duration).toBeLessThan(10000) // 应该在10秒内完成
+      expect(duration).toBeLessThan(10000) // Should complete within 10 seconds
     }, 15000)
 
-    it('应该能够处理大量小文件', async () => {
+    it('should be able to handle many small files', async () => {
       const FILE_COUNT = 100
       const files: Record<string, string> = {}
 
@@ -558,7 +559,7 @@ describe('Devbox SDK 端到端集成测试', () => {
       const endTime = Date.now()
 
       expect(result.successCount).toBe(FILE_COUNT)
-      expect(endTime - startTime).toBeLessThan(30000) // 30秒内完成
+      expect(endTime - startTime).toBeLessThan(30000) // Should complete within 30 seconds
     }, 35000)
   })
 })

@@ -53,7 +53,7 @@ export class DevboxContainerClient {
       headers: {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...options?.headers,
-        // Base64 解码 token 后作为 Bearer token
+        // Decode base64 token and use as Bearer token
         "Authorization": `Bearer ${Buffer.from(this.token, 'base64').toString('utf-8')}`,
       },
       signal: options?.signal,

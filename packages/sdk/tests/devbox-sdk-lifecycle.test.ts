@@ -141,7 +141,7 @@ describe('Devbox Lifecycle Management', () => {
 
       const fetched = await sdk.getDevbox(name)
       expect(fetched.name).toBe(name)
-      expect(fetched.runtime).toBe('node.js')
+      expect(fetched.runtime).toBe(DevboxRuntime.TEST_AGENT)
       expect(fetched.status).toBeDefined()
     }, 120000)
 
@@ -218,7 +218,7 @@ describe('Devbox Lifecycle Management', () => {
 
       // Start Devbox
       await devbox.start()
-      
+
       // Simply wait for status to become Running (don't check health to avoid hanging)
       let currentDevbox = await sdk.getDevbox(name)
       const startTime = Date.now()
@@ -226,7 +226,7 @@ describe('Devbox Lifecycle Management', () => {
         await new Promise(resolve => setTimeout(resolve, 2000))
         currentDevbox = await sdk.getDevbox(name)
       }
-      
+
       expect(currentDevbox.status).toBe('Running')
 
       // If already running, pause first
@@ -238,7 +238,7 @@ describe('Devbox Lifecycle Management', () => {
 
       // Start Devbox again
       await currentDevbox.start()
-      
+
       // Wait for start to complete
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)
@@ -293,7 +293,7 @@ describe('Devbox Lifecycle Management', () => {
 
       // Pause Devbox
       await currentDevbox.pause()
-      
+
       // Wait for pause to complete
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)
@@ -319,7 +319,7 @@ describe('Devbox Lifecycle Management', () => {
         await new Promise(resolve => setTimeout(resolve, 2000))
         currentDevbox = await sdk.getDevbox(name)
       }
-      
+
       await currentDevbox.pause()
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)
@@ -351,7 +351,7 @@ describe('Devbox Lifecycle Management', () => {
 
       // Restart Devbox
       await currentDevbox.restart()
-      
+
       // Wait for restart to complete
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)

@@ -25,72 +25,26 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { DevboxSDK } from '../src/core/devbox-sdk'
 import type { DevboxInstance } from '../src/core/devbox-instance'
-import { TEST_CONFIG } from './setup'
+import { TEST_CONFIG, getOrCreateSharedDevbox, cleanupTestFiles } from './setup'
 import type { DevboxCreateConfig } from '../src/core/types'
 import { DevboxRuntime } from '../src/api/types'
-
-async function waitForDevboxReady(devbox: DevboxInstance, timeout = 120000): Promise<void> {
-  const startTime = Date.now()
-
-  while (Date.now() - startTime < timeout) {
-    try {
-      await devbox.refreshInfo()
-      if (devbox.status === 'Running') {
-        await new Promise(resolve => setTimeout(resolve, 3000))
-        return
-      }
-    } catch (error) {
-      // Ignore intermediate errors
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 2000))
-  }
-
-  throw new Error(`Devbox ${devbox.name} did not become ready within ${timeout}ms`)
-}
 
 describe('Devbox SDK Advanced File Operations and Port Monitoring Tests', () => {
   let sdk: DevboxSDK
   let devboxInstance: DevboxInstance
-  const TEST_DEVBOX_NAME = `test-file-advanced-${Date.now()}`
 
   beforeEach(async () => {
     sdk = new DevboxSDK(TEST_CONFIG)
 
-    const config: DevboxCreateConfig = {
-      name: TEST_DEVBOX_NAME,
-      runtime: DevboxRuntime.TEST_AGENT,
-      resource: {
-        cpu: 1,
-        memory: 2,
-      },
-      ports: [{ number: 8080, protocol: 'HTTP' }],
-    }
+    // Use shared devbox instead of creating a new one
+    devboxInstance = await getOrCreateSharedDevbox(sdk)
 
-    devboxInstance = await sdk.createDevbox(config)
-    await devboxInstance.start()
-    await waitForDevboxReady(devboxInstance)
-
-    // Clean up files and directories that may have been left by previous tests
-    try {
-      await devboxInstance.execSync({
-        command: 'rm',
-        args: ['-rf', './move', './move-dir', './move-overwrite', './move-no-overwrite', './rename', './rename-dir', './rename-conflict', './download', './download-multi', './download-tar', './download-targz', './download-multipart', './combo', './combo-ports'],
-      })
-    } catch (error) {
-      // Ignore cleanup errors
-    }
+    // Clean up files from previous tests
+    await cleanupTestFiles(devboxInstance)
   }, 30000)
 
   afterEach(async () => {
-    if (devboxInstance) {
-      try {
-        await devboxInstance.delete()
-      } catch (error) {
-        console.warn('Failed to cleanup devbox:', error)
-      }
-    }
-
+    // Don't delete the shared devbox, just close the SDK connection
     if (sdk) {
       await sdk.close()
     }

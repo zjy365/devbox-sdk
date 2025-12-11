@@ -30,6 +30,7 @@ export class ContainerUrlResolver {
   ): Promise<T> {
     const devboxInfo = await this.getDevboxInfo(devboxName)
     const serverUrl = this.extractUrlFromDevboxInfo(devboxInfo!)
+    // console.log('serverUrl', serverUrl)
     if (!serverUrl) {
       throw new DevboxSDKError(
         `Devbox '${devboxName}' does not have an accessible URL`,

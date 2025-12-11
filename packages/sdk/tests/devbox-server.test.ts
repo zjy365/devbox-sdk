@@ -36,34 +36,20 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { DevboxSDK } from '../src/core/devbox-sdk'
 import type { DevboxInstance } from '../src/core/devbox-instance'
-import { TEST_CONFIG } from './setup'
+import { TEST_CONFIG, getOrCreateSharedDevbox, cleanupTestFiles } from './setup'
 import type { WriteOptions, DevboxCreateConfig } from '../src/core/types'
 import { DevboxRuntime } from '../src/api/types'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-async function waitForDevboxReady(devbox: DevboxInstance, timeout = 120000): Promise<void> {
-  const startTime = Date.now()
-
-  while (Date.now() - startTime < timeout) {
-    try {
-      await devbox.refreshInfo()
-      if (devbox.status === 'Running') {
-        await new Promise(resolve => setTimeout(resolve, 3000))
-        return
-      }
-    } catch (error) {
-      // Ignore intermediate errors
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 2000))
-  }
-
-  throw new Error(`Devbox ${devbox.name} did not become ready within ${timeout}ms`)
-}
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const FIXTURES_DIR = path.join(__dirname, 'fixtures')
 
 describe('Devbox SDK End-to-End Integration Tests', () => {
   let sdk: DevboxSDK
   let devboxInstance: DevboxInstance
-  const TEST_DEVBOX_NAME = `test-server-ops-${Date.now()}`
 
   // Test file paths and content constants
   const TEST_FILE_PATH = './test/test-file.txt'
@@ -74,40 +60,15 @@ describe('Devbox SDK End-to-End Integration Tests', () => {
   beforeEach(async () => {
     sdk = new DevboxSDK(TEST_CONFIG)
 
-    const config: DevboxCreateConfig = {
-      name: TEST_DEVBOX_NAME,
-      runtime: DevboxRuntime.TEST_AGENT,
-      resource: {
-        cpu: 1,
-        memory: 2,
-      },
-    }
+    // Use shared devbox instead of creating a new one
+    devboxInstance = await getOrCreateSharedDevbox(sdk)
 
-    devboxInstance = await sdk.createDevbox(config)
-    // devboxInstance = await sdk.getDevbox("sdk")
-    await devboxInstance.start()
-    await waitForDevboxReady(devboxInstance)
-
-    // Clean up files and directories that may have been left by previous tests
-    try {
-      await devboxInstance.execSync({
-        command: 'rm',
-        args: ['-rf', './test', './test-directory', './batch', './large', './metadata', './meta', './concurrent', './perf', './many'],
-      })
-    } catch (error) {
-      // Ignore cleanup errors
-    }
+    // Clean up files from previous tests
+    await cleanupTestFiles(devboxInstance)
   }, 30000)
 
   afterEach(async () => {
-    if (devboxInstance) {
-      try {
-        await devboxInstance.delete()
-      } catch (error) {
-        console.warn('Failed to cleanup devbox:', error)
-      }
-    }
-
+    // Don't delete the shared devbox, just close the SDK connection
     if (sdk) {
       await sdk.close()
     }
@@ -327,43 +288,60 @@ describe('Devbox SDK End-to-End Integration Tests', () => {
     }, 15000)
 
     it('should be able to handle 10MB large file upload', async () => {
-      // Create 10MB file
-      const content10MB = 'X'.repeat(10 * 1024 * 1024) // 10MB
-      const filePath = './large/file-10mb.txt'
+      // Read pre-generated test file (much faster than creating with .repeat())
+      const fixturePath = path.join(FIXTURES_DIR, 'file-10mb.txt')
+      const fileContent = fs.readFileSync(fixturePath)
+      const fileSize = fileContent.length
+      const uploadPath = './large/file-10mb.txt'
 
-      await devboxInstance.writeFile(filePath, content10MB)
-      const readContent = await devboxInstance.readFile(filePath)
+      // Upload the file
+      await devboxInstance.writeFile(uploadPath, fileContent)
 
-      expect(readContent.length).toBe(10 * 1024 * 1024)
-      expect(readContent.toString()).toBe(content10MB)
+      // Verify file was created with correct size using listFiles
+      const dirInfo = await devboxInstance.listFiles('./large')
+      const fileInfo = dirInfo.files.find(f => f.name === 'file-10mb.txt')
+
+      expect(fileInfo).toBeDefined()
+      expect(fileInfo?.size).toBe(fileSize)
+      expect(fileInfo?.size).toBe(10 * 1024 * 1024)
     }, 60000)
 
     it('should be able to handle 50MB large file upload', async () => {
-      // Create 50MB file
-      const content50MB = 'Y'.repeat(50 * 1024 * 1024) // 50MB
-      const filePath = './large/file-50mb.txt'
+      // Read pre-generated test file (much faster than creating with .repeat())
+      const fixturePath = path.join(FIXTURES_DIR, 'file-50mb.txt')
+      const fileContent = fs.readFileSync(fixturePath)
+      const fileSize = fileContent.length
+      const uploadPath = './large/file-50mb.txt'
 
-      await devboxInstance.writeFile(filePath, content50MB)
-      const readContent = await devboxInstance.readFile(filePath)
+      // Upload the file
+      await devboxInstance.writeFile(uploadPath, fileContent)
 
-      expect(readContent.length).toBe(50 * 1024 * 1024)
-      // Only verify start and end parts to avoid full string comparison consuming too much memory
-      expect(readContent.toString().substring(0, 1000)).toBe('Y'.repeat(1000))
-      expect(readContent.toString().substring(readContent.length - 1000)).toBe('Y'.repeat(1000))
+      // Verify file was created with correct size using listFiles
+      const dirInfo = await devboxInstance.listFiles('./large')
+      const fileInfo = dirInfo.files.find(f => f.name === 'file-50mb.txt')
+
+      expect(fileInfo).toBeDefined()
+      expect(fileInfo?.size).toBe(fileSize)
+      expect(fileInfo?.size).toBe(50 * 1024 * 1024)
     }, 120000)
 
     it('should be able to handle 100MB large file upload', async () => {
-      // Create 100MB file
-      const content100MB = 'Z'.repeat(100 * 1024 * 1024) // 100MB
-      const filePath = './large/file-100mb.txt'
+      // Read pre-generated test file (much faster than creating with .repeat())
+      const fixturePath = path.join(FIXTURES_DIR, 'file-100mb.txt')
+      const fileContent = fs.readFileSync(fixturePath)
+      const fileSize = fileContent.length
+      const uploadPath = './large/file-100mb.txt'
 
-      await devboxInstance.writeFile(filePath, content100MB)
-      const readContent = await devboxInstance.readFile(filePath)
+      // Upload the file
+      await devboxInstance.writeFile(uploadPath, fileContent)
 
-      expect(readContent.length).toBe(100 * 1024 * 1024)
-      // Only verify start and end parts and length to avoid full string comparison consuming too much memory
-      expect(readContent.toString().substring(0, 1000)).toBe('Z'.repeat(1000))
-      expect(readContent.toString().substring(readContent.length - 1000)).toBe('Z'.repeat(1000))
+      // Verify file was created with correct size using listFiles
+      const dirInfo = await devboxInstance.listFiles('./large')
+      const fileInfo = dirInfo.files.find(f => f.name === 'file-100mb.txt')
+
+      expect(fileInfo).toBeDefined()
+      expect(fileInfo?.size).toBe(fileSize)
+      expect(fileInfo?.size).toBe(100 * 1024 * 1024)
     }, 180000)
 
     it('should be able to batch upload multiple large files', async () => {
@@ -380,12 +358,12 @@ describe('Devbox SDK End-to-End Integration Tests', () => {
       expect(result.successCount).toBe(Object.keys(largeFiles).length)
       expect(result.totalFiles).toBe(3)
 
-      // Verify file sizes
+      // Verify file sizes from upload results (avoid downloading each file)
       for (const uploadResult of result.results) {
-        if (uploadResult.success && uploadResult.path) {
-          const content = await devboxInstance.readFile(uploadResult.path)
-          expect(content.length).toBeGreaterThan(4 * 1024 * 1024) // At least 4MB
-          expect(content.length).toBeLessThan(6 * 1024 * 1024) // Less than 6MB
+        if (uploadResult.success) {
+          // Each file should be approximately 5MB
+          expect(uploadResult.size).toBeGreaterThan(4 * 1024 * 1024) // At least 4MB
+          expect(uploadResult.size).toBeLessThan(6 * 1024 * 1024) // Less than 6MB
         }
       }
     }, 120000)

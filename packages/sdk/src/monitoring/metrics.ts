@@ -36,8 +36,8 @@ export interface DetailedMetrics {
 }
 
 /**
- * 增强的指标收集器
- * 提供详细的性能统计和监控数据
+ * Enhanced metrics collector
+ * Provides detailed performance statistics and monitoring data
  */
 export class MetricsCollector {
   private metrics: SDKMetrics
@@ -68,7 +68,7 @@ export class MetricsCollector {
   }
 
   /**
-   * 记录操作指标
+   * Record operation metrics
    */
   recordOperation(name: string, durationMs: number): void {
     if (!this.operationMetrics.has(name)) {
@@ -79,7 +79,7 @@ export class MetricsCollector {
   }
 
   /**
-   * 记录文件传输
+   * Record file transfer
    */
   recordTransfer(size: number, latency: number): void {
     this.metrics.filesTransferred++
@@ -89,7 +89,7 @@ export class MetricsCollector {
   }
 
   /**
-   * 记录连接创建
+   * Record connection creation
    */
   recordConnection(): void {
     this.metrics.connectionsCreated++
@@ -97,14 +97,14 @@ export class MetricsCollector {
   }
 
   /**
-   * 记录连接关闭
+   * Record connection closure
    */
   recordConnectionClosed(): void {
     this.metrics.connectionsActive = Math.max(0, this.metrics.connectionsActive - 1)
   }
 
   /**
-   * 记录错误
+   * Record error
    */
   recordError(errorType?: string): void {
     this.metrics.errors++
@@ -116,7 +116,7 @@ export class MetricsCollector {
   }
 
   /**
-   * 记录请求
+   * Record request
    */
   recordRequest(success: boolean): void {
     this.metrics.requestsTotal++
@@ -128,7 +128,7 @@ export class MetricsCollector {
   }
 
   /**
-   * 计算操作统计信息
+   * Calculate operation statistics
    */
   private calculateStats(values: number[]): OperationStats {
     if (values.length === 0) {
@@ -151,7 +151,7 @@ export class MetricsCollector {
   }
 
   /**
-   * 获取基本指标
+   * Get basic metrics
    */
   getMetrics(): SDKMetrics {
     const uptime = Date.now() - this.startTime
@@ -159,7 +159,7 @@ export class MetricsCollector {
   }
 
   /**
-   * 获取详细指标
+   * Get detailed metrics
    */
   getDetailedMetrics(): DetailedMetrics {
     const operations: Record<string, OperationStats> = {}
@@ -181,7 +181,7 @@ export class MetricsCollector {
   }
 
   /**
-   * 获取操作统计
+   * Get operation statistics
    */
   getOperationStats(name: string): OperationStats | null {
     const values = this.operationMetrics.get(name)
@@ -192,14 +192,14 @@ export class MetricsCollector {
   }
 
   /**
-   * 导出所有指标为 JSON
+   * Export all metrics as JSON
    */
   export(): string {
     return JSON.stringify(this.getDetailedMetrics(), null, 2)
   }
 
   /**
-   * 重置所有指标
+   * Reset all metrics
    */
   reset(): void {
     this.startTime = Date.now()
@@ -209,11 +209,11 @@ export class MetricsCollector {
   }
 
   /**
-   * 获取性能摘要
+   * Get performance summary
    */
   getSummary(): string {
     const metrics = this.getMetrics()
-    const uptime = Math.floor(metrics.uptime / 1000) // 转换为秒
+    const uptime = Math.floor(metrics.uptime / 1000) // Convert to seconds
 
     const lines = [
       '=== SDK Performance Summary ===',
@@ -231,7 +231,7 @@ export class MetricsCollector {
   }
 
   /**
-   * 格式化字节数
+   * Format bytes
    */
   private formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B'
@@ -242,12 +242,12 @@ export class MetricsCollector {
   }
 }
 
-// 全局指标收集器实例
+// Global metrics collector instance
 export const metrics = new MetricsCollector()
 
 /**
- * 性能监控装饰器
- * 自动记录函数执行时间
+ * Performance monitoring decorator
+ * Automatically records function execution time
  */
 export function monitored(operationName: string) {
   return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
@@ -274,7 +274,7 @@ export function monitored(operationName: string) {
 }
 
 /**
- * 性能追踪工具
+ * Performance tracking utility
  */
 export class PerformanceTracker {
   private startTime: number
@@ -284,7 +284,7 @@ export class PerformanceTracker {
   }
 
   /**
-   * 结束追踪并记录
+   * End tracking and record
    */
   end(): number {
     const duration = Date.now() - this.startTime
@@ -293,7 +293,7 @@ export class PerformanceTracker {
   }
 
   /**
-   * 结束追踪并记录为成功
+   * End tracking and record as success
    */
   success(): number {
     const duration = this.end()
@@ -302,7 +302,7 @@ export class PerformanceTracker {
   }
 
   /**
-   * 结束追踪并记录为失败
+   * End tracking and record as failure
    */
   failure(errorType?: string): number {
     const duration = this.end()
@@ -312,7 +312,7 @@ export class PerformanceTracker {
 }
 
 /**
- * 创建性能追踪器
+ * Create performance tracker
  */
 export function track(operationName: string): PerformanceTracker {
   return new PerformanceTracker(operationName)

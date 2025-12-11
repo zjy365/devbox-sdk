@@ -1,5 +1,5 @@
-# 暂时关闭 Dependabot 自动升级依赖功能
-# 如需重新启用，取消下面的注释即可
+# Temporarily disable Dependabot auto-update dependency feature
+# To re-enable, uncomment the following
 
 # version: 2
 # updates:

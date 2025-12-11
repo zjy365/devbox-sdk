@@ -1,5 +1,5 @@
 /**
- * DevboxSDK 单元测试
+ * DevboxSDK Unit Tests
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -20,8 +20,8 @@ describe('DevboxSDK', () => {
     }
   })
 
-  describe('初始化', () => {
-    it('应该成功初始化 SDK', () => {
+  describe('Initialization', () => {
+    it('should successfully initialize SDK', () => {
       expect(sdk).toBeDefined()
       expect(sdk.createDevbox).toBeDefined()
       expect(sdk.getDevbox).toBeDefined()
@@ -30,13 +30,13 @@ describe('DevboxSDK', () => {
       expect(sdk.close).toBeDefined()
     })
 
-    it('应该验证配置参数 - 缺少 kubeconfig', () => {
+    it('should validate config parameters - missing kubeconfig', () => {
       expect(() => {
         new DevboxSDK({} as DevboxSDKConfig)
       }).toThrow()
     })
 
-    it('应该接受有效的配置', () => {
+    it('should accept valid configuration', () => {
       const validConfig: DevboxSDKConfig = {
         kubeconfig: 'test-kubeconfig',
         baseUrl: 'http://localhost:3000',
@@ -50,8 +50,8 @@ describe('DevboxSDK', () => {
     })
   })
 
-  describe('配置管理', () => {
-    it('应该使用默认超时值', () => {
+  describe('Configuration Management', () => {
+    it('should use default timeout value', () => {
       const config: DevboxSDKConfig = {
         kubeconfig: 'test',
         baseUrl: 'http://localhost:3000',
@@ -62,7 +62,7 @@ describe('DevboxSDK', () => {
       testSdk.close()
     })
 
-    it('应该使用自定义超时值', () => {
+    it('should use custom timeout value', () => {
       const config: DevboxSDKConfig = {
         kubeconfig: 'test',
         baseUrl: 'http://localhost:3000',
@@ -78,46 +78,46 @@ describe('DevboxSDK', () => {
   })
 
   
-  describe('API 方法可用性', () => {
-    it('应该能够列出所有 Devbox', async () => {
+  describe('API Method Availability', () => {
+    it('should be able to list all Devboxes', async () => {
       const list = await sdk.listDevboxes()
       expect(Array.isArray(list)).toBe(true)
     }, 30000)
 
-    it('应该处理无效的 Devbox 名称', async () => {
+    it('should handle invalid Devbox name', async () => {
       await expect(
         sdk.getDevbox('INVALID-NONEXISTENT-NAME-999')
       ).rejects.toThrow()
     }, 30000)
   })
 
-  describe('资源清理', () => {
-    it('应该正确关闭 SDK', async () => {
+  describe('Resource Cleanup', () => {
+    it('should properly close SDK', async () => {
       const testSdk = new DevboxSDK(TEST_CONFIG)
       await testSdk.close()
       
-      // 关闭后不应该抛出错误（多次关闭应该是安全的）
+      // Should not throw error after closing (multiple closes should be safe)
       await expect(testSdk.close()).resolves.not.toThrow()
     })
 
-    it('应该支持多次关闭', async () => {
+    it('should support multiple closes', async () => {
       const testSdk = new DevboxSDK(TEST_CONFIG)
       await testSdk.close()
       await testSdk.close()
       await testSdk.close()
       
-      // 不应该抛出错误
+      // Should not throw error
       expect(true).toBe(true)
     })
   })
 
-  describe('API 客户端访问', () => {
-    it('应该提供 API 客户端访问', () => {
+  describe('API Client Access', () => {
+    it('should provide API client access', () => {
       const apiClient = sdk.getAPIClient()
       expect(apiClient).toBeDefined()
     })
 
-    it('应该提供 URL 解析器访问', () => {
+    it('should provide URL resolver access', () => {
       const urlResolver = sdk.getUrlResolver()
       expect(urlResolver).toBeDefined()
     })

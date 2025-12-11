@@ -1,0 +1,4 @@
+# Generated test fixture files
+*.txt
+# Keep the generator script
+!generate-test-files.js

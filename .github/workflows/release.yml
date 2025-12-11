@@ -1,6 +1,6 @@
 name: release
 
-# 暂时禁用自动触发，只允许手动触发
+# Temporarily disable auto-trigger, only allow manual trigger
 on:
   workflow_dispatch:
 

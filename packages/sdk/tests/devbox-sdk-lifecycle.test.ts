@@ -1,6 +1,6 @@
 /**
- * Devbox 生命周期测试
- * 专门测试 Devbox 的创建、启动、暂停、重启、删除等生命周期操作
+ * Devbox Lifecycle Tests
+ * Specifically tests Devbox lifecycle operations: create, start, pause, restart, delete, etc.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -9,7 +9,7 @@ import { TEST_CONFIG } from './setup'
 import type { DevboxInstance } from '../src/core/devbox-instance'
 import { DevboxRuntime } from '../src/api/types'
 
-describe('Devbox 生命周期管理', () => {
+describe('Devbox Lifecycle Management', () => {
   let sdk: DevboxSDK
   let createdDevboxes: string[] = []
 
@@ -18,13 +18,13 @@ describe('Devbox 生命周期管理', () => {
   })
 
   afterEach(async () => {
-    // 清理所有创建的 Devbox
+    // Clean up all created Devboxes
     for (const name of createdDevboxes) {
       try {
         const devbox = await sdk.getDevbox(name)
         await devbox.delete()
       } catch (error) {
-        console.warn(`清理 Devbox ${name} 失败:`, error)
+        console.warn(`Failed to cleanup Devbox ${name}:`, error)
       }
     }
     createdDevboxes = []
@@ -32,23 +32,23 @@ describe('Devbox 生命周期管理', () => {
     await sdk.close()
   })
 
-  // 辅助函数：生成唯一名称
-  // 注意：名称必须符合 Kubernetes DNS 命名规范（只能包含小写字母、数字和连字符）
+  // Helper function: generate unique name
+  // Note: name must conform to Kubernetes DNS naming conventions (only lowercase letters, numbers, and hyphens)
   const generateDevboxName = (prefix: string) => {
     const timestamp = Date.now()
     const random = Math.floor(Math.random() * 1000)
-    // 将点号替换为连字符，确保符合 DNS 命名规范
+    // Replace dots with hyphens to ensure DNS naming compliance
     const sanitizedPrefix = prefix.replace(/\./g, '-')
     return `test-${sanitizedPrefix}-${timestamp}-${random}`
   }
 
-  describe('创建 Devbox', () => {
-    it('应该成功创建基础 Devbox', async () => {
+  describe('Create Devbox', () => {
+    it('should successfully create basic Devbox', async () => {
       const name = generateDevboxName('basic')
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: {
           cpu: 1,
           memory: 2,
@@ -59,12 +59,12 @@ describe('Devbox 生命周期管理', () => {
       expect(devbox.name).toBe(name)
       createdDevboxes.push(name)
 
-      // 验证可以通过 getDevbox 获取
+      // Verify can be retrieved via getDevbox
       const fetched = await sdk.getDevbox(name)
       expect(fetched.name).toBe(name)
     }, 120000)
 
-    it('应该创建带端口配置的 Devbox', async () => {
+    it('should create Devbox with port configuration', async () => {
       const name = generateDevboxName('ports')
 
       const devbox = await sdk.createDevbox({
@@ -86,8 +86,8 @@ describe('Devbox 生命周期管理', () => {
       createdDevboxes.push(name)
     }, 120000)
 
-    it('应该创建不同运行时的 Devbox', async () => {
-      const runtimes = [DevboxRuntime.NODE_JS, DevboxRuntime.PYTHON, DevboxRuntime.NEXT_JS, DevboxRuntime.REACT]
+    it('should create Devboxes with different runtimes', async () => {
+      const runtimes = [DevboxRuntime.TEST_AGENT, DevboxRuntime.PYTHON, DevboxRuntime.NEXT_JS, DevboxRuntime.REACT]
       const devboxes: DevboxInstance[] = []
 
       for (const runtime of runtimes) {
@@ -105,61 +105,61 @@ describe('Devbox 生命周期管理', () => {
       }
     }, 180000)
 
-    it('应该处理重复名称的错误', async () => {
+    it('should handle duplicate name errors', async () => {
       const name = generateDevboxName('duplicate')
 
-      // 创建第一个
+      // Create first one
       await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
 
-      // 尝试创建同名 Devbox 应该失败
+      // Attempting to create Devbox with same name should fail
       await expect(
         sdk.createDevbox({
           name,
-          runtime: DevboxRuntime.NODE_JS,
+          runtime: DevboxRuntime.TEST_AGENT,
           resource: { cpu: 1, memory: 2 },
         })
       ).rejects.toThrow()
     }, 120000)
   })
 
-  describe('获取 Devbox 信息', () => {
-    it('应该能够获取已创建的 Devbox', async () => {
+  describe('Get Devbox Information', () => {
+    it('should be able to get created Devbox', async () => {
       const name = generateDevboxName('get')
 
-      // 先创建
+      // Create first
       await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
 
       const fetched = await sdk.getDevbox(name)
       expect(fetched.name).toBe(name)
-      expect(fetched.runtime).toBe('node.js')
+      expect(fetched.runtime).toBe(DevboxRuntime.TEST_AGENT)
       expect(fetched.status).toBeDefined()
     }, 120000)
 
-    it('应该能够通过 getDevbox 获取 Devbox 实例', async () => {
+    it('should be able to get Devbox instance via getDevbox', async () => {
       const name = generateDevboxName('get-devbox')
 
-      // 创建 Devbox
+      // Create Devbox
       const created = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
 
-      // 通过 getDevbox 获取
+      // Get via getDevbox
       const fetched = await sdk.getDevbox(name)
 
-      // 验证基本信息
+      // Verify basic information
       expect(fetched.name).toBe(name)
       expect(fetched.name).toBe(created.name)
       expect(fetched.runtime).toBe(created.runtime)
@@ -167,97 +167,97 @@ describe('Devbox 生命周期管理', () => {
       expect(fetched.resources).toBeDefined()
     }, 120000)
 
-    it('获取不存在的 Devbox 应该抛出错误', async () => {
+    it('should throw error when getting non-existent Devbox', async () => {
       const nonExistentName = 'non-existent-devbox-999'
 
       await expect(sdk.getDevbox(nonExistentName)).rejects.toThrow()
     }, 30000)
   })
 
-  describe('列出所有 Devbox', () => {
-    it('应该能够列出所有 Devbox', async () => {
-      // 创建几个测试 Devbox
+  describe('List All Devboxes', () => {
+    it('should be able to list all Devboxes', async () => {
+      // Create several test Devboxes
       const testNames: string[] = []
       for (let i = 0; i < 3; i++) {
         const name = generateDevboxName(`list-${i}`)
         await sdk.createDevbox({
           name,
-          runtime: DevboxRuntime.NODE_JS,
+          runtime: DevboxRuntime.TEST_AGENT,
           resource: { cpu: 1, memory: 2 },
         })
         createdDevboxes.push(name)
         testNames.push(name)
       }
 
-      // 列出所有 Devbox
+      // List all Devboxes
       const allDevboxes = await sdk.listDevboxes()
       expect(Array.isArray(allDevboxes)).toBe(true)
 
-      // 验证我们创建的 Devbox 在列表中
+      // Verify our created Devboxes are in the list
       const foundNames = allDevboxes.filter(d => testNames.includes(d.name))
       expect(foundNames.length).toBe(testNames.length)
     }, 180000)
 
-    it('空列表时应该返回空数组', async () => {
-      // 这个测试可能不总是可靠，因为可能有其他 Devbox 存在
+    it('should return empty array when list is empty', async () => {
+      // This test may not always be reliable as there may be other Devboxes
       const allDevboxes = await sdk.listDevboxes()
       expect(Array.isArray(allDevboxes)).toBe(true)
     }, 30000)
   })
 
-  describe('启动 Devbox', () => {
-    it('应该能够启动已暂停的 Devbox', async () => {
+  describe('Start Devbox', () => {
+    it('should be able to start paused Devbox', async () => {
       const name = generateDevboxName('start')
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
 
-      // 启动 Devbox
+      // Start Devbox
       await devbox.start()
-      
-      // 简单等待状态变为运行中（不检查健康状态，避免卡住）
+
+      // Simply wait for status to become Running (don't check health to avoid hanging)
       let currentDevbox = await sdk.getDevbox(name)
       const startTime = Date.now()
       while (currentDevbox.status !== 'Running' && Date.now() - startTime < 30000) {
         await new Promise(resolve => setTimeout(resolve, 2000))
         currentDevbox = await sdk.getDevbox(name)
       }
-      
+
       expect(currentDevbox.status).toBe('Running')
 
-      // 如果已经运行，先暂停
+      // If already running, pause first
       await currentDevbox.pause()
-      // 等待暂停完成
+      // Wait for pause to complete
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)
       expect(currentDevbox.status).toBe('Stopped')
 
-      // 再次启动 Devbox
+      // Start Devbox again
       await currentDevbox.start()
-      
-      // 等待启动完成
+
+      // Wait for start to complete
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)
 
-      // 验证状态变为运行中
+      // Verify status changed to Running
       expect(currentDevbox.status).toBe('Running')
     }, 60000)
 
-    it('启动运行中的 Devbox 应该是安全的', async () => {
+    it('should be safe to start already running Devbox', async () => {
       const name = generateDevboxName('start-running')
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
 
-      // 启动并等待就绪
+      // Start and wait for ready
       await devbox.start()
       let currentDevbox = await sdk.getDevbox(name)
       const startTime = Date.now()
@@ -266,23 +266,23 @@ describe('Devbox 生命周期管理', () => {
         currentDevbox = await sdk.getDevbox(name)
       }
 
-      // 再次启动运行中的 Devbox 应该不报错
+      // Starting already running Devbox should not throw error
       await expect(currentDevbox.start()).resolves.not.toThrow()
     }, 60000)
   })
 
-  describe('暂停 Devbox', () => {
-    it('应该能够暂停运行中的 Devbox', async () => {
+  describe('Pause Devbox', () => {
+    it('should be able to pause running Devbox', async () => {
       const name = generateDevboxName('pause')
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
 
-      // 启动并等待就绪
+      // Start and wait for ready
       await devbox.start()
       let currentDevbox = await sdk.getDevbox(name)
       const startTime = Date.now()
@@ -291,27 +291,27 @@ describe('Devbox 生命周期管理', () => {
         currentDevbox = await sdk.getDevbox(name)
       }
 
-      // 暂停 Devbox
+      // Pause Devbox
       await currentDevbox.pause()
-      
-      // 等待暂停完成
+
+      // Wait for pause to complete
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)
 
       expect(currentDevbox.status).toBe('Stopped')
     }, 60000)
 
-    it('暂停已暂停的 Devbox 应该是安全的', async () => {
+    it('should be safe to pause already paused Devbox', async () => {
       const name = generateDevboxName('pause-paused')
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
 
-      // 启动并等待就绪
+      // Start and wait for ready
       await devbox.start()
       let currentDevbox = await sdk.getDevbox(name)
       const startTime = Date.now()
@@ -319,28 +319,28 @@ describe('Devbox 生命周期管理', () => {
         await new Promise(resolve => setTimeout(resolve, 2000))
         currentDevbox = await sdk.getDevbox(name)
       }
-      
+
       await currentDevbox.pause()
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)
 
-      // 再次暂停应该不报错
+      // Pausing again should not throw error
       await expect(currentDevbox.pause()).resolves.not.toThrow()
     }, 60000)
   })
 
-  describe('重启 Devbox', () => {
-    it('应该能够重启 Devbox', async () => {
+  describe('Restart Devbox', () => {
+    it('should be able to restart Devbox', async () => {
       const name = generateDevboxName('restart')
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
 
-      // 启动并等待就绪
+      // Start and wait for ready
       await devbox.start()
       let currentDevbox = await sdk.getDevbox(name)
       const startTime = Date.now()
@@ -349,54 +349,54 @@ describe('Devbox 生命周期管理', () => {
         currentDevbox = await sdk.getDevbox(name)
       }
 
-      // 重启 Devbox
+      // Restart Devbox
       await currentDevbox.restart()
-      
-      // 等待重启完成
+
+      // Wait for restart to complete
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)
 
-      // 重启后应该仍然是运行状态
+      // Should still be in Running state after restart
       expect(currentDevbox.status).toBe('Running')
     }, 60000)
   })
 
-  describe('删除 Devbox', () => {
-    it('应该能够删除已创建的 Devbox', async () => {
+  describe('Delete Devbox', () => {
+    it('should be able to delete created Devbox', async () => {
       const name = generateDevboxName('delete')
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
 
-      // 不添加到清理列表，因为我们手动删除
+      // Don't add to cleanup list as we manually delete
       expect(devbox.name).toBe(name)
 
-      // 删除 Devbox
+      // Delete Devbox
       await devbox.delete()
 
-      // 验证删除后无法获取
+      // Verify cannot get after deletion
       await expect(sdk.getDevbox(name)).rejects.toThrow()
     }, 120000)
 
-    it('删除不存在的 Devbox 应该抛出错误', async () => {
+    it('should throw error when deleting non-existent Devbox', async () => {
       const nonExistentName = 'non-existent-devbox-delete-999'
 
-      // 尝试获取不存在的 Devbox
+      // Try to get non-existent Devbox
       await expect(sdk.getDevbox(nonExistentName)).rejects.toThrow()
     }, 30000)
   })
 
-  describe('完整的生命周期流程', () => {
-    it('应该支持完整的创建-启动-暂停-重启-删除流程', async () => {
+  describe('Full Lifecycle Flow', () => {
+    it('should support full create-start-pause-restart-delete flow', async () => {
       const name = generateDevboxName('full-lifecycle')
 
-      // 1. 创建
+      // 1. Create
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
         ports: [{ number: 3000, protocol: 'HTTP' }],
       })
@@ -404,7 +404,7 @@ describe('Devbox 生命周期管理', () => {
       expect(devbox.name).toBe(name)
       createdDevboxes.push(name)
 
-      // 2. 启动并等待就绪
+      // 2. Start and wait for ready
       await devbox.start()
       let currentDevbox = await sdk.getDevbox(name)
       const startTime = Date.now()
@@ -414,38 +414,38 @@ describe('Devbox 生命周期管理', () => {
       }
       expect(currentDevbox.status).toBe('Running')
 
-      // 3. 暂停
+      // 3. Pause
       await currentDevbox.pause()
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)
       expect(currentDevbox.status).toBe('Stopped')
 
-      // 4. 重启
+      // 4. Restart
       await currentDevbox.restart()
       await new Promise(resolve => setTimeout(resolve, 3000))
       currentDevbox = await sdk.getDevbox(name)
       expect(currentDevbox.status).toBe('Running')
 
-      // 5. 验证仍然可以获取
+      // 5. Verify can still be retrieved
       const fetched = await sdk.getDevbox(name)
       expect(fetched.name).toBe(name)
 
-      // 注意：实际删除在 afterEach 中进行
+      // Note: actual deletion happens in afterEach
     }, 180000)
   })
 
-  describe('监控数据', () => {
-    it('应该能够获取 Devbox 监控数据', async () => {
+  describe('Monitor Data', () => {
+    it('should be able to get Devbox monitor data', async () => {
       const name = generateDevboxName('monitor')
 
       const devbox = await sdk.createDevbox({
         name,
-        runtime: DevboxRuntime.NODE_JS,
+        runtime: DevboxRuntime.TEST_AGENT,
         resource: { cpu: 1, memory: 2 },
       })
       createdDevboxes.push(name)
 
-      // 启动并等待就绪
+      // Start and wait for ready
       await devbox.start()
       let currentDevbox = await sdk.getDevbox(name)
       const startTime = Date.now()
@@ -454,7 +454,7 @@ describe('Devbox 生命周期管理', () => {
         currentDevbox = await sdk.getDevbox(name)
       }
 
-      // 获取监控数据
+      // Get monitor data
       const monitorData = await sdk.getMonitorData(name)
 
       expect(monitorData).toBeDefined()

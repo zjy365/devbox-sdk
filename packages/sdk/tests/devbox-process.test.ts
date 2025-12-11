@@ -1,97 +1,62 @@
 /**
- * Devbox SDK 进程管理功能测试
+ * Devbox SDK Process Management Tests
  *
- * 测试目的：
- * 本测试文件用于验证 Devbox SDK 的进程管理功能，包括：
- * 1. 异步进程执行
- * 2. 同步进程执行
- * 3. 流式进程执行（SSE）
- * 4. 进程列表查询
- * 5. 进程状态查询
- * 6. 进程终止
- * 7. 进程日志获取
+ * Test Purpose:
+ * This test file validates Devbox SDK process management functionality, including:
+ * 1. Asynchronous process execution
+ * 2. Synchronous process execution
+ * 3. Streaming process execution (SSE)
+ * 4. Process list query
+ * 5. Process status query
+ * 6. Process termination
+ * 7. Process log retrieval
  *
- * 测试覆盖范围：
- * - 异步执行命令并获取 process_id
- * - 同步执行命令并获取输出
- * - 流式执行命令并处理实时输出
- * - 列出所有运行的进程
- * - 查询特定进程的状态
- * - 终止运行中的进程
- * - 获取进程的执行日志
- * - 错误处理和边界情况
+ * Test Coverage:
+ * - Execute commands asynchronously and retrieve process_id
+ * - Execute commands synchronously and retrieve output
+ * - Execute commands with streaming and handle real-time output
+ * - List all running processes
+ * - Query status of specific processes
+ * - Terminate running processes
+ * - Retrieve process execution logs
+ * - Error handling and edge cases
  *
- * 注意事项：
- * - 所有测试都需要真实的 Devbox 实例（通过 Kubernetes API 创建）
- * - 测试使用 mockServerUrl 连接到本地 Go Server（通过 DEVBOX_SERVER_URL 环境变量配置）
- * - 测试会创建和删除 Devbox 实例，确保测试环境有足够的资源
+ * Notes:
+ * - All tests require a real Devbox instance (created via Kubernetes API)
+ * - Tests use mockServerUrl to connect to local Go Server (configured via DEVBOX_SERVER_URL environment variable)
+ * - Tests create and delete Devbox instances, ensure test environment has sufficient resources
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { DevboxSDK } from '../src/core/devbox-sdk'
 import type { DevboxInstance } from '../src/core/devbox-instance'
-import { TEST_CONFIG } from './setup'
+import { TEST_CONFIG, getOrCreateSharedDevbox, cleanupTestFiles } from './setup'
 import type { DevboxCreateConfig, ProcessExecOptions } from '../src/core/types'
 import { DevboxRuntime } from '../src/api/types'
 
-async function waitForDevboxReady(devbox: DevboxInstance, timeout = 120000): Promise<void> {
-  const startTime = Date.now()
-
-  while (Date.now() - startTime < timeout) {
-    try {
-      await devbox.refreshInfo()
-      if (devbox.status === 'Running') {
-        await new Promise(resolve => setTimeout(resolve, 3000))
-        return
-      }
-    } catch (error) {
-      // Ignore intermediate errors
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 2000))
-  }
-
-  throw new Error(`Devbox ${devbox.name} did not become ready within ${timeout}ms`)
-}
-
-describe('Devbox SDK 进程管理功能测试', () => {
+describe('Devbox SDK Process Management Tests', () => {
   let sdk: DevboxSDK
   let devboxInstance: DevboxInstance
-  const TEST_DEVBOX_NAME = `test-process-ops-${Date.now()}`
 
   beforeEach(async () => {
     sdk = new DevboxSDK(TEST_CONFIG)
 
-    const config: DevboxCreateConfig = {
-      name: TEST_DEVBOX_NAME,
-      runtime: DevboxRuntime.NODE_JS,
-      resource: {
-        cpu: 1,
-        memory: 2,
-      },
-    }
+    // Use shared devbox instead of creating a new one
+    devboxInstance = await getOrCreateSharedDevbox(sdk)
 
-    devboxInstance = await sdk.createDevbox(config)
-    await devboxInstance.start()
-    await waitForDevboxReady(devboxInstance)
+    // Clean up files from previous tests
+    await cleanupTestFiles(devboxInstance)
   }, 30000)
 
   afterEach(async () => {
-    if (devboxInstance) {
-      try {
-        await devboxInstance.delete()
-      } catch (error) {
-        console.warn('Failed to cleanup devbox:', error)
-      }
-    }
-
+    // Don't delete the shared devbox, just close the SDK connection
     if (sdk) {
       await sdk.close()
     }
   }, 10000)
 
-  describe('异步进程执行', () => {
-    it('应该能够异步执行简单命令', async () => {
+  describe('Asynchronous Process Execution', () => {
+    it('should be able to execute simple command asynchronously', async () => {
       const options: ProcessExecOptions = {
         command: 'echo',
         args: ['Hello World'],
@@ -105,7 +70,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(result.processStatus).toBeDefined()
     }, 10000)
 
-    it('应该能够异步执行带工作目录的命令', async () => {
+    it('should be able to execute command with working directory asynchronously', async () => {
       const options: ProcessExecOptions = {
         command: 'pwd',
         cwd: '/tmp',
@@ -117,7 +82,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(result.pid).toBeGreaterThan(0)
     }, 10000)
 
-    it('应该能够异步执行带环境变量的命令', async () => {
+    it('should be able to execute command with environment variables asynchronously', async () => {
       const options: ProcessExecOptions = {
         command: 'sh',
         args: ['-c', 'echo $TEST_VAR'],
@@ -131,7 +96,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(result.processId).toBeDefined()
     }, 10000)
 
-    it('应该能够异步执行带超时的命令', async () => {
+    it('should be able to execute command with timeout asynchronously', async () => {
       const options: ProcessExecOptions = {
         command: 'sleep',
         args: ['1'],
@@ -144,8 +109,8 @@ describe('Devbox SDK 进程管理功能测试', () => {
     }, 10000)
   })
 
-  describe('同步进程执行', () => {
-    it('应该能够同步执行命令并获取输出', async () => {
+  describe('Synchronous Process Execution', () => {
+    it('should be able to execute command synchronously and get output', async () => {
       const options: ProcessExecOptions = {
         command: 'echo',
         args: ['Hello World'],
@@ -160,7 +125,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(result.endTime).toBeGreaterThanOrEqual(result.startTime)
     }, 15000)
 
-    it('应该能够同步执行命令并获取退出码', async () => {
+    it('should be able to execute command synchronously and get exit code', async () => {
       const options: ProcessExecOptions = {
         command: 'sh',
         args: ['-c', 'exit 0'],
@@ -171,7 +136,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(result.exitCode).toBe(0)
     }, 15000)
 
-    it('应该能够同步执行失败的命令', async () => {
+    it('should be able to execute failing command synchronously', async () => {
       const options: ProcessExecOptions = {
         command: 'sh',
         args: ['-c', 'exit 1'],
@@ -182,7 +147,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(result.exitCode).toBe(1)
     }, 15000)
 
-    it('应该能够同步执行带工作目录的命令', async () => {
+    it('should be able to execute command with working directory synchronously', async () => {
       const options: ProcessExecOptions = {
         command: 'pwd',
         cwd: '/tmp',
@@ -193,7 +158,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(result.stdout).toContain('/tmp')
     }, 15000)
 
-    it('应该能够同步执行带环境变量的命令', async () => {
+    it('should be able to execute command with environment variables synchronously', async () => {
       const options: ProcessExecOptions = {
         command: 'sh',
         args: ['-c', 'echo $TEST_VAR'],
@@ -207,27 +172,27 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(result.stdout).toContain('test-value-123')
     }, 15000)
 
-    it('应该能够处理超时的命令', async () => {
+    it('should be able to handle timed out commands', async () => {
       const options: ProcessExecOptions = {
         command: 'sleep',
         args: ['10'],
         timeout: 2,
       }
 
-      // 这个测试可能会因为超时而失败，这是预期的行为
+      // This test may fail due to timeout, which is expected behavior
       try {
         const result = await devboxInstance.execSync(options)
-        // 如果命令在超时前完成，验证结果
+        // If command completes before timeout, verify result
         expect(result.success).toBeDefined()
       } catch (error) {
-        // 超时错误也是可以接受的
+        // Timeout error is also acceptable
         expect(error).toBeDefined()
       }
     }, 30000)
   })
 
-  describe('流式进程执行', () => {
-    it('应该能够流式执行命令', async () => {
+  describe('Streaming Process Execution', () => {
+    it('should be able to execute command with streaming', async () => {
       const options: ProcessExecOptions = {
         command: 'sh',
         args: ['-c', 'for i in 1 2 3; do echo "Line $i"; sleep 0.1; done'],
@@ -252,11 +217,11 @@ describe('Devbox SDK 进程管理功能测试', () => {
       }
 
       expect(output).toBeDefined()
-      // SSE 流可能包含事件格式，所以只检查是否有输出
+      // SSE stream may contain event format, so just check if there's output
       expect(output.length).toBeGreaterThan(0)
     }, 20000)
 
-    it('应该能够处理流式执行的错误', async () => {
+    it('should be able to handle streaming execution errors', async () => {
       const options: ProcessExecOptions = {
         command: 'nonexistent-command-12345',
       }
@@ -266,39 +231,39 @@ describe('Devbox SDK 进程管理功能测试', () => {
         const reader = stream.getReader()
 
         try {
-          // 尝试读取一些数据
+          // Try to read some data
           await reader.read()
         } finally {
           reader.releaseLock()
         }
       } catch (error) {
-        // 错误是预期的
+        // Error is expected
         expect(error).toBeDefined()
       }
     }, 15000)
   })
 
-  describe('进程列表查询', () => {
-    it('应该能够列出所有进程', async () => {
-      // 先启动一个进程
+  describe('Process List Query', () => {
+    it('should be able to list all processes', async () => {
+      // Start a process first
       await devboxInstance.executeCommand({
         command: 'sleep',
         args: ['5'],
       })
 
-      // 等待一下让进程启动
+      // Wait a bit for process to start
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       const result = await devboxInstance.listProcesses()
 
       expect(result.processes).toBeDefined()
       expect(Array.isArray(result.processes)).toBe(true)
-      // 至少应该有一个进程（我们刚启动的）
+      // Should have at least one process (the one we just started)
       expect(result.processes.length).toBeGreaterThan(0)
     }, 15000)
 
-    it('进程列表应该包含正确的字段', async () => {
-      // 启动一个进程
+    it('process list should contain correct fields', async () => {
+      // Start a process
       const execResult = await devboxInstance.executeCommand({
         command: 'sleep',
         args: ['5'],
@@ -320,15 +285,15 @@ describe('Devbox SDK 进程管理功能测试', () => {
     }, 15000)
   })
 
-  describe('进程状态查询', () => {
-    it('应该能够获取进程状态', async () => {
-      // 启动一个长时间运行的进程
+  describe('Process Status Query', () => {
+    it('should be able to get process status', async () => {
+      // Start a long-running process
       const execResult = await devboxInstance.executeCommand({
         command: 'sleep',
         args: ['10'],
       })
 
-      // 等待进程启动
+      // Wait for process to start
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       const status = await devboxInstance.getProcessStatus(execResult.processId)
@@ -339,36 +304,36 @@ describe('Devbox SDK 进程管理功能测试', () => {
       // expect(status.startedAt).toBeDefined()
     }, 15000)
 
-    it('应该能够处理不存在的进程ID', async () => {
+    it('should be able to handle non-existent process ID', async () => {
       const nonExistentId = 'non-existent-process-id-12345'
 
       await expect(devboxInstance.getProcessStatus(nonExistentId)).rejects.toThrow()
     }, 10000)
   })
 
-  describe('进程终止', () => {
-    it('应该能够终止运行中的进程', async () => {
-      // 启动一个长时间运行的进程
+  describe('Process Termination', () => {
+    it('should be able to terminate running process', async () => {
+      // Start a long-running process
       const execResult = await devboxInstance.executeCommand({
         command: 'sleep',
         args: ['30'],
       })
 
-      // 等待进程启动
+      // Wait for process to start
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      // 终止进程
+      // Terminate process
       await devboxInstance.killProcess(execResult.processId)
 
-      // 验证进程已被终止
+      // Verify process has been terminated
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       const status = await devboxInstance.getProcessStatus(execResult.processId)
-      // 进程状态应该是 terminated 或类似的
+      // Process status should be terminated or similar
       expect(status.processStatus).toBeDefined()
     }, 20000)
 
-    it('应该能够使用指定信号终止进程', async () => {
+    it('should be able to terminate process with specified signal', async () => {
       const execResult = await devboxInstance.executeCommand({
         command: 'sleep',
         args: ['30'],
@@ -386,7 +351,7 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(status.processStatus).toBeDefined()
     }, 20000)
 
-    it('应该能够处理终止不存在的进程', async () => {
+    it('should be able to handle terminating non-existent process', async () => {
       const nonExistentId = 'non-existent-process-id-12345'
 
       await expect(
@@ -395,15 +360,15 @@ describe('Devbox SDK 进程管理功能测试', () => {
     }, 10000)
   })
 
-  describe('进程日志获取', () => {
-    it('应该能够获取进程日志', async () => {
-      // 启动一个产生输出的进程
+  describe('Process Log Retrieval', () => {
+    it('should be able to get process logs', async () => {
+      // Start a process that produces output
       const execResult = await devboxInstance.executeCommand({
         command: 'sh',
         args: ['-c', 'echo "Line 1"; echo "Line 2"; sleep 2'],
       })
 
-      // 等待进程产生一些输出
+      // Wait for process to produce some output
       await new Promise(resolve => setTimeout(resolve, 2000))
 
       const logs = await devboxInstance.getProcessLogs(execResult.processId)
@@ -413,14 +378,14 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(Array.isArray(logs.logs)).toBe(true)
     }, 15000)
 
-    it('应该能够获取已完成进程的日志', async () => {
-      // 启动一个快速完成的进程
+    it('should be able to get logs of completed process', async () => {
+      // Start a quickly completing process
       const execResult = await devboxInstance.executeCommand({
         command: 'sh',
         args: ['-c', 'echo "Test output"; exit 0'],
       })
 
-      // 等待进程完成
+      // Wait for process to complete
       await new Promise(resolve => setTimeout(resolve, 2000))
 
       const logs = await devboxInstance.getProcessLogs(execResult.processId)
@@ -429,16 +394,16 @@ describe('Devbox SDK 进程管理功能测试', () => {
       expect(logs.logs).toBeDefined()
     }, 15000)
 
-    it('应该能够处理不存在的进程日志', async () => {
+    it('should be able to handle non-existent process logs', async () => {
       const nonExistentId = 'non-existent-process-id-12345'
 
       await expect(devboxInstance.getProcessLogs(nonExistentId)).rejects.toThrow()
     }, 10000)
   })
 
-  describe('进程管理集成测试', () => {
-    it('应该能够完整地执行、查询和终止进程', async () => {
-      // 1. 启动进程
+  describe('Process Management Integration Tests', () => {
+    it('should be able to execute, query and terminate process completely', async () => {
+      // 1. Start process
       const execResult = await devboxInstance.executeCommand({
         command: 'sleep',
         args: ['20'],
@@ -446,25 +411,25 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       expect(execResult.processId).toBeDefined()
 
-      // 2. 查询进程状态
+      // 2. Query process status
       await new Promise(resolve => setTimeout(resolve, 1000))
       const status = await devboxInstance.getProcessStatus(execResult.processId)
       expect(status.processId).toBe(execResult.processId)
 
-      // 3. 获取进程日志
+      // 3. Get process logs
       const logs = await devboxInstance.getProcessLogs(execResult.processId)
 
-      // 4. 终止进程
+      // 4. Terminate process
       await devboxInstance.killProcess(execResult.processId)
 
-      // 5. 验证进程已终止
+      // 5. Verify process has been terminated
       await new Promise(resolve => setTimeout(resolve, 1000))
       const finalStatus = await devboxInstance.getProcessStatus(execResult.processId)
       expect(finalStatus.processStatus).toBeDefined()
     }, 30000)
 
-    it('应该能够在进程列表中看到新启动的进程', async () => {
-      // 启动一个进程
+    it('should be able to see newly started process in process list', async () => {
+      // Start a process
       const execResult = await devboxInstance.executeCommand({
         command: 'sleep',
         args: ['10'],
@@ -472,10 +437,10 @@ describe('Devbox SDK 进程管理功能测试', () => {
 
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      // 列出所有进程
+      // List all processes
       const listResult = await devboxInstance.listProcesses()
 
-      // 检查我们的进程是否在列表中
+      // Check if our process is in the list
       const foundProcess = listResult.processes.find(
         p => p.processId === execResult.processId
       )
@@ -487,8 +452,8 @@ describe('Devbox SDK 进程管理功能测试', () => {
     }, 15000)
   })
 
-  describe('错误处理', () => {
-    it('应该处理无效的命令', async () => {
+  describe('Error Handling', () => {
+    it('should handle invalid commands', async () => {
       const options: ProcessExecOptions = {
         command: '',
       }
@@ -496,22 +461,22 @@ describe('Devbox SDK 进程管理功能测试', () => {
       await expect(devboxInstance.executeCommand(options)).rejects.toThrow()
     }, 10000)
 
-    it('应该处理不存在的命令', async () => {
+    it('should handle non-existent commands', async () => {
       const options: ProcessExecOptions = {
         command: 'nonexistent-command-xyz123',
       }
 
-      // 异步执行可能会成功（返回 process_id），但进程会失败
+      // Async execution may succeed (return process_id), but process will fail
       try {
         const result = await devboxInstance.executeCommand(options)
         expect(result.processId).toBeDefined()
       } catch (error) {
-        // 如果直接失败也是可以接受的
+        // If it fails directly, that's also acceptable
         expect(error).toBeDefined()
       }
     }, 10000)
 
-    it('应该处理同步执行不存在的命令', async () => {
+    it('should handle synchronous execution of non-existent commands', async () => {
       const options: ProcessExecOptions = {
         command: 'nonexistent-command-xyz123',
       }

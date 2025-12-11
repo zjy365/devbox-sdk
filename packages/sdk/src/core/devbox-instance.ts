@@ -588,15 +588,15 @@ export class DevboxInstance {
    * @returns Detected language ('node' or 'python')
    */
   private detectLanguage(code: string): 'node' | 'python' {
-    // Python 特征
+    // Python characteristics
     if (/\bdef\s+\w+\(|^\s*import\s+\w+|print\s*\(|:\s*$/.test(code)) {
       return 'python'
     }
-    // Node.js 特征
+    // Node.js characteristics
     if (/\brequire\s*\(|module\.exports|console\.log/.test(code)) {
       return 'node'
     }
-    return 'node' // 默认
+    return 'node' // Default
   }
 
   /**

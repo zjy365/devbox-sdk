@@ -33,7 +33,7 @@ class SealosAPIClient {
   private rejectUnauthorized: boolean
   private getAuthHeaders?: () => Record<string, string>
 
-  constructor(config: { 
+  constructor(config: {
     baseUrl?: string
     timeout?: number
     retries?: number
@@ -43,7 +43,7 @@ class SealosAPIClient {
     this.baseUrl = config.baseUrl || 'https://devbox.usw.sealos.io'
     this.timeout = config.timeout || 30000
     this.retries = config.retries || 3
-    this.rejectUnauthorized = config.rejectUnauthorized ?? 
+    this.rejectUnauthorized = config.rejectUnauthorized ??
       (process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0')
     this.getAuthHeaders = config.getAuthHeaders
     if (!this.rejectUnauthorized) {
@@ -91,13 +91,13 @@ class SealosAPIClient {
         const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
         // console.log('fetchOptions',fetchOptions)
- 
+
         const response = await fetch(url.toString(), {
           ...fetchOptions,
           signal: controller.signal,
         })
 
-        // console.log('response.url',response.ok,url.toString(),fetchOptions,)
+        // console.log('response.url', response.ok, url.toString(), fetchOptions,)
 
         clearTimeout(timeoutId)
 
@@ -109,20 +109,20 @@ class SealosAPIClient {
               errorData = (await response.json()) as { error?: string; code?: string; timestamp?: number }
             } else {
               const errorText = await response.text().catch(() => 'Unable to read error response')
-            try {
+              try {
                 errorData = JSON.parse(errorText) as { error?: string; code?: string; timestamp?: number }
               } catch {
-                
+
                 errorData = { error: errorText }
               }
             }
           } catch (e) {
-            // 忽略解析错误，使用默认错误信息
+            // Ignore parsing error, use default error message
           }
-          
+
           const errorMessage = errorData.error || response.statusText
           const errorCode = errorData.code || this.getErrorCodeFromStatus(response.status)
-          
+
           throw new DevboxSDKError(
             errorMessage,
             errorCode,
@@ -139,8 +139,8 @@ class SealosAPIClient {
         const data = contentType?.includes('application/json')
           ? await response.json()
           : await response.text()
-        
-        // console.log('response.data',data)
+
+        // console.log('response.data', url.toString(), data)
 
         return {
           data,
@@ -150,7 +150,7 @@ class SealosAPIClient {
         }
       } catch (error) {
         lastError = error as Error
-        
+
         if (error instanceof Error && 'cause' in error && error.cause instanceof Error) {
           const cause = error.cause
           if (cause.message.includes('certificate') || (cause as any).code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
@@ -526,11 +526,11 @@ export class DevboxAPI {
       podIP: sshInfo.podIP,
       ssh: sshInfo.ssh
         ? {
-            host: sshInfo.ssh.host,
-            port: sshInfo.ssh.port,
-            user: sshInfo.ssh.user,
-            privateKey: sshInfo.ssh.privateKey,
-          }
+          host: sshInfo.ssh.host,
+          port: sshInfo.ssh.port,
+          user: sshInfo.ssh.user,
+          privateKey: sshInfo.ssh.privateKey,
+        }
         : undefined,
     }
   }
@@ -550,7 +550,7 @@ export class DevboxAPI {
    */
   private stringToRuntime(value: string | null | undefined): DevboxRuntime {
     if (!value) {
-      return DevboxRuntime.NODE_JS // Default fallback
+      return DevboxRuntime.TEST_AGENT // Default fallback
     }
     // Check if the value matches any enum value
     const runtimeValues = Object.values(DevboxRuntime) as string[]
@@ -558,7 +558,7 @@ export class DevboxAPI {
       return value as DevboxRuntime
     }
     // If not found, return default
-    return DevboxRuntime.NODE_JS
+    return DevboxRuntime.TEST_AGENT
   }
 
   private transformCreateResponseToDevboxInfo(
@@ -587,12 +587,12 @@ export class DevboxAPI {
    * Transform DevboxDetail (actual API response) to DevboxInfo
    */
   private transformDetailToDevboxInfo(detail: DevboxDetail): DevboxInfo {
-    // 处理 runtime：可能是字符串或枚举值
-    const runtime = typeof detail.runtime === 'string' 
+    // Handle runtime: may be string or enum value
+    const runtime = typeof detail.runtime === 'string'
       ? this.stringToRuntime(detail.runtime)
       : detail.runtime
 
-    // 处理 SSH 信息：只在 privateKey 存在时设置
+    // Handle SSH info: only set if privateKey exists
     const ssh = detail.ssh?.privateKey ? {
       host: detail.ssh.host,
       port: detail.ssh.port,
@@ -600,11 +600,11 @@ export class DevboxAPI {
       privateKey: detail.ssh.privateKey,
     } : undefined
 
-    // 提取 podIP（从 pods 数组中获取，如果存在）
+    // Extract podIP (from pods array if exists)
     let podIP: string | undefined
     if (detail.pods && detail.pods.length > 0) {
-      // 尝试从 pods 中提取 IP，这里可能需要根据实际 API 返回结构调整
-      // 如果 API 返回的 pods 包含 IP 信息，可以在这里提取
+      // Try to extract IP from pods, may need to adjust based on actual API response structure
+      // If API returns pods with IP info, can extract here
     }
 
     return {
@@ -615,6 +615,7 @@ export class DevboxAPI {
       podIP,
       ssh,
       ports: detail.ports,
+      agentServer: detail.agentServer,
     }
   }
 
@@ -622,21 +623,21 @@ export class DevboxAPI {
    * Transform DevboxGetResponse to DevboxInfo (legacy method, kept for backward compatibility)
    */
   private transformGetResponseToDevboxInfo(getResponse: DevboxGetResponse): DevboxInfo {
-    // 处理 status：可能是字符串或对象
-    const status = typeof getResponse.status === 'string' 
-      ? getResponse.status 
+    // Handle status: may be string or object
+    const status = typeof getResponse.status === 'string'
+      ? getResponse.status
       : getResponse.status.value
 
-    // 处理 resources：优先使用 resources 对象，否则使用直接的 cpu/memory 字段
+    // Handle resources: prefer resources object, otherwise use direct cpu/memory fields
     const resources = getResponse.resources || {
       cpu: getResponse.cpu || 0,
       memory: getResponse.memory || 0,
     }
 
-    // 处理 runtime：优先使用 runtime 字段，否则使用 iconId
-    const runtime = getResponse.runtime 
+    // Handle runtime: prefer runtime field, otherwise use iconId
+    const runtime = getResponse.runtime
       ? this.stringToRuntime(getResponse.runtime)
-      : (getResponse.iconId ? this.stringToRuntime(getResponse.iconId) : DevboxRuntime.NODE_JS)
+      : (getResponse.iconId ? this.stringToRuntime(getResponse.iconId) : DevboxRuntime.TEST_AGENT)
 
     return {
       name: getResponse.name,

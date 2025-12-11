@@ -1,17 +1,17 @@
 /**
- * Devbox SDK Node.js 代码执行测试
- * 
- * 测试目的：
- * 验证在 Devbox 中执行实际 Node.js 代码文件的能力，包括：
- * 1. 创建并执行 Node.js 文件
- * 2. 后台运行长时间进程
- * 3. 并发执行多个进程
- * 4. SIGKILL 强制终止
- * 5. 实时日志监控
- * 
- * 与 devbox-process.test.ts 的区别：
- * - devbox-process.test.ts: 测试进程管理 API 的基础功能
- * - 本文件: 测试实际 Node.js 应用场景和复杂工作流
+ * Devbox SDK Node.js Code Execution Tests
+ *
+ * Test Purpose:
+ * Validate the ability to execute actual Node.js code files in Devbox, including:
+ * 1. Create and execute Node.js files
+ * 2. Run long-running processes in background
+ * 3. Execute multiple processes concurrently
+ * 4. Force termination with SIGKILL
+ * 5. Real-time log monitoring
+ *
+ * Difference from devbox-process.test.ts:
+ * - devbox-process.test.ts: Tests basic process management API functionality
+ * - This file: Tests actual Node.js application scenarios and complex workflows
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -19,7 +19,7 @@ import { DevboxSDK } from '../src/core/devbox-sdk'
 import type { DevboxInstance } from '../src/core/devbox-instance'
 import { TEST_CONFIG } from './setup'
 
-describe('Devbox SDK Node.js 代码执行测试', () => {
+describe('Devbox SDK Node.js Code Execution Tests', () => {
     let sdk: DevboxSDK
     let devboxInstance: DevboxInstance
     const devboxName = 'my-nodejs-appxxx'
@@ -34,8 +34,8 @@ describe('Devbox SDK Node.js 代码执行测试', () => {
         await sdk.close()
     }, 10000)
 
-    describe('Node.js 文件执行', () => {
-        it('应该能够创建并执行简单的 Node.js 文件', async () => {
+    describe('Node.js File Execution', () => {
+        it('should create and execute simple Node.js file', async () => {
             const simpleCode = `
 console.log('Hello from Node.js!')
 console.log('Process ID:', process.pid)
@@ -53,7 +53,7 @@ console.log('Node version:', process.version)
             expect(result.processId).toBeDefined()
             expect(result.pid).toBeGreaterThan(0)
 
-            // 等待执行完成
+            // Wait for execution to complete
             await new Promise(resolve => setTimeout(resolve, 2000))
 
             const logs = await devboxInstance.getProcessLogs(result.processId)
@@ -64,7 +64,7 @@ console.log('Node version:', process.version)
             expect(logContent).toContain('Node version:')
         }, 30000)
 
-        it('应该能够执行带有异步操作的 Node.js 文件', async () => {
+        it('should execute Node.js file with async operations', async () => {
             const asyncCode = `
 async function main() {
   console.log('Start')
@@ -88,7 +88,7 @@ main().catch(console.error)
 
             expect(result.processId).toBeDefined()
 
-            // 等待异步操作完成
+            // Wait for async operations to complete
             await new Promise(resolve => setTimeout(resolve, 3000))
 
             const logs = await devboxInstance.getProcessLogs(result.processId)
@@ -100,7 +100,7 @@ main().catch(console.error)
             expect(logContent).toContain('Done')
         }, 30000)
 
-        it('应该能够执行使用环境变量的 Node.js 文件', async () => {
+        it('should execute Node.js file with environment variables', async () => {
             const envCode = `
 console.log('APP_NAME:', process.env.APP_NAME)
 console.log('APP_VERSION:', process.env.APP_VERSION)
@@ -131,8 +131,8 @@ console.log('NODE_ENV:', process.env.NODE_ENV)
         }, 30000)
     })
 
-    describe('长时间运行的后台进程', () => {
-        it('应该能够运行持续输出的后台进程', async () => {
+    describe('Long-running Background Processes', () => {
+        it('should run background process with continuous output', async () => {
             const longRunningCode = `
 let counter = 0
 const interval = setInterval(() => {
@@ -159,27 +159,27 @@ console.log('Long running process started')
 
             console.log(`Started long running process: ${result.processId}`)
 
-            // 等待一些输出
+            // Wait for some output
             await new Promise(resolve => setTimeout(resolve, 3000))
 
-            // 检查进程状态
+            // Check process status
             const status = await devboxInstance.getProcessStatus(result.processId)
             console.log(`Process status: ${status.processStatus}`)
 
-            // 获取日志
+            // Get logs
             const logs = await devboxInstance.getProcessLogs(result.processId)
             const logContent = logs.logs.join('\n')
 
             expect(logContent).toContain('Long running process started')
             expect(logContent).toContain('Tick')
 
-            // 清理：如果进程还在运行，终止它
+            // Cleanup: terminate process if still running
             if (status.processStatus === 'running') {
                 await devboxInstance.killProcess(result.processId)
             }
         }, 30000)
 
-        it('应该能够监控后台进程的实时状态', async () => {
+        it('should monitor background process real-time status', async () => {
             const monitorCode = `
 console.log('Process started at:', new Date().toISOString())
 
@@ -204,7 +204,7 @@ const interval = setInterval(() => {
                 cwd: '/home/devbox/project'
             })
 
-            // 多次检查状态
+            // Check status multiple times
             for (let i = 0; i < 3; i++) {
                 await new Promise(resolve => setTimeout(resolve, 2000))
 
@@ -220,9 +220,9 @@ const interval = setInterval(() => {
         }, 30000)
     })
 
-    describe('并发进程执行', () => {
-        it('应该能够同时运行多个 Node.js 进程', async () => {
-            // 创建3个不同的脚本
+    describe('Concurrent Process Execution', () => {
+        it('should run multiple Node.js processes concurrently', async () => {
+            // Create 3 different scripts
             const script1 = `console.log('Script 1 running'); setTimeout(() => console.log('Script 1 done'), 2000)`
             const script2 = `console.log('Script 2 running'); setTimeout(() => console.log('Script 2 done'), 2000)`
             const script3 = `console.log('Script 3 running'); setTimeout(() => console.log('Script 3 done'), 2000)`
@@ -231,7 +231,7 @@ const interval = setInterval(() => {
             await devboxInstance.writeFile('/home/devbox/project/script2.js', script2)
             await devboxInstance.writeFile('/home/devbox/project/script3.js', script3)
 
-            // 并发启动所有进程
+            // Start all processes concurrently
             const results = await Promise.all([
                 devboxInstance.executeCommand({
                     command: 'node',
@@ -256,7 +256,7 @@ const interval = setInterval(() => {
                 console.log(`Process ${index + 1}: ${result.processId}`)
             })
 
-            // 验证所有进程都在运行
+            // Verify all processes are running
             await new Promise(resolve => setTimeout(resolve, 1000))
 
             const processList = await devboxInstance.listProcesses()
@@ -267,10 +267,10 @@ const interval = setInterval(() => {
             console.log(`Found ${ourProcesses.length} of our processes in the list`)
             expect(ourProcesses.length).toBeGreaterThan(0)
 
-            // 等待所有进程完成
+            // Wait for all processes to complete
             await new Promise(resolve => setTimeout(resolve, 3000))
 
-            // 验证日志
+            // Verify logs
             for (const result of results) {
                 const logs = await devboxInstance.getProcessLogs(result.processId)
                 expect(logs.logs.length).toBeGreaterThan(0)
@@ -278,13 +278,13 @@ const interval = setInterval(() => {
         }, 45000)
     })
 
-    describe('进程终止测试', () => {
-        it('应该能够使用 SIGKILL 强制终止进程', async () => {
+    describe('Process Termination Tests', () => {
+        it('should forcefully terminate process with SIGKILL', async () => {
             const infiniteCode = `
 console.log('Infinite loop started')
 let counter = 0
 
-// 忽略 SIGTERM
+// Ignore SIGTERM
 process.on('SIGTERM', () => {
   console.log('Received SIGTERM, but ignoring it')
 })
@@ -305,10 +305,10 @@ setInterval(() => {
 
             console.log(`Started infinite process: ${result.processId}`)
 
-            // 等待进程运行
+            // Wait for process to run
             await new Promise(resolve => setTimeout(resolve, 3000))
 
-            // 使用 SIGKILL 强制终止
+            // Force terminate with SIGKILL
             console.log('Sending SIGKILL...')
             await devboxInstance.killProcess(result.processId, { signal: 'SIGKILL' })
 
@@ -317,11 +317,11 @@ setInterval(() => {
             const status = await devboxInstance.getProcessStatus(result.processId)
             console.log(`Process status after SIGKILL: ${status.processStatus}`)
 
-            // 验证进程已终止
+            // Verify process is terminated
             expect(status.processStatus).not.toBe('running')
         }, 30000)
 
-        it('应该能够在进程列表中找到并终止特定进程', async () => {
+        it('should find and terminate specific process in process list', async () => {
             const testCode = `
 console.log('Test process for list and kill')
 setInterval(() => {
@@ -339,14 +339,14 @@ setInterval(() => {
 
             await new Promise(resolve => setTimeout(resolve, 2000))
 
-            // 在进程列表中找到这个进程
+            // Find this process in the process list
             const processList = await devboxInstance.listProcesses()
             const ourProcess = processList.processes.find(p => p.processId === result.processId)
 
             expect(ourProcess).toBeDefined()
             console.log(`Found process in list: ${ourProcess?.processId}`)
 
-            // 终止它
+            // Terminate it
             await devboxInstance.killProcess(result.processId, { signal: 'SIGTERM' })
 
             await new Promise(resolve => setTimeout(resolve, 1000))
@@ -356,8 +356,8 @@ setInterval(() => {
         }, 30000)
     })
 
-    describe('错误处理和边缘情况', () => {
-        it('应该处理 Node.js 运行时错误', async () => {
+    describe('Error Handling and Edge Cases', () => {
+        it('should handle Node.js runtime errors', async () => {
             const errorCode = `
 console.log('About to throw an error')
 throw new Error('Intentional error for testing')
@@ -371,7 +371,7 @@ throw new Error('Intentional error for testing')
                 cwd: '/home/devbox/project'
             })
 
-            // 进程会启动但会立即失败
+            // Process will start but fail immediately
             expect(result.processId).toBeDefined()
 
             await new Promise(resolve => setTimeout(resolve, 2000))
@@ -383,32 +383,32 @@ throw new Error('Intentional error for testing')
             expect(logContent).toContain('Error: Intentional error')
         }, 30000)
 
-        it('应该处理不存在的 Node.js 文件', async () => {
+        it('should handle non-existent Node.js files', async () => {
             const result = await devboxInstance.executeCommand({
                 command: 'node',
                 args: ['nonexistent_file_12345.js'],
                 cwd: '/home/devbox/project'
             })
 
-            // executeCommand 是异步的，会返回 processId
+            // executeCommand is async, will return processId
             expect(result.processId).toBeDefined()
 
             await new Promise(resolve => setTimeout(resolve, 2000))
 
-            // 但进程会失败
+            // But process will fail
             const logs = await devboxInstance.getProcessLogs(result.processId)
             const logContent = logs.logs.join('\n')
 
-            // 应该包含错误信息
+            // Should contain error message
             expect(logContent).toContain('Cannot find module')
         }, 30000)
 
-        it('应该处理进程崩溃', async () => {
+        it('should handle process crashes', async () => {
             const crashCode = `
 console.log('Process starting')
 setTimeout(() => {
   console.log('About to crash')
-  process.exit(1)  // 非零退出码
+  process.exit(1)  // Non-zero exit code
 }, 1000)
 `
 

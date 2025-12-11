@@ -9,8 +9,6 @@ export interface DevboxSDKConfig {
   baseUrl?: string
   /** Optional mock server URL for development/testing */
   mockServerUrl?: string
-  /** Optional devbox sandbox server URL for container communication */
-  devboxServerUrl?: string
   /** HTTP client configuration */
   http?: HttpClientConfig
 }
@@ -81,6 +79,11 @@ export interface DevboxInfo {
     publicAddress?: string
     customDomain?: string
   }>
+  /** Agent server configuration */
+  agentServer?: {
+    url: string
+    token: string
+  }
 }
 
 export interface SSHInfo {

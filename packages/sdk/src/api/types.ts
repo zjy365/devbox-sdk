@@ -40,6 +40,7 @@ export enum DevboxRuntime {
   NODE_JS = 'node.js',
   ECHO = 'echo',
   RUST = 'rust',
+  TEST_AGENT = "node-expt-agent"
 }
 
 /**
@@ -145,15 +146,15 @@ export interface DevboxCreateResponse {
 
 export interface DevboxGetResponse {
   name: string
-  iconId?: string  // 可能不存在
-  runtime?: string  // 实际 API 响应中包含它
-  status: string | {  // 可能是字符串或对象
+  iconId?: string  // May not exist
+  runtime?: string  // Actually included in API response
+  status: string | {  // May be string or object
     value: string
     label: string
   }
-  cpu?: number // in millicores (可能不存在，使用 resources 代替)
-  memory?: number // in MB (可能不存在，使用 resources 代替)
-  resources?: {  // 实际 API 响应中使用这个字段
+  cpu?: number // in millicores (may not exist, use resources instead)
+  memory?: number // in MB (may not exist, use resources instead)
+  resources?: {  // Actually used in API response
     cpu: number
     memory: number
   }
@@ -204,11 +205,11 @@ export interface ErrorDetail {
 }
 
 export interface APIError {
-  error: string  // Server 返回的字段名
+  error: string  // Field name returned by server
   code: string
   timestamp: number
   details?: ErrorDetail | ErrorDetail[] | Record<string, unknown>
-  // 向后兼容：保留 message 字段作为 error 的别名
+  // Backward compatibility: keep message field as alias for error
   message?: string
 }
 
@@ -295,13 +296,23 @@ export interface DevboxListApiResponse {
 }
 
 /**
+ * Agent server configuration
+ */
+export interface AgentServer {
+  /** Service URL or hostname for the agent server */
+  url: string
+  /** Authentication token for agent server */
+  token: string
+}
+
+/**
  * Detailed devbox information
  */
 export interface DevboxDetail {
   name: string
   uid: string
   resourceType: 'devbox'
-  runtime: string | DevboxRuntime  // API 返回字符串，但类型定义支持枚举
+  runtime: string | DevboxRuntime  // API returns string, but type definition supports enum
   image: string
   status: string
   resources: {
@@ -332,6 +343,7 @@ export interface DevboxDetail {
     name: string
     status: string
   }>
+  agentServer?: AgentServer
 }
 
 /**

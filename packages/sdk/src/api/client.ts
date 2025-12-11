@@ -43,8 +43,8 @@ class SealosAPIClient {
     this.baseUrl = config.baseUrl || 'https://devbox.usw.sealos.io'
     this.timeout = config.timeout || 30000
     this.retries = config.retries || 3
-    this.rejectUnauthorized = config.rejectUnauthorized ??
-      (process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0')
+    this.rejectUnauthorized =
+      config.rejectUnauthorized ?? process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0'
     this.getAuthHeaders = config.getAuthHeaders
     if (!this.rejectUnauthorized) {
       process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
@@ -106,13 +106,20 @@ class SealosAPIClient {
           try {
             const contentType = response.headers.get('content-type') || ''
             if (contentType.includes('application/json')) {
-              errorData = (await response.json()) as { error?: string; code?: string; timestamp?: number }
+              errorData = (await response.json()) as {
+                error?: string
+                code?: string
+                timestamp?: number
+              }
             } else {
               const errorText = await response.text().catch(() => 'Unable to read error response')
               try {
-                errorData = JSON.parse(errorText) as { error?: string; code?: string; timestamp?: number }
+                errorData = JSON.parse(errorText) as {
+                  error?: string
+                  code?: string
+                  timestamp?: number
+                }
               } catch {
-
                 errorData = { error: errorText }
               }
             }
@@ -123,16 +130,12 @@ class SealosAPIClient {
           const errorMessage = errorData.error || response.statusText
           const errorCode = errorData.code || this.getErrorCodeFromStatus(response.status)
 
-          throw new DevboxSDKError(
-            errorMessage,
-            errorCode,
-            {
-              status: response.status,
-              statusText: response.statusText,
-              timestamp: errorData.timestamp,
-              serverErrorCode: errorData.code,
-            }
-          )
+          throw new DevboxSDKError(errorMessage, errorCode, {
+            status: response.status,
+            statusText: response.statusText,
+            timestamp: errorData.timestamp,
+            serverErrorCode: errorData.code,
+          })
         }
 
         const contentType = response.headers.get('content-type')
@@ -153,8 +156,13 @@ class SealosAPIClient {
 
         if (error instanceof Error && 'cause' in error && error.cause instanceof Error) {
           const cause = error.cause
-          if (cause.message.includes('certificate') || (cause as any).code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
-            console.error('⚠️  SSL/TLS certificate error detected. Set http.rejectUnauthorized: false in config for development/testing.')
+          if (
+            cause.message.includes('certificate') ||
+            (cause as any).code === 'DEPTH_ZERO_SELF_SIGNED_CERT'
+          ) {
+            console.error(
+              '⚠️  SSL/TLS certificate error detected. Set http.rejectUnauthorized: false in config for development/testing.'
+            )
           }
         }
 
@@ -526,11 +534,11 @@ export class DevboxAPI {
       podIP: sshInfo.podIP,
       ssh: sshInfo.ssh
         ? {
-          host: sshInfo.ssh.host,
-          port: sshInfo.ssh.port,
-          user: sshInfo.ssh.user,
-          privateKey: sshInfo.ssh.privateKey,
-        }
+            host: sshInfo.ssh.host,
+            port: sshInfo.ssh.port,
+            user: sshInfo.ssh.user,
+            privateKey: sshInfo.ssh.privateKey,
+          }
         : undefined,
     }
   }
@@ -588,17 +596,18 @@ export class DevboxAPI {
    */
   private transformDetailToDevboxInfo(detail: DevboxDetail): DevboxInfo {
     // Handle runtime: may be string or enum value
-    const runtime = typeof detail.runtime === 'string'
-      ? this.stringToRuntime(detail.runtime)
-      : detail.runtime
+    const runtime =
+      typeof detail.runtime === 'string' ? this.stringToRuntime(detail.runtime) : detail.runtime
 
     // Handle SSH info: only set if privateKey exists
-    const ssh = detail.ssh?.privateKey ? {
-      host: detail.ssh.host,
-      port: detail.ssh.port,
-      user: detail.ssh.user,
-      privateKey: detail.ssh.privateKey,
-    } : undefined
+    const ssh = detail.ssh?.privateKey
+      ? {
+          host: detail.ssh.host,
+          port: detail.ssh.port,
+          user: detail.ssh.user,
+          privateKey: detail.ssh.privateKey,
+        }
+      : undefined
 
     // Extract podIP (from pods array if exists)
     let podIP: string | undefined
@@ -624,9 +633,8 @@ export class DevboxAPI {
    */
   private transformGetResponseToDevboxInfo(getResponse: DevboxGetResponse): DevboxInfo {
     // Handle status: may be string or object
-    const status = typeof getResponse.status === 'string'
-      ? getResponse.status
-      : getResponse.status.value
+    const status =
+      typeof getResponse.status === 'string' ? getResponse.status : getResponse.status.value
 
     // Handle resources: prefer resources object, otherwise use direct cpu/memory fields
     const resources = getResponse.resources || {
@@ -637,7 +645,9 @@ export class DevboxAPI {
     // Handle runtime: prefer runtime field, otherwise use iconId
     const runtime = getResponse.runtime
       ? this.stringToRuntime(getResponse.runtime)
-      : (getResponse.iconId ? this.stringToRuntime(getResponse.iconId) : DevboxRuntime.TEST_AGENT)
+      : getResponse.iconId
+        ? this.stringToRuntime(getResponse.iconId)
+        : DevboxRuntime.TEST_AGENT
 
     return {
       name: getResponse.name,

@@ -197,45 +197,46 @@ export interface PortsResponse {
   lastUpdatedAt: number
 }
 
-export interface FileChangeEvent {
-  /** Event type (add, change, unlink) */
-  type: 'add' | 'change' | 'unlink'
-  /** File path */
-  path: string
-  /** Event timestamp */
-  timestamp: number
-}
+// Temporarily disabled - ws module removed
+// export interface FileChangeEvent {
+//   /** Event type (add, change, unlink) */
+//   type: 'add' | 'change' | 'unlink'
+//   /** File path */
+//   path: string
+//   /** Event timestamp */
+//   timestamp: number
+// }
 
-/**
- * WebSocket watch request message
- */
-export interface WatchRequest {
-  type: 'watch'
-  path: string
-  recursive?: boolean
-}
+// /**
+//  * WebSocket watch request message
+//  */
+// export interface WatchRequest {
+//   type: 'watch'
+//   path: string
+//   recursive?: boolean
+// }
 
-/**
- * WebSocket message for file watching
- */
-export interface WebSocketMessage {
-  type: 'watch' | 'unwatch' | 'ping' | 'pong'
-  path?: string
-  data?: unknown
-}
+// /**
+//  * WebSocket message for file watching
+//  */
+// export interface WebSocketMessage {
+//   type: 'watch' | 'unwatch' | 'ping' | 'pong'
+//   path?: string
+//   data?: unknown
+// }
 
-/**
- * File watch WebSocket interface
- */
-export interface FileWatchWebSocket {
-  onopen: () => void
-  onmessage: (event: { data: string | Buffer | ArrayBuffer }) => void
-  onerror: (error: Event) => void
-  onclose: (event: { code?: number; reason?: string; wasClean?: boolean }) => void
-  send(data: string): void
-  close(code?: number, reason?: string): void
-  readyState: number
-}
+// /**
+//  * File watch WebSocket interface
+//  */
+// export interface FileWatchWebSocket {
+//   onopen: () => void
+//   onmessage: (event: { data: string | Buffer | ArrayBuffer }) => void
+//   onerror: (error: Event) => void
+//   onclose: (event: { code?: number; reason?: string; wasClean?: boolean }) => void
+//   send(data: string): void
+//   close(code?: number, reason?: string): void
+//   readyState: number
+// }
 
 export interface TimeRange {
   /** Start timestamp */
@@ -475,4 +476,3 @@ export interface GitStatus {
   /** Deleted files */
   deleted: string[]
 }
-

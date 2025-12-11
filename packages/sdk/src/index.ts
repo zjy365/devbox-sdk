@@ -49,7 +49,7 @@ export type {
   TransferResult,
   TransferProgress,
   TransferError,
-  FileChangeEvent,
+  // FileChangeEvent, // Temporarily disabled - ws module removed
   CommandResult,
   ProcessStatus,
   MonitorData,

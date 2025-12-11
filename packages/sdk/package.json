@@ -60,13 +60,10 @@
     "url": "https://github.com/zjy365/devbox-sdk.git",
     "directory": "packages/sdk"
   },
-  "dependencies": {
-    "devbox-shared": "file:../shared",
-    "ws": "^8.18.3"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.14.10",
-    "@types/ws": "^8.5.10",
+    "devbox-shared": "workspace:*",
     "tsup": "^8.0.0"
   }
 }

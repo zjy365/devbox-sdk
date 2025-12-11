@@ -175,27 +175,6 @@ await sandbox.deleteFile('unwanted.txt')
 await sandbox.deleteFile('unwanted-dir')
 ```
 
-## File Watching
-
-Monitor file changes in real-time:
-
-```typescript
-const ws = await sandbox.watchFiles('/workspace', (event) => {
-  console.log(`File ${event.type}: ${event.path}`)
-  
-  if (event.type === 'create') {
-    console.log('New file created')
-  } else if (event.type === 'update') {
-    console.log('File updated')
-  } else if (event.type === 'delete') {
-    console.log('File deleted')
-  }
-})
-
-// Stop watching
-ws.close()
-```
-
 ## Path Validation
 
 All file operations automatically validate paths to prevent directory traversal attacks:

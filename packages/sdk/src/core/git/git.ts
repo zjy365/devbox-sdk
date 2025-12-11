@@ -168,7 +168,8 @@ export class Git {
       }
     }
 
-    const isClean = staged.length === 0 && modified.length === 0 && untracked.length === 0 && deleted.length === 0
+    const isClean =
+      staged.length === 0 && modified.length === 0 && untracked.length === 0 && deleted.length === 0
 
     return {
       currentBranch,
@@ -382,7 +383,12 @@ export class Git {
   /**
    * Delete a branch
    */
-  async deleteBranch(repoPath: string, branchName: string, force = false, remote = false): Promise<void> {
+  async deleteBranch(
+    repoPath: string,
+    branchName: string,
+    force = false,
+    remote = false
+  ): Promise<void> {
     if (remote) {
       const result = await this.deps.execSync({
         command: 'git',

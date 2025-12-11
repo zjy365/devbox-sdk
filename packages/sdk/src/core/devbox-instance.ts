@@ -4,15 +4,18 @@
 
 // FormData and File are globally available in Node.js 22+ (via undici)
 import type { ListFilesResponse } from 'devbox-shared/types'
+import type { DevboxRuntime } from '../api/types'
+import { API_ENDPOINTS } from './constants'
 import type { DevboxSDK } from './devbox-sdk'
+import { Git } from './git/git'
 import type {
   BatchUploadOptions,
   CodeRunOptions,
   DevboxInfo,
   DownloadFileOptions,
-  FileChangeEvent,
+  // FileChangeEvent, // Temporarily disabled - ws module removed
   FileMap,
-  FileWatchWebSocket,
+  // FileWatchWebSocket, // Temporarily disabled - ws module removed
   GetProcessLogsResponse,
   GetProcessStatusResponse,
   KillProcessOptions,
@@ -28,12 +31,9 @@ import type {
   SyncExecutionResponse,
   TimeRange,
   TransferResult,
-  WatchRequest,
+  // WatchRequest, // Temporarily disabled - ws module removed
   WriteOptions,
 } from './types'
-import { API_ENDPOINTS } from './constants'
-import type { DevboxRuntime } from '../api/types'
-import { Git } from './git/git'
 
 export class DevboxInstance {
   private info: DevboxInfo
@@ -45,7 +45,7 @@ export class DevboxInstance {
     this.sdk = sdk
     // Initialize Git with dependency injection
     this.git = new Git({
-      execSync: (options) => this.execSync(options),
+      execSync: options => this.execSync(options),
     })
   }
 
@@ -114,7 +114,7 @@ export class DevboxInstance {
 
   async writeFile(path: string, content: string | Buffer, options?: WriteOptions): Promise<void> {
     this.validatePath(path)
-    const urlResolver = this.sdk.getUrlResolver();
+    const urlResolver = this.sdk.getUrlResolver()
     await urlResolver.executeWithConnection(this.name, async client => {
       // Go server supports three modes based on Content-Type:
       // 1. JSON mode (application/json): For text and base64-encoded small files
@@ -206,7 +206,6 @@ export class DevboxInstance {
       })
       console.log('response,readFile', response)
 
-
       // HTTP client handles response based on Content-Type:
       // - Binary content types -> Buffer
       // - Text content types -> string
@@ -292,7 +291,10 @@ export class DevboxInstance {
     })
   }
 
-  async uploadFiles(files: FileMap, options?: BatchUploadOptions & { targetDir?: string }): Promise<TransferResult> {
+  async uploadFiles(
+    files: FileMap,
+    options?: BatchUploadOptions & { targetDir?: string }
+  ): Promise<TransferResult> {
     const urlResolver = this.sdk.getUrlResolver()
     return await urlResolver.executeWithConnection(this.name, async client => {
       const formData = new FormData()
@@ -373,7 +375,11 @@ export class DevboxInstance {
     })
   }
 
-  async moveFile(source: string, destination: string, overwrite = false): Promise<MoveFileResponse> {
+  async moveFile(
+    source: string,
+    destination: string,
+    overwrite = false
+  ): Promise<MoveFileResponse> {
     this.validatePath(source)
     this.validatePath(destination)
     const urlResolver = this.sdk.getUrlResolver()
@@ -488,33 +494,34 @@ export class DevboxInstance {
     })
   }
 
+  // Temporarily disabled - ws module removed
   // File watching (instance method)
-  async watchFiles(
-    path: string,
-    callback: (event: FileChangeEvent) => void
-  ): Promise<FileWatchWebSocket> {
-    const urlResolver = this.sdk.getUrlResolver()
-    const serverUrl = await urlResolver.getServerUrl(this.name)
-    const { default: WebSocket } = await import('ws')
-    const ws = new WebSocket(`ws://${serverUrl.replace('http://', '')}/ws`) as unknown as FileWatchWebSocket
+  // async watchFiles(
+  //   path: string,
+  //   callback: (event: FileChangeEvent) => void
+  // ): Promise<FileWatchWebSocket> {
+  //   const urlResolver = this.sdk.getUrlResolver()
+  //   const serverUrl = await urlResolver.getServerUrl(this.name)
+  //   const { default: WebSocket } = await import('ws')
+  //   const ws = new WebSocket(`ws://${serverUrl.replace('http://', '')}/ws`) as unknown as FileWatchWebSocket
 
-    ws.onopen = () => {
-      const watchRequest: WatchRequest = { type: 'watch', path }
-      ws.send(JSON.stringify(watchRequest))
-    }
+  //   ws.onopen = () => {
+  //     const watchRequest: WatchRequest = { type: 'watch', path }
+  //     ws.send(JSON.stringify(watchRequest))
+  //   }
 
-    ws.onmessage = (event: any) => {
-      try {
-        const data = typeof event.data === 'string' ? event.data : event.data?.toString() || ''
-        const fileEvent = JSON.parse(data) as FileChangeEvent
-        callback(fileEvent)
-      } catch (error) {
-        console.error('Failed to parse file watch event:', error)
-      }
-    }
+  //   ws.onmessage = (event: any) => {
+  //     try {
+  //       const data = typeof event.data === 'string' ? event.data : event.data?.toString() || ''
+  //       const fileEvent = JSON.parse(data) as FileChangeEvent
+  //       callback(fileEvent)
+  //     } catch (error) {
+  //       console.error('Failed to parse file watch event:', error)
+  //     }
+  //   }
 
-    return ws
-  }
+  //   return ws
+  // }
 
   // Process execution
   /**
@@ -525,16 +532,19 @@ export class DevboxInstance {
   async executeCommand(options: ProcessExecOptions): Promise<ProcessExecResponse> {
     const urlResolver = this.sdk.getUrlResolver()
     return await urlResolver.executeWithConnection(this.name, async client => {
-      const response = await client.post<ProcessExecResponse>(API_ENDPOINTS.CONTAINER.PROCESS.EXEC, {
-        body: {
-          command: options.command,
-          args: options.args,
-          cwd: options.cwd,
-          env: options.env,
-          shell: options.shell,
-          timeout: options.timeout,
-        },
-      })
+      const response = await client.post<ProcessExecResponse>(
+        API_ENDPOINTS.CONTAINER.PROCESS.EXEC,
+        {
+          body: {
+            command: options.command,
+            args: options.args,
+            cwd: options.cwd,
+            env: options.env,
+            shell: options.shell,
+            timeout: options.timeout,
+          },
+        }
+      )
       return response.data
     })
   }
@@ -778,6 +788,4 @@ export class DevboxInstance {
     await this.refreshInfo()
     return { ...this.info }
   }
-
 }
-

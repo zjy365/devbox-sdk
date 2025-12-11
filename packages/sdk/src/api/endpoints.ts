@@ -138,7 +138,8 @@ export class APIEndpoints {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.PROCESS.STATUS.replace('{pid}', pid.toString())}`
   }
 
-  websocket(baseUrl: string): string {
-    return `${baseUrl}${API_ENDPOINTS.CONTAINER.WEBSOCKET}`
-  }
+  // Temporarily disabled - ws module removed
+  // websocket(baseUrl: string): string {
+  //   return `${baseUrl}${API_ENDPOINTS.CONTAINER.WEBSOCKET}`
+  // }
 }

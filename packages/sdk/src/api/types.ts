@@ -40,7 +40,7 @@ export enum DevboxRuntime {
   NODE_JS = 'node.js',
   ECHO = 'echo',
   RUST = 'rust',
-  TEST_AGENT = "node-expt-agent"
+  TEST_AGENT = 'node-expt-agent',
 }
 
 /**
@@ -146,15 +146,19 @@ export interface DevboxCreateResponse {
 
 export interface DevboxGetResponse {
   name: string
-  iconId?: string  // May not exist
-  runtime?: string  // Actually included in API response
-  status: string | {  // May be string or object
-    value: string
-    label: string
-  }
+  iconId?: string // May not exist
+  runtime?: string // Actually included in API response
+  status:
+    | string
+    | {
+        // May be string or object
+        value: string
+        label: string
+      }
   cpu?: number // in millicores (may not exist, use resources instead)
   memory?: number // in MB (may not exist, use resources instead)
-  resources?: {  // Actually used in API response
+  resources?: {
+    // Actually used in API response
     cpu: number
     memory: number
   }
@@ -205,7 +209,7 @@ export interface ErrorDetail {
 }
 
 export interface APIError {
-  error: string  // Field name returned by server
+  error: string // Field name returned by server
   code: string
   timestamp: number
   details?: ErrorDetail | ErrorDetail[] | Record<string, unknown>
@@ -312,7 +316,7 @@ export interface DevboxDetail {
   name: string
   uid: string
   resourceType: 'devbox'
-  runtime: string | DevboxRuntime  // API returns string, but type definition supports enum
+  runtime: string | DevboxRuntime // API returns string, but type definition supports enum
   image: string
   status: string
   resources: {

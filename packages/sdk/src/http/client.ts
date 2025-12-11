@@ -1,4 +1,9 @@
-import { DevboxSDKError, ERROR_CODES, parseServerResponse, type ServerResponse } from '../utils/error'
+import {
+  DevboxSDKError,
+  ERROR_CODES,
+  type ServerResponse,
+  parseServerResponse,
+} from '../utils/error'
 import type { HTTPResponse, RequestOptions } from './types'
 
 export class DevboxContainerClient {
@@ -44,9 +49,7 @@ export class DevboxContainerClient {
     }
 
     // Check for FormData (undici FormData or browser FormData)
-    const isFormData =
-      options?.body !== undefined &&
-      options.body instanceof FormData
+    const isFormData = options?.body !== undefined && options.body instanceof FormData
 
     const fetchOptions: RequestInit = {
       method,
@@ -54,7 +57,7 @@ export class DevboxContainerClient {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...options?.headers,
         // Decode base64 token and use as Bearer token
-        "Authorization": `Bearer ${Buffer.from(this.token, 'base64').toString('utf-8')}`,
+        Authorization: `Bearer ${Buffer.from(this.token, 'base64').toString('utf-8')}`,
       },
       signal: options?.signal,
     }
@@ -65,7 +68,11 @@ export class DevboxContainerClient {
         fetchOptions.body = options.body as FormData
       } else if (typeof options.body === 'string') {
         fetchOptions.body = options.body
-      } else if (Buffer.isBuffer(options.body) || options.body instanceof ArrayBuffer || options.body instanceof Uint8Array) {
+      } else if (
+        Buffer.isBuffer(options.body) ||
+        options.body instanceof ArrayBuffer ||
+        options.body instanceof Uint8Array
+      ) {
         // Support binary data (Buffer, ArrayBuffer, Uint8Array)
         // fetch API natively supports these types
         fetchOptions.body = options.body as unknown as RequestInit['body']
@@ -89,7 +96,11 @@ export class DevboxContainerClient {
         try {
           const contentType = response.headers.get('content-type') || ''
           if (contentType.includes('application/json')) {
-            errorData = (await response.json()) as { error?: string; code?: string; timestamp?: number }
+            errorData = (await response.json()) as {
+              error?: string
+              code?: string
+              timestamp?: number
+            }
           }
         } catch (e) {
           // error
@@ -98,16 +109,12 @@ export class DevboxContainerClient {
         const errorMessage = errorData.error || response.statusText
         const errorCode = errorData.code || ERROR_CODES.CONNECTION_FAILED
 
-        throw new DevboxSDKError(
-          errorMessage,
-          errorCode,
-          {
-            status: response.status,
-            statusText: response.statusText,
-            timestamp: errorData.timestamp,
-            serverErrorCode: errorData.code,
-          }
-        )
+        throw new DevboxSDKError(errorMessage, errorCode, {
+          status: response.status,
+          statusText: response.statusText,
+          timestamp: errorData.timestamp,
+          serverErrorCode: errorData.code,
+        })
       }
 
       const contentType = response.headers.get('content-type') || ''
@@ -116,18 +123,20 @@ export class DevboxContainerClient {
       if (contentType.includes('application/json')) {
         const jsonData = (await response.json()) as ServerResponse<T>
         data = parseServerResponse(jsonData)
-      } else if (contentType.includes('application/octet-stream') ||
+      } else if (
+        contentType.includes('application/octet-stream') ||
         contentType.includes('application/gzip') ||
         contentType.includes('application/x-tar') ||
         contentType.includes('multipart/') ||
         contentType.includes('image/') ||
         contentType.includes('video/') ||
-        contentType.includes('audio/')) {
+        contentType.includes('audio/')
+      ) {
         const arrayBuffer = await response.arrayBuffer()
-        data = (Buffer.from(arrayBuffer) as unknown) as T
+        data = Buffer.from(arrayBuffer) as unknown as T
       } else {
         const arrayBuffer = await response.arrayBuffer()
-        data = (Buffer.from(arrayBuffer) as unknown) as T
+        data = Buffer.from(arrayBuffer) as unknown as T
       }
 
       console.log('url', url.toString())
@@ -159,4 +168,3 @@ export class DevboxContainerClient {
     }
   }
 }
-

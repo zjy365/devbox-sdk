@@ -25,8 +25,9 @@ export interface ServerConfig {
   host: string
   workspaceDir: string
   maxFileSize: number
-  enableFileWatch: boolean
-  enableWebSocket: boolean
+  // Temporarily disabled - ws module removed
+  // enableFileWatch: boolean
+  // enableWebSocket: boolean
 }
 
 /**

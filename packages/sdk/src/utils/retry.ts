@@ -247,9 +247,7 @@ function isRetryable(error: unknown): boolean {
   }
 
   return (
-    isRetryableNetworkError(errorObj) ||
-    isRetryableHTTPStatus(errorObj) ||
-    isTimeoutError(errorObj)
+    isRetryableNetworkError(errorObj) || isRetryableHTTPStatus(errorObj) || isTimeoutError(errorObj)
   )
 }
 

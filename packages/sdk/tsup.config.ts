@@ -1,4 +1,29 @@
 import { defineConfig } from 'tsup'
+import { readdirSync, statSync, rmdirSync } from 'node:fs'
+import { join } from 'node:path'
+
+// Recursively remove empty directories
+function removeEmptyDirs(dir: string): boolean {
+  const entries = readdirSync(dir, { withFileTypes: true })
+  let isEmpty = true
+
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      // Recursively check subdirectories
+      if (removeEmptyDirs(fullPath)) {
+        // Remove the empty subdirectory
+        rmdirSync(fullPath)
+      } else {
+        isEmpty = false
+      }
+    } else {
+      isEmpty = false
+    }
+  }
+
+  return isEmpty
+}
 
 export default defineConfig({
   // Entry points
@@ -35,12 +60,14 @@ export default defineConfig({
   },
 
   // External dependencies (don't bundle these)
+  // Note: devbox-shared is bundled, only ws is external
   external: [
     'ws'
   ],
 
-  // Build hooks
+  // Clean up empty directories after build
   onSuccess: async () => {
-    console.log('✅ SDK built successfully')
+    removeEmptyDirs('dist')
+    console.log('✓ Cleaned up empty directories')
   }
 })

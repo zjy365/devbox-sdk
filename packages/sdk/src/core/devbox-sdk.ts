@@ -59,4 +59,3 @@ export class DevboxSDK {
 }
 
 export { DevboxInstance } from './devbox-instance'
-

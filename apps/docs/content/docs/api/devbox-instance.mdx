@@ -214,17 +214,6 @@ Deletes a file.
 deleteFile(path: string): Promise<void>
 ```
 
-### watchFiles
-
-Watches for file changes via WebSocket.
-
-```typescript
-watchFiles(
-  path: string,
-  callback: (event: FileChangeEvent) => void
-): Promise<FileWatchWebSocket>
-```
-
 ## Process Execution
 
 ### codeRun

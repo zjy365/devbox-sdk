@@ -42,7 +42,11 @@ export class ConnectionError extends DevboxSDKError {
 }
 
 export class FileOperationError extends DevboxSDKError {
-  constructor(message: string, context?: ErrorContext, code: string = ERROR_CODES.FILE_TRANSFER_FAILED) {
+  constructor(
+    message: string,
+    context?: ErrorContext,
+    code: string = ERROR_CODES.FILE_TRANSFER_FAILED
+  ) {
     super(message, code, context)
     this.name = 'FileOperationError'
   }
@@ -115,14 +119,10 @@ export function parseServerResponse<T>(jsonData: ServerResponse<T>): T {
   if (jsonData.status !== undefined && jsonData.status !== 0) {
     const errorCode = mapServerStatusToErrorCode(jsonData.status)
     const errorMessage = jsonData.message || 'Unknown server error'
-    
-    throw createErrorFromServerResponse(
-      errorMessage,
-      errorCode,
-      undefined
-    )
+
+    throw createErrorFromServerResponse(errorMessage, errorCode, undefined)
   }
-  
+
   // Extract Data field if present (server wraps response in { status, message, Data })
   // Otherwise use the entire response as data
   return (jsonData.Data !== undefined ? jsonData.Data : jsonData) as T
@@ -172,7 +172,8 @@ export function createErrorFromServerResponse(
     case ERROR_CODES.NOT_FOUND:
       if (code === ERROR_CODES.DEVBOX_NOT_FOUND) {
         // Extract devbox name from error message if possible
-        const devboxNameMatch = error.match(/Devbox '([^']+)'/i) || error.match(/devbox[:\s]+([^\s]+)/i)
+        const devboxNameMatch =
+          error.match(/Devbox '([^']+)'/i) || error.match(/devbox[:\s]+([^\s]+)/i)
         const devboxName = devboxNameMatch?.[1] ?? 'unknown'
         return new DevboxNotFoundError(devboxName, errorContext)
       }

@@ -85,7 +85,8 @@ export const API_ENDPOINTS = {
       LOGS: '/api/v1/process/{process_id}/logs',
     },
     PORTS: '/api/v1/ports',
-    WEBSOCKET: '/ws',
+    // Temporarily disabled - ws module removed
+    // WEBSOCKET: '/ws',
   },
 } as const
 
@@ -157,9 +158,10 @@ export const ERROR_CODES = {
   SHELL_NOT_FOUND: 'SHELL_NOT_FOUND',
 
   /** WebSocket errors */
-  WEBSOCKET_CONNECTION_FAILED: 'WEBSOCKET_CONNECTION_FAILED',
-  INVALID_SUBSCRIPTION: 'INVALID_SUBSCRIPTION',
-  TARGET_NOT_SUBSCRIBABLE: 'TARGET_NOT_SUBSCRIBABLE',
+  // Temporarily disabled - ws module removed
+  // WEBSOCKET_CONNECTION_FAILED: 'WEBSOCKET_CONNECTION_FAILED',
+  // INVALID_SUBSCRIPTION: 'INVALID_SUBSCRIPTION',
+  // TARGET_NOT_SUBSCRIBABLE: 'TARGET_NOT_SUBSCRIBABLE',
 
   /** Server errors */
   SERVER_UNAVAILABLE: 'SERVER_UNAVAILABLE',

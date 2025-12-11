@@ -1,4 +1,4 @@
-import type { DevboxSDKConfig, DevboxInfo } from '../core/types'
+import type { DevboxInfo, DevboxSDKConfig } from '../core/types'
 import { DevboxSDKError, ERROR_CODES } from '../utils/error'
 import { DevboxContainerClient } from './client'
 

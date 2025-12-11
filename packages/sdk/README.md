@@ -184,20 +184,6 @@ console.log(status.changes)
 const branches = await sandbox.git.branches('/workspace/repo')
 ```
 
-### 🔍 Real-time File Watching
-
-Monitor file changes via WebSocket:
-
-```typescript
-const ws = await sandbox.watchFiles('/workspace', (event) => {
-  console.log('File changed:', event.path)
-  console.log('Change type:', event.type) // 'create', 'update', 'delete'
-})
-
-// Stop watching
-ws.close()
-```
-
 ### 📊 Monitoring
 
 Monitor sandbox resource usage and metrics:

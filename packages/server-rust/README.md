@@ -274,6 +274,10 @@ make clippy       # Run clippy lints (strict)
 make clean
 ```
 
+## 📝 Release Notes (path-scoped)
+
+When the GitHub Action `server-rust release` runs, it automatically uses this script to generate release notes scoped to `packages/server-rust` between the latest `devbox-sdk-server-v*` tag and the current commit (falls back to the repo root on first release).
+
 ### Code Quality Standards
 - **Formatting**: `rustfmt` for consistent code style
 - **Linting**: `clippy` with strict warnings (`-D warnings`)

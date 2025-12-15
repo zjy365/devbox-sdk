@@ -62,7 +62,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@types/node": "^20.14.10",
+    "@types/node": "^25.0.2",
     "devbox-shared": "workspace:*",
     "tsup": "^8.0.0"
   }

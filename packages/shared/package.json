@@ -72,7 +72,7 @@
     "directory": "packages/shared"
   },
   "devDependencies": {
-    "@types/node": "^20.14.10",
+    "@types/node": "^25.0.2",
     "tsup": "^8.0.0"
   }
 }

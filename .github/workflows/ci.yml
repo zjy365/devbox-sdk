@@ -1,7 +1,10 @@
 name: CI
 
-# Temporarily disable auto-trigger, only allow manual trigger
-on: 
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:

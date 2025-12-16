@@ -1,6 +1,6 @@
 {
   "name": "devbox-sdk-monorepo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Enterprise TypeScript SDK for Sealos Devbox management with HTTP API + Bun runtime architecture",
   "private": true,
   "scripts": {

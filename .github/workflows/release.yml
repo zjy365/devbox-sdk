@@ -1,7 +1,8 @@
 name: release
 
-# Temporarily disable auto-trigger, only allow manual trigger
 on:
+  push:
+    branches: [main, master]
   workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}

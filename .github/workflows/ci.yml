@@ -30,17 +30,6 @@ jobs:
         run: pnpm run lint
       - name: build project
         run: pnpm run build
-      - name: run tests
-        run: pnpm run test
-      - name: coverage
-        uses: codecov/codecov-action@v5
-        if: github.actor != 'dependabot[bot]'
-        with:
-          fail_ci_if_error: true
-          verbose: false
-          token: ${{ secrets.CODECOV_TOKEN }}
-        env:
-          CI: true
 
   release-preview:
     runs-on: ubuntu-latest

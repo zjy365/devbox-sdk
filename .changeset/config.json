@@ -7,6 +7,6 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["devbox-docs"]
+  "ignore": ["devbox-docs", "devbox-shared"]
 }
 

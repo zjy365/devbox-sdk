@@ -2,6 +2,7 @@
   "name": "devbox-shared",
   "version": "1.1.0",
   "description": "Shared types, errors, and utilities for Sealos Devbox SDK",
+  "private": true,
   "type": "module",
   "exports": {
     "./errors": {

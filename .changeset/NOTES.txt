@@ -1,0 +1,5 @@
+# Ignore Configuration
+
+devbox-docs: Documentation site, not published to npm
+devbox-shared: Internal private package (private: true), not published, used only within monorepo
+

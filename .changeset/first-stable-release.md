@@ -1,6 +1,6 @@
 ---
-"devbox-sdk": major
-"devbox-shared": major
+"devbox-sdk": minor
+"devbox-shared": minor
 ---
 
 First stable release of Devbox SDK

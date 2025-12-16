@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { Menu, X, Github } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { motion, AnimatePresence } from "motion/react"
+import { cn } from '@/lib/utils'
+import { Github, Menu, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -14,24 +14,24 @@ export function Header() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10)
     }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   const navItems = [
-    { name: "Documentation", href: "/docs" },
-    { name: "API Reference", href: "/docs/api/devbox-sdk" },
-    { name: "Examples", href: "/docs/examples/ai-agent-workflow" },
+    { name: 'Documentation', href: '/docs' },
+    { name: 'API Reference', href: '/docs/api/devbox-sdk' },
+    { name: 'Examples', href: '/docs/examples/ai-agent-workflow' },
   ]
 
   return (
     <>
       <header
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-all duration-200 ease-in-out",
-          isScrolled 
-            ? "bg-white/80 backdrop-blur-md border-b border-black/[0.03] py-4" 
-            : "bg-white py-6"
+          'fixed top-0 left-0 right-0 z-50 transition-all duration-200 ease-in-out',
+          isScrolled
+            ? 'bg-white/80 backdrop-blur-md border-b border-black/[0.03] py-4'
+            : 'bg-white py-6'
         )}
       >
         <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
@@ -44,7 +44,7 @@ export function Header() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
-            {navItems.map((item) => (
+            {navItems.map(item => (
               <Link
                 key={item.name}
                 href={item.href}
@@ -111,7 +111,7 @@ export function Header() {
                   </Link>
                 </motion.div>
               ))}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}

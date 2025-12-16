@@ -54,7 +54,7 @@ export class DevboxSDK {
     const {
       waitUntilReady = true,
       timeout = 180000, // 3 minutes
-      checkInterval = 2000 // 2 seconds
+      checkInterval = 2000, // 2 seconds
     } = options
 
     const instance = await this.createDevboxAsync(config)

@@ -1,6 +1,6 @@
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
 
 /* Smooth scrolling only */
 html {
@@ -16,7 +16,7 @@ html {
   --landing-muted: #f5f5f5;
   --landing-muted-fg: #666666;
   --landing-border: #e5e5e5;
-  
+
   background-color: var(--landing-bg);
   color: var(--landing-fg);
 }

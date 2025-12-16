@@ -10,5 +10,4 @@ const withMDX = createMDX({
   // configPath: "source.config.ts" // Default is source.config.ts
 })
 
-export default withMDX(config);
-
+export default withMDX(config)

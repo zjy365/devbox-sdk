@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import Link from "next/link"
-import { ArrowRight, Github, Terminal, GitBranch } from "lucide-react"
-import { motion } from "motion/react"
+import { ArrowRight, GitBranch, Github, Terminal } from 'lucide-react'
+import { motion } from 'motion/react'
+import Link from 'next/link'
 
 export function HeroSection() {
   return (
@@ -13,10 +13,10 @@ export function HeroSection() {
       <div className="container relative z-10 mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto space-y-8">
           {/* Badge */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
           >
             <div className="inline-flex items-center rounded-full border border-[#e5e5e5] bg-white px-3 py-1 text-xs font-medium text-[#666]">
               v1.0.0 Enterprise Ready
@@ -24,10 +24,10 @@ export function HeroSection() {
           </motion.div>
 
           {/* Headline */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+            transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
             className="space-y-6"
           >
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-black">
@@ -35,16 +35,16 @@ export function HeroSection() {
               <span className="text-[#666]">Development</span>
             </h1>
             <p className="text-xl text-[#666] max-w-2xl mx-auto leading-relaxed font-normal">
-              The enterprise TypeScript SDK for Sealos Devbox. 
-              Spin up, manage, and control isolated cloud environments with precision.
+              The enterprise TypeScript SDK for Sealos Devbox. Spin up, manage, and control isolated
+              cloud environments with precision.
             </p>
           </motion.div>
 
           {/* CTA Buttons */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+            transition={{ duration: 0.5, delay: 0.2, ease: 'easeOut' }}
             className="flex flex-col sm:flex-row gap-4"
           >
             <Link
@@ -92,33 +92,57 @@ export function HeroSection() {
               <div className="p-6 text-left overflow-x-auto bg-[#0a0a0a]">
                 <pre className="font-mono text-sm leading-relaxed text-[#e5e5e5]">
                   <code>
-                    <span className="text-[#ff79c6]">import</span> <span className="text-[#f8f8f2]">{'{ DevboxSDK }'}</span> <span className="text-[#ff79c6]">from</span> <span className="text-[#f1fa8c]">'devbox-sdk'</span>
-                    {"\n\n"}
+                    <span className="text-[#ff79c6]">import</span>{' '}
+                    <span className="text-[#f8f8f2]">{'{ DevboxSDK }'}</span>{' '}
+                    <span className="text-[#ff79c6]">from</span>{' '}
+                    <span className="text-[#f1fa8c]">'devbox-sdk'</span>
+                    {'\n\n'}
                     <span className="text-[#6272a4]">{'// Initialize SDK'}</span>
-                    {"\n"}
-                    <span className="text-[#8be9fd]">const</span> <span className="text-[#f8f8f2]">sdk</span> <span className="text-[#ff79c6]">=</span> <span className="text-[#ff79c6]">new</span> <span className="text-[#50fa7b]">DevboxSDK</span><span className="text-[#f8f8f2]">{'({ kubeconfig })'}</span>
-                    {"\n\n"}
+                    {'\n'}
+                    <span className="text-[#8be9fd]">const</span>{' '}
+                    <span className="text-[#f8f8f2]">sdk</span>{' '}
+                    <span className="text-[#ff79c6]">=</span>{' '}
+                    <span className="text-[#ff79c6]">new</span>{' '}
+                    <span className="text-[#50fa7b]">DevboxSDK</span>
+                    <span className="text-[#f8f8f2]">{'({ kubeconfig })'}</span>
+                    {'\n\n'}
                     <span className="text-[#6272a4]">{'// 1. Create Environment'}</span>
-                    {"\n"}
-                    <span className="text-[#8be9fd]">const</span> <span className="text-[#f8f8f2]">devbox</span> <span className="text-[#ff79c6]">=</span> <span className="text-[#ff79c6]">await</span> <span className="text-[#f8f8f2]">sdk</span>.<span className="text-[#50fa7b]">createDevbox</span><span className="text-[#f8f8f2]">{'({'}</span>
-                    {"\n"}
-                    <span className="text-[#f8f8f2]">  name:</span> <span className="text-[#f1fa8c]">'ai-agent-worker'</span>,
-                    {"\n"}
-                    <span className="text-[#f8f8f2]">  runtime:</span> <span className="text-[#f1fa8c]">'python:3.10'</span>,
-                    {"\n"}
-                    <span className="text-[#f8f8f2]">  resource:</span> <span className="text-[#f8f8f2]">{'{ '}</span><span className="text-[#f8f8f2]">cpu:</span> <span className="text-[#bd93f9]">2</span>, <span className="text-[#f8f8f2]">memory:</span> <span className="text-[#bd93f9]">4096</span> <span className="text-[#f8f8f2]">{' }'}</span>
-                    {"\n"}
-                    <span className="text-[#f8f8f2]">{'}'}</span>)
-                    {"\n\n"}
+                    {'\n'}
+                    <span className="text-[#8be9fd]">const</span>{' '}
+                    <span className="text-[#f8f8f2]">devbox</span>{' '}
+                    <span className="text-[#ff79c6]">=</span>{' '}
+                    <span className="text-[#ff79c6]">await</span>{' '}
+                    <span className="text-[#f8f8f2]">sdk</span>.
+                    <span className="text-[#50fa7b]">createDevbox</span>
+                    <span className="text-[#f8f8f2]">{'({'}</span>
+                    {'\n'}
+                    <span className="text-[#f8f8f2]"> name:</span>{' '}
+                    <span className="text-[#f1fa8c]">'ai-agent-worker'</span>,{'\n'}
+                    <span className="text-[#f8f8f2]"> runtime:</span>{' '}
+                    <span className="text-[#f1fa8c]">'python:3.10'</span>,{'\n'}
+                    <span className="text-[#f8f8f2]"> resource:</span>{' '}
+                    <span className="text-[#f8f8f2]">{'{ '}</span>
+                    <span className="text-[#f8f8f2]">cpu:</span>{' '}
+                    <span className="text-[#bd93f9]">2</span>,{' '}
+                    <span className="text-[#f8f8f2]">memory:</span>{' '}
+                    <span className="text-[#bd93f9]">4096</span>{' '}
+                    <span className="text-[#f8f8f2]">{' }'}</span>
+                    {'\n'}
+                    <span className="text-[#f8f8f2]">{'}'}</span>){'\n\n'}
                     <span className="text-[#6272a4]">{'// 2. Execute AI Task'}</span>
-                    {"\n"}
-                    <span className="text-[#ff79c6]">await</span> <span className="text-[#f8f8f2]">devbox</span>.<span className="text-[#50fa7b]">codeRun</span><span className="text-[#f8f8f2]">(</span><span className="text-[#f1fa8c]">{'`'}</span>
-                    {"\n"}
-                    <span className="text-[#f1fa8c]">  from langchain.llms import OpenAI</span>
-                    {"\n"}
-                    <span className="text-[#f1fa8c]">  print("Agent Ready")</span>
-                    {"\n"}
-                    <span className="text-[#f1fa8c]">{'`'}</span><span className="text-[#f8f8f2]">)</span>
+                    {'\n'}
+                    <span className="text-[#ff79c6]">await</span>{' '}
+                    <span className="text-[#f8f8f2]">devbox</span>.
+                    <span className="text-[#50fa7b]">codeRun</span>
+                    <span className="text-[#f8f8f2]">(</span>
+                    <span className="text-[#f1fa8c]">{'`'}</span>
+                    {'\n'}
+                    <span className="text-[#f1fa8c]"> from langchain.llms import OpenAI</span>
+                    {'\n'}
+                    <span className="text-[#f1fa8c]"> print("Agent Ready")</span>
+                    {'\n'}
+                    <span className="text-[#f1fa8c]">{'`'}</span>
+                    <span className="text-[#f8f8f2]">)</span>
                   </code>
                 </pre>
               </div>
@@ -132,10 +156,10 @@ export function HeroSection() {
                   <div className="hover:text-[#999] transition-colors">0 errors</div>
                 </div>
                 <div className="flex items-center gap-4">
-                   <div>TypeScript</div>
-                   <div className="flex items-center gap-1.5">
-                     <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Online
-                   </div>
+                  <div>TypeScript</div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Online
+                  </div>
                 </div>
               </div>
             </div>

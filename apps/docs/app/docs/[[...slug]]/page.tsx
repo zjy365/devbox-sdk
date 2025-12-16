@@ -1,25 +1,20 @@
-import { source } from '@/lib/source';
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-} from 'fumadocs-ui/page';
-import { notFound } from 'next/navigation';
-import { getMDXComponents } from '@/mdx-components';
-import type { Metadata } from 'next';
-import { createRelativeLink } from 'fumadocs-ui/mdx';
+import { source } from '@/lib/source'
+import { getMDXComponents } from '@/mdx-components'
+import { createRelativeLink } from 'fumadocs-ui/mdx'
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/page'
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 
 type PageProps = {
-  params: Promise<{ slug?: string[] }>;
-};
+  params: Promise<{ slug?: string[] }>
+}
 
 export default async function Page(props: PageProps) {
-  const params = await props.params;
-  const page = source.getPage(params.slug);
-  if (!page) notFound();
+  const params = await props.params
+  const page = source.getPage(params.slug)
+  if (!page) notFound()
 
-  const MDX = page.data.body;
+  const MDX = page.data.body
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
@@ -34,23 +29,20 @@ export default async function Page(props: PageProps) {
         />
       </DocsBody>
     </DocsPage>
-  );
+  )
 }
 
 export async function generateStaticParams() {
-  return source.generateParams();
+  return source.generateParams()
 }
 
-export async function generateMetadata(
-  props: PageProps,
-): Promise<Metadata> {
-  const params = await props.params;
-  const page = source.getPage(params.slug);
-  if (!page) notFound();
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const params = await props.params
+  const page = source.getPage(params.slug)
+  if (!page) notFound()
 
   return {
     title: page.data.title,
     description: page.data.description,
-  };
+  }
 }
-

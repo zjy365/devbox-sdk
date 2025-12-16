@@ -1,5 +1,5 @@
 import type { DevboxInfo, DevboxSDKConfig } from '../core/types'
-import { DevboxSDKError, DevboxNotReadyError, ERROR_CODES } from '../utils/error'
+import { DevboxNotReadyError, DevboxSDKError, ERROR_CODES } from '../utils/error'
 import { DevboxContainerClient } from './client'
 
 interface IDevboxAPIClient {
@@ -36,15 +36,11 @@ export class ContainerUrlResolver {
     const token = devboxInfo?.agentServer?.token
     if (!serverUrl || !token) {
       // Devbox exists but is not ready yet - throw friendly error
-      throw new DevboxNotReadyError(
-        devboxName,
-        devboxInfo?.status,
-        {
-          hasServerUrl: !!serverUrl,
-          hasToken: !!token,
-          currentStatus: devboxInfo?.status
-        }
-      )
+      throw new DevboxNotReadyError(devboxName, devboxInfo?.status, {
+        hasServerUrl: !!serverUrl,
+        hasToken: !!token,
+        currentStatus: devboxInfo?.status,
+      })
     }
 
     const client = new DevboxContainerClient(serverUrl, this.timeout, token)

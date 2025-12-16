@@ -1,5 +1,5 @@
 import type { DevboxInfo, DevboxSDKConfig } from '../core/types'
-import { DevboxSDKError, ERROR_CODES } from '../utils/error'
+import { DevboxSDKError, DevboxNotReadyError, ERROR_CODES } from '../utils/error'
 import { DevboxContainerClient } from './client'
 
 interface IDevboxAPIClient {
@@ -31,19 +31,22 @@ export class ContainerUrlResolver {
     const devboxInfo = await this.getDevboxInfo(devboxName)
     const serverUrl = this.extractUrlFromDevboxInfo(devboxInfo!)
     // console.log('serverUrl', serverUrl)
-    if (!serverUrl) {
-      throw new DevboxSDKError(
-        `Devbox '${devboxName}' does not have an accessible URL`,
-        ERROR_CODES.CONNECTION_FAILED
-      )
-    }
+
+    // Check if Devbox is ready (has agentServer info)
     const token = devboxInfo?.agentServer?.token
-    if (!token) {
-      throw new DevboxSDKError(
-        `Devbox '${devboxName}' does not have an agent server token`,
-        ERROR_CODES.INTERNAL_ERROR
+    if (!serverUrl || !token) {
+      // Devbox exists but is not ready yet - throw friendly error
+      throw new DevboxNotReadyError(
+        devboxName,
+        devboxInfo?.status,
+        {
+          hasServerUrl: !!serverUrl,
+          hasToken: !!token,
+          currentStatus: devboxInfo?.status
+        }
       )
     }
+
     const client = new DevboxContainerClient(serverUrl, this.timeout, token)
     return await operation(client)
   }
@@ -191,8 +194,9 @@ export class ContainerUrlResolver {
       const token = devboxInfo?.agentServer?.token
       if (!token) return false
       const client = new DevboxContainerClient(serverUrl, this.timeout, token)
-      const response = await client.get<{ status?: string }>('/health')
-      return response.data?.status === 'healthy'
+      const response = await client.get<{ healthStatus?: string; status?: number }>('/health')
+      // Check healthStatus field (API returns: { status: 0, healthStatus: "ok", ... })
+      return response.data?.healthStatus === 'ok'
     } catch (error) {
       return false
     }

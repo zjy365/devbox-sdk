@@ -59,6 +59,18 @@ export class DevboxNotFoundError extends DevboxSDKError {
   }
 }
 
+export class DevboxNotReadyError extends DevboxSDKError {
+  constructor(devboxName: string, currentStatus?: string, context?: ErrorContext) {
+    const statusInfo = currentStatus ? ` (current status: ${currentStatus})` : ''
+    super(
+      `Devbox '${devboxName}' is not ready yet${statusInfo}. The devbox may still be starting. Please wait a moment and try again, or use 'await devbox.waitForReady()' to wait until it's fully initialized.`,
+      'DEVBOX_NOT_READY',
+      context
+    )
+    this.name = 'DevboxNotReadyError'
+  }
+}
+
 export class ValidationError extends DevboxSDKError {
   constructor(message: string, context?: ErrorContext) {
     super(message, 'VALIDATION_ERROR', context)

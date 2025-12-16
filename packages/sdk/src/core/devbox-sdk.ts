@@ -3,6 +3,7 @@ import { ContainerUrlResolver } from '../http/manager'
 import { DevboxInstance } from './devbox-instance'
 import type {
   DevboxCreateConfig,
+  DevboxCreateOptions,
   DevboxInfo,
   DevboxSDKConfig,
   MonitorData,
@@ -25,9 +26,44 @@ export class DevboxSDK {
     this.urlResolver.setAPIClient(this.apiClient)
   }
 
-  async createDevbox(config: DevboxCreateConfig): Promise<DevboxInstance> {
+  /**
+   * Create a new Devbox instance (async, returns immediately without waiting)
+   * @param config Devbox creation configuration
+   * @returns DevboxInstance (may not be ready immediately - use waitForReady() if needed)
+   * @description This method returns immediately after creating the Devbox without waiting for it to be ready.
+   * The returned instance may not be ready for file operations or commands.
+   * Use `createDevbox()` (default behavior) or call `waitForReady()` on the instance if you need to wait.
+   */
+  async createDevboxAsync(config: DevboxCreateConfig): Promise<DevboxInstance> {
     const devboxInfo = await this.apiClient.createDevbox(config)
     return new DevboxInstance(devboxInfo, this)
+  }
+
+  /**
+   * Create a new Devbox instance
+   * @param config Devbox creation configuration
+   * @param options Creation options (waitUntilReady defaults to true)
+   * @returns DevboxInstance (ready for use if waitUntilReady is true)
+   * @description By default, this method waits for the Devbox to be fully ready before returning.
+   * Set `options.waitUntilReady = false` to return immediately without waiting.
+   */
+  async createDevbox(
+    config: DevboxCreateConfig,
+    options: DevboxCreateOptions = {}
+  ): Promise<DevboxInstance> {
+    const {
+      waitUntilReady = true,
+      timeout = 180000, // 3 minutes
+      checkInterval = 2000 // 2 seconds
+    } = options
+
+    const instance = await this.createDevboxAsync(config)
+
+    if (waitUntilReady) {
+      await instance.waitForReady(timeout, checkInterval)
+    }
+
+    return instance
   }
 
   async getDevbox(name: string): Promise<DevboxInstance> {

@@ -23,6 +23,7 @@ export {
   ConnectionError,
   FileOperationError,
   DevboxNotFoundError,
+  DevboxNotReadyError,
   ValidationError,
 } from './utils/error'
 
@@ -38,6 +39,7 @@ export {
 export type {
   DevboxSDKConfig,
   DevboxCreateConfig,
+  DevboxCreateOptions,
   DevboxInfo,
   DevboxStatus,
   PortConfig,

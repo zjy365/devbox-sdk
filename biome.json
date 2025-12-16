@@ -67,6 +67,7 @@
       },
       "style": {
         "noArguments": "error",
+        "noNonNullAssertion": "off",
         "noVar": "error",
         "useConst": "error"
       },

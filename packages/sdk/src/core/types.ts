@@ -39,6 +39,31 @@ export interface DevboxCreateConfig {
   env?: Record<string, string>
 }
 
+/**
+ * Options for creating a Devbox instance
+ */
+export interface DevboxCreateOptions {
+  /**
+   * Whether to wait for the Devbox to be fully ready before returning
+   * @default true
+   * @description When true, the method will wait until the Devbox is running and healthy before returning.
+   * When false, the method returns immediately after creation is initiated (Devbox may still be starting).
+   */
+  waitUntilReady?: boolean
+  /**
+   * Maximum time to wait for the Devbox to become ready (in milliseconds)
+   * @default 180000 (3 minutes)
+   * @description Only used when waitUntilReady is true
+   */
+  timeout?: number
+  /**
+   * Interval between health checks (in milliseconds)
+   * @default 2000 (2 seconds)
+   * @description Only used when waitUntilReady is true
+   */
+  checkInterval?: number
+}
+
 export interface ResourceInfo {
   /** CPU cores allocated */
   cpu: number

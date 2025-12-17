@@ -5,6 +5,7 @@ TARGET ?= x86_64-unknown-linux-musl
 SUPPORTED_TARGETS = x86_64-unknown-linux-musl aarch64-unknown-linux-musl
 BUILD_DIR=./target/$(TARGET)/release
 MAIN_PATH=./src/main.rs
+RUSTFLAGS=-C link-arg=-Wl,-z,pack-relative-relocs
 
 # Default to release build
 BUILD_FLAGS=--release
@@ -18,7 +19,7 @@ help: ## Show available commands
 
 build: ## Build release binary (override TARGET=<triple> for other arches)
 	@echo "Building target $(TARGET)"
-	@cargo cross +nightly build \
+	@RUSTFLAGS="$(RUSTFLAGS)" cargo cross +nightly build \
 		--build-std --build-std-features="optimize_for_size" \
 		--panic-immediate-abort \
 		--release --target $(TARGET)

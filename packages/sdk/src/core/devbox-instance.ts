@@ -516,12 +516,12 @@ export class DevboxInstance {
     // Get SDK's base URL to extract domain
     const urlResolver = this.sdk.getUrlResolver()
     const baseUrl = urlResolver.baseUrl
-    
+
     // Extract domain part from baseUrl
     // Example: https://devbox.staging-usw-1.sealos.io -> staging-usw-1.sealos.io
     const urlObj = new URL(baseUrl)
     const domain = urlObj.hostname.replace(/^devbox\./, '') // Remove devbox. prefix
-    
+
     // Build preview URL: https://devbox-{serviceName}-{port}.{domain}
     const url = `${urlObj.protocol}//devbox-${serviceName}-${port}.${domain}`
     const protocol = urlObj.protocol.replace(':', '') as 'http' | 'https'

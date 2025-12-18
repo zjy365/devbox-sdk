@@ -149,12 +149,12 @@ export interface DevboxGetResponse {
   iconId?: string // May not exist
   runtime?: string // Actually included in API response
   status:
-    | string
-    | {
-        // May be string or object
-        value: string
-        label: string
-      }
+  | string
+  | {
+    // May be string or object
+    value: string
+    label: string
+  }
   cpu?: number // in millicores (may not exist, use resources instead)
   memory?: number // in MB (may not exist, use resources instead)
   resources?: {
@@ -196,6 +196,15 @@ export interface APIResponse<T = unknown> {
   status: number
   statusText: string
   headers: Record<string, string>
+}
+
+/**
+ * HTTP request options
+ */
+export interface RequestOptions {
+  headers?: Record<string, string>
+  params?: Record<string, unknown>
+  data?: unknown
 }
 
 /**

@@ -9,6 +9,8 @@ import { APIEndpoints } from './endpoints'
 import type {
   APIClientConfig,
   APIResponse,
+  ConfigureAutostartRequest,
+  CreateReleaseRequest,
   DevboxCreateRequest,
   DevboxCreateResponse,
   DevboxDetail,
@@ -19,6 +21,12 @@ import type {
   DevboxSSHInfoResponse,
   MonitorDataPoint,
   MonitorRequest,
+  PortConfig,
+  Release,
+  ReleaseListApiResponse,
+  RequestOptions,
+  TemplatesApiResponse,
+  UpdateDevboxRequest,
 } from './types'
 import { DevboxRuntime } from './types'
 
@@ -51,15 +59,11 @@ class SealosAPIClient {
     }
   }
 
-  async request(
+  async request<T = unknown>(
     method: string,
     path: string,
-    options: {
-      headers?: Record<string, string>
-      params?: Record<string, any>
-      data?: any
-    } = {}
-  ): Promise<APIResponse> {
+    options: RequestOptions = {}
+  ): Promise<APIResponse<T>> {
     const url = new URL(path, this.baseUrl)
 
     // Add query parameters
@@ -158,7 +162,7 @@ class SealosAPIClient {
           const cause = error.cause
           if (
             cause.message.includes('certificate') ||
-            (cause as any).code === 'DEPTH_ZERO_SELF_SIGNED_CERT'
+            (cause as unknown as Record<string, unknown>).code === 'DEPTH_ZERO_SELF_SIGNED_CERT'
           ) {
             console.error(
               '⚠️  SSL/TLS certificate error detected. Set http.rejectUnauthorized: false in config for development/testing.'
@@ -196,20 +200,22 @@ class SealosAPIClient {
         ERROR_CODES.AUTHENTICATION_FAILED,
       ]
 
-      if (nonRetryable4xxCodes.includes(error.code as any)) {
+      if ((nonRetryable4xxCodes as string[]).includes(error.code)) {
         return false
       }
 
       // Retry on timeout and server errors
-      return [
-        ERROR_CODES.CONNECTION_TIMEOUT,
-        ERROR_CODES.CONNECTION_FAILED,
-        ERROR_CODES.SERVER_UNAVAILABLE,
-        ERROR_CODES.SERVICE_UNAVAILABLE,
-        ERROR_CODES.OPERATION_TIMEOUT,
-        ERROR_CODES.SESSION_TIMEOUT,
-        ERROR_CODES.INTERNAL_ERROR,
-      ].includes(error.code as any)
+      return (
+        [
+          ERROR_CODES.CONNECTION_TIMEOUT,
+          ERROR_CODES.CONNECTION_FAILED,
+          ERROR_CODES.SERVER_UNAVAILABLE,
+          ERROR_CODES.SERVICE_UNAVAILABLE,
+          ERROR_CODES.OPERATION_TIMEOUT,
+          ERROR_CODES.SESSION_TIMEOUT,
+          ERROR_CODES.INTERNAL_ERROR,
+        ] as string[]
+      ).includes(error.code)
     }
     return error.name === 'AbortError' || error.message.includes('fetch')
   }
@@ -231,7 +237,7 @@ class SealosAPIClient {
       case 502:
         return ERROR_CODES.SERVER_UNAVAILABLE
       case 503:
-        return 'SERVICE_UNAVAILABLE' as any
+        return ERROR_CODES.SERVICE_UNAVAILABLE
       case 504:
         return ERROR_CODES.CONNECTION_TIMEOUT
       default:
@@ -239,20 +245,20 @@ class SealosAPIClient {
     }
   }
 
-  get(url: string, options?: any): Promise<APIResponse> {
-    return this.request('GET', url, options)
+  get<T = unknown>(url: string, options?: RequestOptions): Promise<APIResponse<T>> {
+    return this.request<T>('GET', url, options)
   }
 
-  post(url: string, options?: any): Promise<APIResponse> {
-    return this.request('POST', url, options)
+  post<T = unknown>(url: string, options?: RequestOptions): Promise<APIResponse<T>> {
+    return this.request<T>('POST', url, options)
   }
 
-  put(url: string, options?: any): Promise<APIResponse> {
-    return this.request('PUT', url, options)
+  put<T = unknown>(url: string, options?: RequestOptions): Promise<APIResponse<T>> {
+    return this.request<T>('PUT', url, options)
   }
 
-  delete(url: string, options?: any): Promise<APIResponse> {
-    return this.request('DELETE', url, options)
+  delete<T = unknown>(url: string, options?: RequestOptions): Promise<APIResponse<T>> {
+    return this.request<T>('DELETE', url, options)
   }
 }
 
@@ -380,7 +386,7 @@ export class DevboxAPI {
   /**
    * Update a Devbox instance configuration
    */
-  async updateDevbox(name: string, config: any): Promise<void> {
+  async updateDevbox(name: string, config: UpdateDevboxRequest): Promise<void> {
     try {
       await this.httpClient.request('PATCH', this.endpoints.devboxUpdate(name), {
         data: config,
@@ -406,10 +412,12 @@ export class DevboxAPI {
   /**
    * Get available runtime templates
    */
-  async getTemplates(): Promise<any> {
+  async getTemplates(): Promise<TemplatesApiResponse['data']> {
     try {
-      const response = await this.httpClient.get(this.endpoints.devboxTemplates())
-      return response.data
+      const response = await this.httpClient.get<TemplatesApiResponse>(
+        this.endpoints.devboxTemplates()
+      )
+      return response.data.data
     } catch (error) {
       throw this.handleAPIError(error, 'Failed to get templates')
     }
@@ -418,7 +426,7 @@ export class DevboxAPI {
   /**
    * Update port configuration for a Devbox
    */
-  async updatePorts(name: string, ports: any[]): Promise<void> {
+  async updatePorts(name: string, ports: PortConfig[]): Promise<void> {
     try {
       await this.httpClient.put(this.endpoints.devboxPorts(name), {
         data: { ports },
@@ -431,7 +439,7 @@ export class DevboxAPI {
   /**
    * Configure autostart for a Devbox
    */
-  async configureAutostart(name: string, config?: any): Promise<void> {
+  async configureAutostart(name: string, config?: ConfigureAutostartRequest): Promise<void> {
     try {
       await this.httpClient.post(this.endpoints.devboxAutostart(name), {
         data: config || {},
@@ -444,11 +452,11 @@ export class DevboxAPI {
   /**
    * List releases for a Devbox
    */
-  async listReleases(name: string): Promise<any[]> {
+  async listReleases(name: string): Promise<Release[]> {
     try {
       const response = await this.httpClient.get(this.endpoints.releaseList(name))
-      const responseData = response.data as { data?: any[] } | undefined
-      return responseData?.data || []
+      const responseData = response.data as ReleaseListApiResponse
+      return responseData.data || []
     } catch (error) {
       throw this.handleAPIError(error, `Failed to list releases for '${name}'`)
     }
@@ -457,7 +465,7 @@ export class DevboxAPI {
   /**
    * Create a release for a Devbox
    */
-  async createRelease(name: string, config: any): Promise<void> {
+  async createRelease(name: string, config: CreateReleaseRequest): Promise<void> {
     try {
       await this.httpClient.post(this.endpoints.releaseCreate(name), {
         data: config,
@@ -503,7 +511,7 @@ export class DevboxAPI {
       }
 
       const response = await this.httpClient.get(this.endpoints.devboxMonitor(name), {
-        params,
+        params: params as unknown as Record<string, unknown>,
       })
 
       const dataPoints = response.data as MonitorDataPoint[]
@@ -667,12 +675,13 @@ export class DevboxAPI {
     }
   }
 
-  private handleAPIError(error: any, context: string): DevboxSDKError {
+  private handleAPIError(error: unknown, context: string): DevboxSDKError {
     if (error instanceof DevboxSDKError) {
       return error
     }
 
-    return new DevboxSDKError(`${context}: ${error.message}`, ERROR_CODES.INTERNAL_ERROR, {
+    const message = error instanceof Error ? error.message : String(error)
+    return new DevboxSDKError(`${context}: ${message}`, ERROR_CODES.INTERNAL_ERROR, {
       originalError: error,
     })
   }

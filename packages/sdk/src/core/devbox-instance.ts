@@ -22,6 +22,7 @@ import type {
   ListProcessesResponse,
   MonitorData,
   MoveFileResponse,
+  PortPreviewUrl,
   PortsResponse,
   ProcessExecOptions,
   ProcessExecResponse,
@@ -492,6 +493,44 @@ export class DevboxInstance {
       const response = await client.get<PortsResponse>(API_ENDPOINTS.CONTAINER.PORTS)
       return response.data
     })
+  }
+
+  /**
+   * Get preview link for a specific port
+   * @param port Port number to get preview link for
+   * @returns Preview URL information
+   */
+  async getPreviewLink(port: number): Promise<PortPreviewUrl> {
+    // Refresh instance info to get latest port configurations
+    await this.refreshInfo()
+
+    // Check if agentServer exists
+    if (!this.info.agentServer?.url) {
+      throw new Error(
+        `No agentServer URL available for Devbox '${this.name}'. Cannot generate preview link.`
+      )
+    }
+
+    const serviceName = this.info.agentServer.url
+
+    // Get SDK's base URL to extract domain
+    const urlResolver = this.sdk.getUrlResolver()
+    const baseUrl = urlResolver.baseUrl
+    
+    // Extract domain part from baseUrl
+    // Example: https://devbox.staging-usw-1.sealos.io -> staging-usw-1.sealos.io
+    const urlObj = new URL(baseUrl)
+    const domain = urlObj.hostname.replace(/^devbox\./, '') // Remove devbox. prefix
+    
+    // Build preview URL: https://devbox-{serviceName}-{port}.{domain}
+    const url = `${urlObj.protocol}//devbox-${serviceName}-${port}.${domain}`
+    const protocol = urlObj.protocol.replace(':', '') as 'http' | 'https'
+
+    return {
+      url,
+      port,
+      protocol,
+    }
   }
 
   // Temporarily disabled - ws module removed

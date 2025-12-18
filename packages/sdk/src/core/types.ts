@@ -222,6 +222,16 @@ export interface PortsResponse {
   lastUpdatedAt: number
 }
 
+// Port preview URL response
+export interface PortPreviewUrl {
+  /** Preview URL for accessing the port */
+  url: string
+  /** Port number */
+  port: number
+  /** Protocol (http/https) */
+  protocol: string
+}
+
 // Temporarily disabled - ws module removed
 // export interface FileChangeEvent {
 //   /** Event type (add, change, unlink) */

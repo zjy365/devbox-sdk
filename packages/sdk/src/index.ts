@@ -79,6 +79,7 @@ export type {
   RenameFileResponse,
   DownloadFileOptions,
   PortsResponse,
+  PortPreviewUrl,
 } from './core/types'
 
 // Export API types and enums

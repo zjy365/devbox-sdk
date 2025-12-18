@@ -14,8 +14,15 @@ use std::process;
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
+    let version = env!("CARGO_PKG_VERSION");
+
+    if args.iter().any(|arg| arg == "--version") {
+        println!("devbox-sdk-server {}", version);
+        process::exit(0);
+    }
+
     if args.iter().any(|arg| arg == "--help") {
-        println!("devbox-server-rust");
+        println!("devbox-sdk-server {}", version);
         println!("A lightweight server for code execution and file management.");
         println!();
         println!("USAGE:");
@@ -28,6 +35,7 @@ async fn main() {
         println!("    --token=<TOKEN>             Sets the authentication token. [env: TOKEN / DEVBOX_JWT_SECRET] [default: a random token if not provided]");
         println!();
         println!("    --help                      Prints this help information.");
+        println!("    --version                   Prints version information.");
         println!();
 
         process::exit(0);

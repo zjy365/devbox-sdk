@@ -789,3 +789,96 @@ curl -X GET "$BASE_URL/api/v1/sessions/$SESSION_ID/logs" \
 ```
 
 These examples demonstrate the full capabilities of the DevBox SDK Server API. You can adapt and combine these patterns to fit your specific use cases.
+
+## File Search and Find
+
+### 1. Search Files by Filename (case-insensitive)
+
+```bash
+curl -X POST "$BASE_URL/api/v1/files/search" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dir": ".",
+    "pattern": "config"
+  }'
+```
+
+Response:
+
+```json
+{
+  "status": 0,
+  "message": "success",
+  "files": [
+    "./config.json",
+    "./src/config.ts",
+    "./nginx.config"
+  ]
+}
+```
+
+Notes:
+- Pattern matching is case-insensitive substring match
+- Searches only filenames, does not read file contents
+- Results are unordered across directories
+
+### 2. Find Files by Content (text files only)
+
+```bash
+curl -X POST "$BASE_URL/api/v1/files/find" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dir": ".",
+    "keyword": "TODO"
+  }'
+```
+
+Response:
+
+```json
+{
+  "status": 0,
+  "message": "success",
+  "files": [
+    "./src/app.ts",
+    "./web/main.js"
+  ]
+}
+```
+
+Notes:
+- Results are unordered across directories.
+- Binary files are detected via header sniffing (256-byte check) and skipped.
+- Only searches in UTF-8 text files.
+
+### 3. Replace In Files (UTF-8 text only)
+
+```bash
+curl -X POST "$BASE_URL/api/v1/files/replace" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "files": ["/tmp/a.txt", "/tmp/b.txt"],
+    "from": "old_value",
+    "to": "new_value"
+  }'
+```
+
+Response:
+
+```json
+{
+  "status": 0,
+  "message": "success",
+  "results": [
+    {"file": "/tmp/a.txt", "status": "success", "replacements": 2},
+    {"file": "/tmp/b.txt", "status": "skipped", "replacements": 0, "error": "Non-UTF-8 text file"}
+  ]
+}
+```
+
+Notes:
+- Only UTF-8 encoded text files are modified.
+- Binary files are detected and skipped.

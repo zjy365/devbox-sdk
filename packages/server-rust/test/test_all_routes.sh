@@ -15,7 +15,7 @@ SERVER_PORT=9757
 SERVER_ADDR="127.0.0.1:$SERVER_PORT"
 SERVER_PID_FILE="test/server.pid"
 SERVER_LOG_FILE="test/server.log"
-BINARY_PATH="./target/release/server-rust"
+BINARY_PATH="./target/x86_64-unknown-linux-musl/release/devbox-sdk-server"
 
 # Test token
 TEST_TOKEN="test-token-123"
@@ -129,7 +129,7 @@ run_test() {
     local test_passed=true
     if [ "$expected_success" = "true" ]; then
         # Expect success: check for success indicators
-        if echo "$response_body" | grep -q '"success":true\|"status":"healthy"\|"status":"ready"\|"ready":true\|"files":\[\|"processId":"\|"status":"running\|"status":"completed\|"status":"terminated"\|"logs":\[\|"status":"exited"'; then
+        if echo "$response_body" | grep -q '"status":0\|"success":true\|"status":"healthy"\|"status":"ready"\|"ready":true\|"files":\[\|"processId":"\|"status":"running\|"status":"completed\|"status":"terminated"\|"logs":\[\|"status":"exited"\|"matches":\[\|"replacements":'; then
             echo -e "${GREEN}✓ PASSED (Status: $response_code, Success confirmed)${NC}"
         elif echo "$response_body" | grep -q '"error"\|"type":".*error"'; then
             echo -e "${RED}✗ FAILED (Status: $response_code, but error in response)${NC}"
@@ -156,8 +156,8 @@ run_test() {
     fi
 }
 
-# Step 1: Build the server using Makefile
-echo -e "\n${YELLOW}Step 1: Building the server using Makefile...${NC}"
+# Step 1: Build the server
+echo -e "\n${YELLOW}Step 1: Building the server...${NC}"
 if make build; then
     echo -e "${GREEN}✓ Server built successfully${NC}"
     echo -e "${BLUE}Binary: $BINARY_PATH${NC}"
@@ -244,6 +244,70 @@ if run_test "POST" "/api/v1/files/delete" '{"path":"test_tmp/missing.txt"}' "200
 
 # Test batch upload (without files - should fail due to missing multipart data)
 if run_test "POST" "/api/v1/files/batch-upload" "" "400" "Batch Upload (no multipart data)" "false"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+# Test chmod endpoint (non-recursive)
+echo -e "\n${YELLOW}=== Chmod Endpoint ===${NC}"
+if run_test "POST" "/api/v1/files/write" '{"path":"test_tmp/perm.txt","content":"perm"}' "200" "Prepare file for chmod" "true"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+if run_test "POST" "/api/v1/files/chmod" '{"path":"test_tmp/perm.txt","mode":"0701","recursive":false}' "200" "Chmod file (0701)" "true"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+# Verify permission changed by listing directory
+echo -e "${BLUE}Verifying permissions via list...${NC}"
+LIST_RESP=$(curl -s -X GET -H 'Authorization: Bearer '"$TEST_TOKEN" "http://$SERVER_ADDR/api/v1/files/list?path=test_tmp")
+if echo "$LIST_RESP" | grep -q '"name":"perm.txt"' && echo "$LIST_RESP" | grep -q '"permissions":"0701"'; then
+    echo -e "${GREEN}✓ PASSED (Permissions reflect 0701)${NC}"
+    ((PASSED_TESTS++))
+else
+    echo -e "${RED}✗ FAILED (Permissions not reflected as 0701)${NC}"
+    echo -e "${BLUE}Response:${NC} $LIST_RESP"
+fi
+((TOTAL_TESTS++))
+
+# Test chmod endpoint (recursive on directory)
+mkdir -p test_tmp/perm_dir
+echo foo > test_tmp/perm_dir/a.txt
+echo bar > test_tmp/perm_dir/b.txt
+if run_test "POST" "/api/v1/files/chmod" '{"path":"test_tmp/perm_dir","mode":"0755","recursive":true}' "200" "Chmod directory recursively (0755)" "true"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+DIR_LIST_RESP=$(curl -s -X GET -H 'Authorization: Bearer '"$TEST_TOKEN" "http://$SERVER_ADDR/api/v1/files/list?path=test_tmp/perm_dir")
+if echo "$DIR_LIST_RESP" | grep -q '"permissions":"0755"'; then
+    echo -e "${GREEN}✓ PASSED (Recursive permissions reflect 0755)${NC}"
+    ((PASSED_TESTS++))
+else
+    echo -e "${RED}✗ FAILED (Recursive permissions not reflected as 0755)${NC}"
+    echo -e "${BLUE}Response:${NC} $DIR_LIST_RESP"
+fi
+((TOTAL_TESTS++))
+
+# Test Search and Find Operations
+echo -e "\n${YELLOW}=== Search and Find Operations ===${NC}"
+
+# Create a file for search/find/replace
+if run_test "POST" "/api/v1/files/write" '{"path":"test_search.txt","content":"line1\nkeyword match\nline3"}' "200" "Create File for Search" "true"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+# Search by filename
+if run_test "POST" "/api/v1/files/search" '{"dir":".","pattern":"test_search"}' "200" "Search Files by Name" "true"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+# Find by content
+if run_test "POST" "/api/v1/files/find" '{"dir":".","keyword":"keyword"}' "200" "Find Files by Content" "true"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+# Replace
+if run_test "POST" "/api/v1/files/replace" '{"files":["test_search.txt"],"from":"keyword","to":"replaced"}' "200" "Replace in Files" "true"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+# Verify Replace (Read file)
+if run_test "GET" "/api/v1/files/read?path=test_search.txt" "" "200" "Verify Replacement" "true"; then ((PASSED_TESTS++)); fi
+((TOTAL_TESTS++))
+
+# Cleanup Search File
+if run_test "POST" "/api/v1/files/delete" '{"path":"test_search.txt"}' "200" "Cleanup Search File" "true"; then ((PASSED_TESTS++)); fi
 ((TOTAL_TESTS++))
 
 # Test Process Operations

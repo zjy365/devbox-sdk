@@ -23,7 +23,13 @@ pub fn validate_path(base_path: &Path, user_path: &str) -> Result<PathBuf, AppEr
     // WARNING: This is insecure. The user has explicitly requested this behavior,
     // which mirrors the Go implementation. It allows any absolute path to be accessed.
     if p.is_absolute() {
-        return Ok(normalize_path(p));
+        let normalized = normalize_path(p);
+        // If normalized is empty, return "." (current directory)
+        return Ok(if normalized.as_os_str().is_empty() {
+            PathBuf::from(".")
+        } else {
+            normalized
+        });
     }
 
     // For relative paths, join with workspace.
@@ -33,7 +39,13 @@ pub fn validate_path(base_path: &Path, user_path: &str) -> Result<PathBuf, AppEr
     // This allows `ensure_directory` to work later.
     // This is still not fully secure against traversal with relative paths + symlinks,
     // but it matches the user's request for less strict validation.
-    Ok(normalize_path(&full_path))
+    let normalized = normalize_path(&full_path);
+    // If normalized is empty, return "." (current directory)
+    Ok(if normalized.as_os_str().is_empty() {
+        PathBuf::from(".")
+    } else {
+        normalized
+    })
 }
 
 // Helper to ensure directory exists

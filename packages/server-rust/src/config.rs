@@ -13,6 +13,9 @@ pub struct Config {
 
     /// Authentication token
     pub token: Option<String>,
+
+    /// Maximum concurrent file reads for search and replace operations
+    pub max_concurrent_reads: usize,
 }
 
 impl Config {
@@ -29,6 +32,11 @@ impl Config {
             .or_else(|_| std::env::var("DEVBOX_JWT_SECRET"))
             .ok();
 
+        let mut max_concurrent_reads = std::env::var("MAX_CONCURRENT_READS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(4);
+
         // Check command line args for overrides (simple implementation)
         for arg in std::env::args() {
             if arg.starts_with("--addr=") {
@@ -40,6 +48,10 @@ impl Config {
             } else if arg.starts_with("--max-file-size=") {
                 if let Ok(size) = arg.trim_start_matches("--max-file-size=").parse::<u64>() {
                     max_file_size = size;
+                }
+            } else if arg.starts_with("--max-concurrent-reads=") {
+                if let Ok(reads) = arg.trim_start_matches("--max-concurrent-reads=").parse::<usize>() {
+                    max_concurrent_reads = reads;
                 }
             }
         }
@@ -65,6 +77,7 @@ impl Config {
             workspace_path,
             max_file_size,
             token,
+            max_concurrent_reads,
         }
     }
 }

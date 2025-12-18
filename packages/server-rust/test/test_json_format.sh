@@ -94,8 +94,45 @@ else
     echo -e "${YELLOW}WARNING: Could not verify camelCase fields (may be missing in response)${NC}"
 fi
 
-# Test 3: Process execution
-echo -e "\n${YELLOW}3. Testing process execution${NC}"
+# Test 3: Search files by filename (camelCase checks)
+echo -e "\n${YELLOW}3. Testing /files/search endpoint (filename search)${NC}"
+RESPONSE=$(curl -s -X POST -H "$HEADERS" -H "Content-Type: application/json" \
+    -d '{"dir":".","pattern":"test"}' \
+    "$BASE_URL/files/search")
+echo "Response: $RESPONSE"
+
+# Check response format
+if echo "$RESPONSE" | grep -q '"files"'; then
+    echo -e "${GREEN}PASS: Search response has files field${NC}"
+else
+    echo -e "${RED}FAIL: Search response missing files field${NC}"
+    exit 1
+fi
+
+# Test 4: Find files by content (camelCase checks)
+echo -e "\n${YELLOW}4. Testing /files/find endpoint (content search)${NC}"
+RESPONSE=$(curl -s -X POST -H "$HEADERS" -H "Content-Type: application/json" \
+    -d '{"dir":".","keyword":"test"}' \
+    "$BASE_URL/files/find")
+echo "Response: $RESPONSE"
+
+# Check for snake_case fields (BAD)
+if echo "$RESPONSE" | grep -q '"files_found"\|"matches_count"'; then
+    echo -e "${RED}FAIL: Found snake_case fields in find response${NC}"
+    echo "Expected: filesFound, matchesCount (camelCase)"
+    echo "Found: files_found, matches_count (snake_case)"
+    exit 1
+fi
+
+# Check for camelCase fields (GOOD)
+if echo "$RESPONSE" | grep -q '"files"'; then
+    echo -e "${GREEN}PASS: Find response uses correct format${NC}"
+else
+    echo -e "${YELLOW}WARNING: Could not verify camelCase fields in search response${NC}"
+fi
+
+# Test 4: Process execution
+echo -e "\n${YELLOW}4. Testing process execution${NC}"
 RESPONSE=$(curl -s -X POST -H "$HEADERS" -H "Content-Type: application/json" \
     -d '{"command":"echo","args":["test"]}' \
     "$BASE_URL/process/exec/sync")

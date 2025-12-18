@@ -13,6 +13,22 @@ info:
     - **Health Monitoring**: Health check and readiness endpoints
     - **Port Monitoring**: Monitor listening ports on the system
 
+    ## Configuration
+    Server configuration via environment variables or CLI flags:
+
+    | Variable | Default | Description |
+    |----------|---------|-------------|
+    | `ADDR` | `0.0.0.0:9757` | Server listening address |
+    | `WORKSPACE_PATH` | `/home/devbox/project` | Base workspace directory |
+    | `MAX_FILE_SIZE` | `104857600` (100MB) | Maximum file size in bytes |
+    | `TOKEN` | (auto-generated) | Authentication token |
+    | `MAX_CONCURRENT_READS` | `CPU cores * 2` (1-32) | Concurrent file reads for search/replace |
+
+    CLI flags override environment variables. Example:
+    ```bash
+    devbox-sdk-server --addr=0.0.0.0:8080 --max-concurrent-reads=16
+    ```
+
     ## Authentication
     All API endpoints (except health checks) require Bearer token authentication:
 
@@ -68,12 +84,12 @@ paths:
       description: Returns basic server status including uptime and version information
       operationId: healthCheck
       responses:
-        '200':
+        "200":
           description: Server is healthy
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: "#/components/schemas/HealthResponse"
               example:
                 status: "healthy"
                 timestamp: "2024-01-01T12:00:00Z"
@@ -88,31 +104,30 @@ paths:
       description: Performs readiness checks including filesystem write tests
       operationId: readinessCheck
       responses:
-        '200':
+        "200":
           description: Server is ready
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReadinessResponse'
+                $ref: "#/components/schemas/ReadinessResponse"
               example:
                 status: "ready"
                 ready: true
                 timestamp: "2024-01-01T12:00:00Z"
                 checks:
                   filesystem: true
-        '503':
+        "503":
           description: Server is not ready
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReadinessResponse'
+                $ref: "#/components/schemas/ReadinessResponse"
               example:
                 status: "not_ready"
                 ready: false
                 timestamp: "2024-01-01T12:00:00Z"
                 checks:
                   filesystem: false
-
 
   /api/v1/files/write:
     post:
@@ -161,7 +176,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WriteFileRequest'
+              $ref: "#/components/schemas/WriteFileRequest"
             examples:
               plainText:
                 summary: Plain text file
@@ -206,27 +221,27 @@ paths:
                 value:
                   file: "[binary file data]"
       responses:
-        '200':
+        "200":
           description: File written successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WriteFileResponse'
+                $ref: "#/components/schemas/WriteFileResponse"
               example:
                 success: true
                 path: "/tmp/image.png"
                 size: 2048576
                 timestamp: "2025-11-11T10:30:00Z"
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '413':
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
           description: File size exceeds limit
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 success: false
                 error: "File size exceeds maximum allowed size of 104857600 bytes"
@@ -250,7 +265,7 @@ paths:
             type: string
             example: "/tmp/example.txt"
       responses:
-        '200':
+        "200":
           description: File read successfully (binary content)
           content:
             application/octet-stream:
@@ -273,16 +288,16 @@ paths:
               schema:
                 type: integer
               description: File size in bytes
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: File not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/files/delete:
     post:
@@ -298,27 +313,27 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DeleteFileRequest'
+              $ref: "#/components/schemas/DeleteFileRequest"
             example:
               path: "/tmp/example.txt"
               recursive: false
       responses:
-        '200':
+        "200":
           description: File deleted successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeleteFileResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/DeleteFileResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: File not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/files/move:
     post:
@@ -334,34 +349,34 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MoveFileRequest'
+              $ref: "#/components/schemas/MoveFileRequest"
             example:
               source: "/home/devbox/project/old/file.txt"
               destination: "/home/devbox/project/new/file.txt"
               overwrite: false
       responses:
-        '200':
+        "200":
           description: File moved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MoveFileResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/MoveFileResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Source file not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Destination already exists
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/files/rename:
     post:
@@ -377,33 +392,66 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RenameFileRequest'
+              $ref: "#/components/schemas/RenameFileRequest"
             example:
               oldPath: "/home/devbox/project/oldname.txt"
               newPath: "/home/devbox/project/newname.txt"
       responses:
-        '200':
+        "200":
           description: File renamed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RenameFileResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/RenameFileResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Old path not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: New path already exists
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/files/chmod:
+    post:
+      tags:
+        - Files
+      summary: Change file or directory permissions
+      description: Change permissions of a file or directory. Supports recursive updates on Unix-like systems.
+      security:
+        - bearerAuth: []
+      operationId: chmod
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChmodRequest"
+            example:
+              path: "/home/devbox/project/script.sh"
+              mode: "0755"
+              recursive: false
+      responses:
+        "200":
+          description: Permissions updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChmodResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/files/download:
     get:
@@ -426,7 +474,7 @@ paths:
             type: string
             example: "/tmp/example.txt"
       responses:
-        '200':
+        "200":
           description: File downloaded successfully
           content:
             application/octet-stream:
@@ -453,16 +501,16 @@ paths:
               schema:
                 type: integer
               description: File size in bytes
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: File not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/files/batch-download:
     post:
@@ -495,7 +543,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DownloadFilesRequest'
+              $ref: "#/components/schemas/DownloadFilesRequest"
             examples:
               single_file:
                 summary: Download single file
@@ -504,19 +552,31 @@ paths:
               multiple_files_default:
                 summary: Download multiple files (default tar.gz)
                 value:
-                  paths: ["/home/devbox/project/file1.txt", "/home/devbox/project/file2.txt"]
+                  paths:
+                    [
+                      "/home/devbox/project/file1.txt",
+                      "/home/devbox/project/file2.txt",
+                    ]
               multiple_files_tar:
                 summary: Download as uncompressed tar
                 value:
-                  paths: ["/home/devbox/project/file1.txt", "/home/devbox/project/file2.txt"]
+                  paths:
+                    [
+                      "/home/devbox/project/file1.txt",
+                      "/home/devbox/project/file2.txt",
+                    ]
                   format: "tar"
               multiple_files_multipart:
                 summary: Download as multipart
                 value:
-                  paths: ["/home/devbox/project/file1.txt", "/home/devbox/project/file2.txt"]
+                  paths:
+                    [
+                      "/home/devbox/project/file1.txt",
+                      "/home/devbox/project/file2.txt",
+                    ]
                   format: "multipart"
       responses:
-        '200':
+        "200":
           description: File(s) downloaded successfully
           content:
             application/gzip:
@@ -534,16 +594,16 @@ paths:
                 type: string
                 format: binary
                 description: HTTP multipart format (native, no extraction needed)
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: File not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/files/batch-upload:
     post:
@@ -570,16 +630,16 @@ paths:
               required:
                 - files
       responses:
-        '200':
+        "200":
           description: Files uploaded successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BatchUploadResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/BatchUploadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/files/list:
     get:
@@ -623,22 +683,22 @@ paths:
             default: 0
             minimum: 0
       responses:
-        '200':
+        "200":
           description: Directory listing successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListFilesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/ListFilesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Directory not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/process/list:
     get:
@@ -650,14 +710,14 @@ paths:
         - bearerAuth: []
       operationId: listProcesses
       responses:
-        '200':
+        "200":
           description: Process list retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListProcessesResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/ListProcessesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/process/exec:
     post:
@@ -673,7 +733,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ProcessExecRequest'
+              $ref: "#/components/schemas/ProcessExecRequest"
             example:
               command: "ls"
               args: ["-la", "/tmp"]
@@ -683,22 +743,22 @@ paths:
                 DEBUG: "true"
               timeout: 300
       responses:
-        '200':
+        "200":
           description: Process started successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProcessExecResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
+                $ref: "#/components/schemas/ProcessExecResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
           description: Failed to start process
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/process/exec-sync:
     post:
@@ -714,28 +774,28 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SyncExecutionRequest'
+              $ref: "#/components/schemas/SyncExecutionRequest"
             example:
               command: "echo"
               args: ["Hello World"]
               timeout: 30
       responses:
-        '200':
+        "200":
           description: Process completed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SyncExecutionResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '408':
+                $ref: "#/components/schemas/SyncExecutionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "408":
           description: Process execution timeout
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/process/sync-stream:
     post:
@@ -751,19 +811,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SyncExecutionRequest'
+              $ref: "#/components/schemas/SyncExecutionRequest"
       responses:
-        '200':
+        "200":
           description: Process streaming started
           content:
             text/event-stream:
               schema:
                 type: string
                 description: Server-Sent Events stream with process output
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/process/{id}/status:
     get:
@@ -782,23 +842,131 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Process status retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetProcessStatusResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/GetProcessStatusResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Process not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/files/search:
+    post:
+      tags:
+        - Files
+      summary: Search files by filename
+      description: |
+        Recursively search for files by filename pattern (case-insensitive substring match).
+
+        - Results are unordered and may return as soon as files match
+        - Only searches filenames, does not read file contents
+        - Binary and text files are both included
+      security:
+        - bearerAuth: []
+      operationId: searchFiles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchFilenameRequest"
+      responses:
+        "200":
+          description: Search completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Directory not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/files/find:
+    post:
+      tags:
+        - Files
+      summary: Find files by content
+      description: |
+        Recursively search for a keyword inside file contents.
+
+        - Results are unordered and may return as soon as files match
+        - Binary files are detected via header sniffing and skipped
+        - Only searches in text files (UTF-8 validated)
+      security:
+        - bearerAuth: []
+      operationId: findInFiles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FindRequest"
+      responses:
+        "200":
+          description: Find completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FindResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Directory not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/files/replace:
+    post:
+      tags:
+        - Files
+      summary: Replace in files
+      description: |
+        Replace a string with another string in multiple files.
+
+        **Encoding Limitation:**
+        - Only UTF-8 encoded text files are supported
+        - Files with other encodings (GBK, UTF-16, Latin1, etc.) will return status "skipped" with error "Non-UTF-8 text file"
+        - Binary files are automatically detected and skipped
+      security:
+        - bearerAuth: []
+      operationId: replaceInFiles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceRequest"
+      responses:
+        "200":
+          description: Replacement completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplaceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/v1/process/{id}/kill:
     post:
       tags:
@@ -824,28 +992,28 @@ paths:
             enum: [SIGTERM, SIGKILL, SIGINT]
             default: "SIGTERM"
       responses:
-        '200':
+        "200":
           description: Process terminated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Process not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Process is not running
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/process/{id}/logs:
     get:
@@ -871,22 +1039,22 @@ paths:
             type: boolean
             default: false
       responses:
-        '200':
+        "200":
           description: Process logs retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetProcessLogsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/GetProcessLogsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Process not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/sessions:
     get:
@@ -898,14 +1066,14 @@ paths:
         - bearerAuth: []
       operationId: getAllSessions
       responses:
-        '200':
+        "200":
           description: Sessions list retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetAllSessionsResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/GetAllSessionsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/sessions/create:
     post:
@@ -921,7 +1089,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateSessionRequest'
+              $ref: "#/components/schemas/CreateSessionRequest"
             example:
               workingDir: "/home/user"
               env:
@@ -929,16 +1097,16 @@ paths:
                 DEBUG: "true"
               shell: "/bin/bash"
       responses:
-        '200':
+        "200":
           description: Session created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreateSessionResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/CreateSessionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/sessions/{id}:
     get:
@@ -957,22 +1125,22 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Session information retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetSessionResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/GetSessionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Session not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/sessions/{id}/env:
     post:
@@ -995,29 +1163,29 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateSessionEnvRequest'
+              $ref: "#/components/schemas/UpdateSessionEnvRequest"
             example:
               env:
                 PATH: "/usr/bin:/bin:/usr/local/bin"
                 DEBUG: "true"
                 NEW_VAR: "value"
       responses:
-        '200':
+        "200":
           description: Environment updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Session not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/sessions/{id}/exec:
     post:
@@ -1040,26 +1208,26 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SessionExecRequest'
+              $ref: "#/components/schemas/SessionExecRequest"
             example:
               command: "ls -la"
       responses:
-        '200':
+        "200":
           description: Command executed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionExecResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/SessionExecResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Session not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/sessions/{id}/cd:
     post:
@@ -1082,29 +1250,29 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SessionCdRequest'
+              $ref: "#/components/schemas/SessionCdRequest"
             example:
               path: "/tmp"
       responses:
-        '200':
+        "200":
           description: Directory changed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionCdResponse'
+                $ref: "#/components/schemas/SessionCdResponse"
               example:
                 success: true
                 workingDir: "/tmp"
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Session not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/sessions/{id}/terminate:
     post:
@@ -1123,22 +1291,22 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Session terminated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Session not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/sessions/{id}/logs:
     get:
@@ -1175,22 +1343,22 @@ paths:
             minimum: 1
             maximum: 1000
       responses:
-        '200':
+        "200":
           description: Session logs retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetSessionLogsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/GetSessionLogsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Session not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/ports:
     get:
@@ -1205,20 +1373,20 @@ paths:
         - bearerAuth: []
       operationId: getPorts
       responses:
-        '200':
+        "200":
           description: List of listening ports (filtered to 3000-9999 range)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PortsResponse'
+                $ref: "#/components/schemas/PortsResponse"
               example:
                 success: true
                 ports: [3000, 8080, 9757]
                 lastUpdatedAt: 1699999999
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /ws:
     get:
@@ -1265,12 +1433,12 @@ paths:
         - bearerAuth: []
       operationId: webSocket
       responses:
-        '101':
+        "101":
           description: WebSocket connection established
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
 components:
   securitySchemes:
@@ -1314,7 +1482,7 @@ components:
 
     SuccessResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           example:
             status: 0
@@ -1323,7 +1491,7 @@ components:
     # Health Schemas
     HealthResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             healthStatus:
@@ -1343,7 +1511,7 @@ components:
 
     ReadinessResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             readinessStatus:
@@ -1383,7 +1551,7 @@ components:
 
     WriteFileResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             path:
@@ -1416,7 +1584,7 @@ components:
 
     DeleteFileResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             success:
@@ -1447,7 +1615,7 @@ components:
 
     MoveFileResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             success:
@@ -1473,7 +1641,44 @@ components:
 
     RenameFileResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+          required:
+            - success
+
+    ChmodRequest:
+      type: object
+      properties:
+        path:
+          type: string
+          description: File or directory path
+          example: "/home/devbox/project/script.sh"
+        mode:
+          type: string
+          description: Octal permission (e.g., "755", "0755", or "0o755")
+          example: "0755"
+        owner:
+          type: string
+          description: Owner in the form "uid[:gid]" or "user[:group]" (Linux only)
+          examples:
+            numeric: "1000:1000"
+            named: "devbox:devbox"
+        recursive:
+          type: boolean
+          description: Recursively apply to directories and their contents
+          default: false
+          example: false
+      required:
+        - path
+        - mode
+
+    ChmodResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             success:
@@ -1491,7 +1696,8 @@ components:
             type: string
           description: List of file or directory paths to download
           minItems: 1
-          example: ["/home/devbox/project/file1.txt", "/home/devbox/project/file2.txt"]
+          example:
+            ["/home/devbox/project/file1.txt", "/home/devbox/project/file2.txt"]
         format:
           type: string
           enum: [tar.gz, tar, multipart, mixed]
@@ -1545,13 +1751,13 @@ components:
 
     ListFilesResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             files:
               type: array
               items:
-                $ref: '#/components/schemas/FileInfo'
+                $ref: "#/components/schemas/FileInfo"
           required:
             - files
 
@@ -1570,13 +1776,13 @@ components:
 
     BatchUploadResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             results:
               type: array
               items:
-                $ref: '#/components/schemas/BatchUploadResult'
+                $ref: "#/components/schemas/BatchUploadResult"
             totalFiles:
               type: integer
             successCount:
@@ -1586,7 +1792,128 @@ components:
             - totalFiles
             - successCount
 
-    # Process Schemas
+    # File Search Schemas
+    SearchFilenameRequest:
+      type: object
+      properties:
+        dir:
+          type: string
+          description: Directory to search in
+          example: "/tmp"
+        pattern:
+          type: string
+          description: Filename pattern to search for (case-insensitive substring)
+          example: "config"
+      required:
+        - dir
+        - pattern
+
+    SearchResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            files:
+              type: array
+              description: Unordered list of files matching the filename pattern
+              items:
+                type: string
+          required:
+            - files
+
+    FindRequest:
+      type: object
+      properties:
+        dir:
+          type: string
+          description: Directory to search in
+          example: "/tmp"
+        keyword:
+          type: string
+          description: Keyword to search for in file contents
+          example: "TODO"
+      required:
+        - dir
+        - keyword
+
+    FindResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            files:
+              type: array
+              description: Unordered list of files containing the keyword
+              items:
+                type: string
+          required:
+            - files
+
+    ReplaceRequest:
+      type: object
+      description: |
+        Replace text in multiple files.
+
+        **Encoding Limitation:**
+        - Only UTF-8 encoded files are supported
+        - Both `from` and `to` strings are transmitted as UTF-8 via HTTP/JSON
+        - Files with other encodings (GBK, UTF-16, Latin1, etc.) will be skipped with status "skipped"
+        - Binary files are automatically detected and skipped
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+          description: List of files to perform replacement in
+          example: ["/tmp/file1.txt", "/tmp/file2.txt"]
+        from:
+          type: string
+          description: String to replace (UTF-8)
+          example: "old_value"
+        to:
+          type: string
+          description: Replacement string (UTF-8)
+          example: "new_value"
+      required:
+        - files
+        - from
+        - to
+
+    ReplaceResult:
+      type: object
+      properties:
+        file:
+          type: string
+          description: File path
+          example: "/tmp/file1.txt"
+        status:
+          type: string
+          description: Operation status (success, error, skipped)
+          enum: [success, error, skipped]
+          example: "success"
+        replacements:
+          type: integer
+          description: Number of replacements made
+          example: 3
+        error:
+          type: string
+          description: Error message if failed
+      required:
+        - file
+        - status
+        - replacements
+
+    ReplaceResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/ReplaceResult"
+          required:
+            - results
     ProcessExecRequest:
       type: object
       properties:
@@ -1625,7 +1952,7 @@ components:
 
     ProcessExecResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             processId:
@@ -1681,7 +2008,7 @@ components:
 
     SyncExecutionResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             stdout:
@@ -1760,19 +2087,19 @@ components:
 
     ListProcessesResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             processes:
               type: array
               items:
-                $ref: '#/components/schemas/ProcessInfoResponse'
+                $ref: "#/components/schemas/ProcessInfoResponse"
       required:
         - processes
 
     GetProcessStatusResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             processId:
@@ -1811,7 +2138,7 @@ components:
 
     GetProcessLogsResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             processId:
@@ -1862,7 +2189,7 @@ components:
 
     CreateSessionResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             sessionId:
@@ -1984,19 +2311,19 @@ components:
 
     GetAllSessionsResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             sessions:
               type: array
               items:
-                $ref: '#/components/schemas/SessionResponse'
+                $ref: "#/components/schemas/SessionResponse"
       required:
         - sessions
 
     GetSessionResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             sessionId:
@@ -2069,7 +2396,7 @@ components:
 
     SessionExecResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             exitCode:
@@ -2107,7 +2434,7 @@ components:
 
     SessionCdResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             workingDir:
@@ -2119,7 +2446,7 @@ components:
 
     GetSessionLogsResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             sessionId:
@@ -2131,14 +2458,15 @@ components:
               items:
                 type: string
               description: Session log lines (plain text format)
-              example: ["[1640995200] stdout: line 1", "[1640995201] stderr: error"]
+              example:
+                ["[1640995200] stdout: line 1", "[1640995201] stderr: error"]
       required:
         - sessionId
         - logs
 
     PortsResponse:
       allOf:
-        - $ref: '#/components/schemas/Response'
+        - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             ports:
@@ -2221,7 +2549,7 @@ components:
           description: Target process or session ID
           example: "550e8400-e29b-41d4-a716-446655440000"
         options:
-          $ref: '#/components/schemas/SubscriptionOptions'
+          $ref: "#/components/schemas/SubscriptionOptions"
       required:
         - action
         - type
@@ -2270,7 +2598,7 @@ components:
           description: Target ID
           example: "550e8400-e29b-41d4-a716-446655440000"
         log:
-          $ref: '#/components/schemas/LogEntry'
+          $ref: "#/components/schemas/LogEntry"
         sequence:
           type: integer
           description: Message sequence
@@ -2293,7 +2621,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Invalid request parameters"
             code: "INVALID_REQUEST"
@@ -2304,7 +2632,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Authentication required"
             code: "UNAUTHORIZED"
@@ -2315,7 +2643,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Process not found"
             code: "NOT_FOUND"
@@ -2326,7 +2654,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Process is not running"
             code: "CONFLICT"
@@ -2337,7 +2665,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Internal server error"
             code: "INTERNAL_ERROR"

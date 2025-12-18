@@ -30,6 +30,10 @@ pub fn create_router(state: AppState) -> Router {
         .route("/files/batch-download", post(file::batch_download))
         .route("/files/move", post(file::move_file))
         .route("/files/rename", post(file::rename_file))
+        .route("/files/chmod", post(file::change_permissions))
+        .route("/files/search", post(file::search_files))
+        .route("/files/find", post(file::find_in_files))
+        .route("/files/replace", post(file::replace_in_files))
         // Process routes
         .route("/process/exec", post(process::exec_process))
         .route("/process/exec-sync", post(process::exec_process_sync))

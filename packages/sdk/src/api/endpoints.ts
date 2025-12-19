@@ -130,6 +130,18 @@ export class APIEndpoints {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.FILES.BATCH_DOWNLOAD}`
   }
 
+  filesSearch(baseUrl: string): string {
+    return `${baseUrl}${API_ENDPOINTS.CONTAINER.FILES.SEARCH}`
+  }
+
+  filesFind(baseUrl: string): string {
+    return `${baseUrl}${API_ENDPOINTS.CONTAINER.FILES.FIND}`
+  }
+
+  filesReplace(baseUrl: string): string {
+    return `${baseUrl}${API_ENDPOINTS.CONTAINER.FILES.REPLACE}`
+  }
+
   processExec(baseUrl: string): string {
     return `${baseUrl}${API_ENDPOINTS.CONTAINER.PROCESS.EXEC}`
   }

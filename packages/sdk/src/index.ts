@@ -78,6 +78,13 @@ export type {
   RenameFileOptions,
   RenameFileResponse,
   DownloadFileOptions,
+  SearchFilesOptions,
+  SearchFilesResponse,
+  FindInFilesOptions,
+  FindInFilesResponse,
+  ReplaceInFilesOptions,
+  ReplaceInFilesResponse,
+  ReplaceResult,
   PortsResponse,
   PortPreviewUrl,
 } from './core/types'

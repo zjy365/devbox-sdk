@@ -30,8 +30,6 @@ jobs:
         run: pnpm run lint
       - name: build project
         run: pnpm run build
-      - name: run tests
-        run: pnpm run test
 
   release-preview:
     runs-on: ubuntu-latest

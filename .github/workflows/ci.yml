@@ -51,6 +51,7 @@ jobs:
       - name: build project
         run: pnpm run build
       - name: release preview with pkg-pr-new
+        working-directory: packages/sdk
         run: pnpm dlx pkg-pr-new publish
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

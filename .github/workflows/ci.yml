@@ -50,6 +50,8 @@ jobs:
         run: pnpm run build
       - name: release preview with pkg-pr-new
         run: pnpm dlx pkg-pr-new publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   release-preview:
     runs-on: ubuntu-latest

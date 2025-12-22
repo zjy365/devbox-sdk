@@ -15,6 +15,8 @@ import type {
   DownloadFileOptions,
   // FileChangeEvent, // Temporarily disabled - ws module removed
   FileMap,
+  FindInFilesOptions,
+  FindInFilesResponse,
   // FileWatchWebSocket, // Temporarily disabled - ws module removed
   GetProcessLogsResponse,
   GetProcessStatusResponse,
@@ -22,12 +24,17 @@ import type {
   ListProcessesResponse,
   MonitorData,
   MoveFileResponse,
+  PortPreviewUrl,
   PortsResponse,
   ProcessExecOptions,
   ProcessExecResponse,
   ReadOptions,
   RenameFileResponse,
+  ReplaceInFilesOptions,
+  ReplaceInFilesResponse,
   ResourceInfo,
+  SearchFilesOptions,
+  SearchFilesResponse,
   SyncExecutionResponse,
   TimeRange,
   TransferResult,
@@ -417,6 +424,93 @@ export class DevboxInstance {
   }
 
   /**
+   * Search for files by filename pattern (case-insensitive substring match)
+   * @param options Search options including directory and pattern
+   * @returns List of matching file paths
+   */
+  async searchFiles(options: SearchFilesOptions): Promise<SearchFilesResponse> {
+    if (!options.pattern || options.pattern.trim().length === 0) {
+      throw new Error('Pattern cannot be empty')
+    }
+
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const response = await client.post<SearchFilesResponse>(
+        API_ENDPOINTS.CONTAINER.FILES.SEARCH,
+        {
+          body: {
+            dir: options.dir || '.',
+            pattern: options.pattern,
+          },
+        }
+      )
+      return response.data
+    })
+  }
+
+  /**
+   * Find files by content keyword (searches inside text files)
+   * @param options Find options including directory and keyword
+   * @returns List of file paths containing the keyword
+   */
+  async findInFiles(options: FindInFilesOptions): Promise<FindInFilesResponse> {
+    if (!options.keyword || options.keyword.trim().length === 0) {
+      throw new Error('Keyword cannot be empty')
+    }
+
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const response = await client.post<FindInFilesResponse>(
+        API_ENDPOINTS.CONTAINER.FILES.FIND,
+        {
+          body: {
+            dir: options.dir || '.',
+            keyword: options.keyword,
+          },
+        }
+      )
+      return response.data
+    })
+  }
+
+  /**
+   * Replace text in multiple files
+   * @param options Replace options including file paths, from text, and to text
+   * @returns Replacement results for each file
+   */
+  async replaceInFiles(
+    options: ReplaceInFilesOptions
+  ): Promise<ReplaceInFilesResponse> {
+    if (!options.from || options.from.trim().length === 0) {
+      throw new Error("'from' string cannot be empty")
+    }
+
+    if (!options.files || options.files.length === 0) {
+      throw new Error('At least one file path is required')
+    }
+
+    // Validate all file paths
+    for (const filePath of options.files) {
+      this.validatePath(filePath)
+    }
+
+    const urlResolver = this.sdk.getUrlResolver()
+    return await urlResolver.executeWithConnection(this.name, async client => {
+      const response = await client.post<ReplaceInFilesResponse>(
+        API_ENDPOINTS.CONTAINER.FILES.REPLACE,
+        {
+          body: {
+            files: options.files,
+            from: options.from,
+            to: options.to,
+          },
+        }
+      )
+      return response.data
+    })
+  }
+
+  /**
    * Download a single file
    * @param path File path to download
    * @returns Buffer containing file content
@@ -492,6 +586,44 @@ export class DevboxInstance {
       const response = await client.get<PortsResponse>(API_ENDPOINTS.CONTAINER.PORTS)
       return response.data
     })
+  }
+
+  /**
+   * Get preview link for a specific port
+   * @param port Port number to get preview link for
+   * @returns Preview URL information
+   */
+  async getPreviewLink(port: number): Promise<PortPreviewUrl> {
+    // Refresh instance info to get latest port configurations
+    await this.refreshInfo()
+
+    // Check if agentServer exists
+    if (!this.info.agentServer?.url) {
+      throw new Error(
+        `No agentServer URL available for Devbox '${this.name}'. Cannot generate preview link.`
+      )
+    }
+
+    const serviceName = this.info.agentServer.url
+
+    // Get SDK's base URL to extract domain
+    const urlResolver = this.sdk.getUrlResolver()
+    const baseUrl = urlResolver.baseUrl
+
+    // Extract domain part from baseUrl
+    // Example: https://devbox.staging-usw-1.sealos.io -> staging-usw-1.sealos.io
+    const urlObj = new URL(baseUrl)
+    const domain = urlObj.hostname.replace(/^devbox\./, '') // Remove devbox. prefix
+
+    // Build preview URL: https://devbox-{serviceName}-{port}.{domain}
+    const url = `${urlObj.protocol}//devbox-${serviceName}-${port}.${domain}`
+    const protocol = urlObj.protocol.replace(':', '') as 'http' | 'https'
+
+    return {
+      url,
+      port,
+      protocol,
+    }
   }
 
   // Temporarily disabled - ws module removed

@@ -31,3 +31,26 @@ jobs:
       - name: build project
         run: pnpm run build
 
+  release-preview:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'pnpm'
+      - name: install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: build project
+        run: pnpm run build
+      - name: release preview with pkg-pr-new
+        working-directory: packages/sdk
+        run: pnpm dlx pkg-pr-new publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+

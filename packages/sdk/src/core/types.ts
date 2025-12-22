@@ -216,10 +216,76 @@ export interface DownloadFileOptions {
   format?: 'tar.gz' | 'tar' | 'multipart' | 'direct'
 }
 
+// File search options (by filename)
+export interface SearchFilesOptions {
+  /** Search directory path */
+  dir?: string
+  /** Filename pattern to match (case-insensitive substring) */
+  pattern: string
+}
+
+// File search response
+export interface SearchFilesResponse {
+  /** List of matching file paths */
+  files: string[]
+}
+
+// File find options (by content)
+export interface FindInFilesOptions {
+  /** Search directory path */
+  dir?: string
+  /** Keyword to search for in file contents */
+  keyword: string
+}
+
+// File find response
+export interface FindInFilesResponse {
+  /** List of file paths containing the keyword */
+  files: string[]
+}
+
+// File replace options
+export interface ReplaceInFilesOptions {
+  /** List of file paths to replace text in */
+  files: string[]
+  /** Original text to replace */
+  from: string
+  /** Replacement text */
+  to: string
+}
+
+// File replace result
+export interface ReplaceResult {
+  /** File path */
+  file: string
+  /** Operation status: 'success' | 'error' | 'skipped' */
+  status: 'success' | 'error' | 'skipped'
+  /** Number of replacements made */
+  replacements: number
+  /** Error message (if status is error or skipped) */
+  error?: string
+}
+
+// File replace response
+export interface ReplaceInFilesResponse {
+  /** Replacement results for each file */
+  results: ReplaceResult[]
+}
+
 // Ports response
 export interface PortsResponse {
   ports: number[]
   lastUpdatedAt: number
+}
+
+// Port preview URL response
+export interface PortPreviewUrl {
+  /** Preview URL for accessing the port */
+  url: string
+  /** Port number */
+  port: number
+  /** Protocol (http/https) */
+  protocol: string
 }
 
 // Temporarily disabled - ws module removed

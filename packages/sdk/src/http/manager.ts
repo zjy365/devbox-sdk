@@ -11,7 +11,7 @@ export class ContainerUrlResolver {
   private cache: Map<string, { data: unknown; timestamp: number }> = new Map()
   private readonly CACHE_TTL = 60000
   private mockServerUrl?: string
-  private baseUrl: string
+  public readonly baseUrl: string
   private timeout: number
 
   constructor(config: DevboxSDKConfig) {

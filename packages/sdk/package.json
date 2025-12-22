@@ -60,6 +60,10 @@
     "url": "https://github.com/zjy365/devbox-sdk.git",
     "directory": "packages/sdk"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.14.10",

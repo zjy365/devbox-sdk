@@ -74,6 +74,9 @@ export const API_ENDPOINTS = {
       DOWNLOAD: '/api/v1/files/download',
       BATCH_UPLOAD: '/api/v1/files/batch-upload',
       BATCH_DOWNLOAD: '/api/v1/files/batch-download',
+      SEARCH: '/api/v1/files/search',
+      FIND: '/api/v1/files/find',
+      REPLACE: '/api/v1/files/replace',
     },
     PROCESS: {
       EXEC: '/api/v1/process/exec',

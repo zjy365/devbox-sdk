@@ -102,7 +102,7 @@ class SealosAPIClient {
           signal: controller.signal,
         })
 
-        console.log('response.url', response.ok, url.toString(), fetchOptions,)
+        // console.log('response.url', response.ok, url.toString(), fetchOptions,)
 
         clearTimeout(timeoutId)
 

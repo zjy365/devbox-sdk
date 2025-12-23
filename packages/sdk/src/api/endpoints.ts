@@ -29,7 +29,9 @@ export class APIEndpoints {
     for (const [key, value] of Object.entries(params)) {
       url = url.replace(`{${key}}`, encodeURIComponent(value))
     }
-    return `${this.baseUrl}${url}`
+    // Ensure baseUrl doesn't end with / and url starts with /
+    const baseUrl = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl
+    return `${baseUrl}${url}`
   }
 
   // Devbox management endpoints

@@ -2,17 +2,20 @@ import type { DevboxSDKConfig } from '../src/core/types'
 import type { DevboxSDK } from '../src/core/devbox-sdk'
 import type { DevboxInstance } from '../src/core/devbox-instance'
 import { DevboxRuntime } from '../src/api/types'
-
-if (!process.env.DEVBOX_API_URL) {
-  throw new Error('Missing required environment variable: DEVBOX_API_URL')
-}
+import { parseKubeconfigServerUrl } from '../src/utils/kubeconfig'
 
 if (!process.env.KUBECONFIG) {
   throw new Error('Missing required environment variable: KUBECONFIG')
 }
 
+// Parse API URL from kubeconfig
+const kubeconfigUrl = parseKubeconfigServerUrl(process.env.KUBECONFIG)
+if (!kubeconfigUrl) {
+  throw new Error('Failed to parse API server URL from kubeconfig. Please ensure kubeconfig contains a valid server URL.')
+}
+
 export const TEST_CONFIG: DevboxSDKConfig = {
-  baseUrl: process.env.DEVBOX_API_URL,
+  // baseUrl will be automatically extracted from kubeconfig if not provided
   kubeconfig: process.env.KUBECONFIG,
   // mockServerUrl: process.env.MOCK_SERVER_URL,
   http: {

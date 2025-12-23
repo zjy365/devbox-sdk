@@ -4,6 +4,7 @@
 
 import type { DevboxCreateConfig, DevboxInfo, MonitorData, TimeRange } from '../core/types'
 import { DevboxSDKError, ERROR_CODES } from '../utils/error'
+import { parseKubeconfigServerUrl } from '../utils/kubeconfig'
 import { KubeconfigAuthenticator } from './auth'
 import { APIEndpoints } from './endpoints'
 import type {
@@ -101,7 +102,7 @@ class SealosAPIClient {
           signal: controller.signal,
         })
 
-        // console.log('response.url', response.ok, url.toString(), fetchOptions,)
+        console.log('response.url', response.ok, url.toString(), fetchOptions,)
 
         clearTimeout(timeoutId)
 
@@ -269,14 +270,17 @@ export class DevboxAPI {
 
   constructor(config: APIClientConfig) {
     this.authenticator = new KubeconfigAuthenticator(config.kubeconfig)
+    // Priority: config.baseUrl > kubeconfig server URL > default
+    const kubeconfigUrl = parseKubeconfigServerUrl(config.kubeconfig)
+    const baseUrl = config.baseUrl || kubeconfigUrl || 'https://devbox.usw.sealos.io'
     this.httpClient = new SealosAPIClient({
-      baseUrl: config.baseUrl,
+      baseUrl,
       timeout: config.timeout,
       retries: config.retries,
       rejectUnauthorized: config.rejectUnauthorized,
       getAuthHeaders: () => this.authenticator.getAuthHeaders(),
     })
-    this.endpoints = new APIEndpoints(config.baseUrl)
+    this.endpoints = new APIEndpoints(baseUrl)
   }
 
   /**

@@ -26,8 +26,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { DevboxSDK } from '../src/core/devbox-sdk'
 import type { DevboxInstance } from '../src/core/devbox-instance'
 import { TEST_CONFIG, getOrCreateSharedDevbox } from './setup'
-import type { DevboxCreateConfig, GitCloneOptions } from '../src/core/types'
-import { DevboxRuntime } from '../src/api/types'
 
 async function ensureCleanClone(
   devboxInstance: DevboxInstance,

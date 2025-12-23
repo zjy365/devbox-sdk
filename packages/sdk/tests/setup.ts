@@ -16,8 +16,8 @@ if (!kubeconfigUrl) {
 
 export const TEST_CONFIG: DevboxSDKConfig = {
   // baseUrl will be automatically extracted from kubeconfig if not provided
-  kubeconfig: process.env.KUBECONFIG,
   // mockServerUrl: process.env.MOCK_SERVER_URL,
+  kubeconfig: process.env.KUBECONFIG,
   http: {
     timeout: 300000,
     retries: 3,

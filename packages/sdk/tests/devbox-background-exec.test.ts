@@ -13,27 +13,6 @@ import { DevboxSDK } from '../src/core/devbox-sdk'
 import type { DevboxInstance } from '../src/core/devbox-instance'
 import { TEST_CONFIG } from './setup'
 
-// Helper function to wait for Devbox to be ready
-async function waitForDevboxReady(devbox: DevboxInstance, timeout = 120000): Promise<void> {
-    const startTime = Date.now()
-    while (Date.now() - startTime < timeout) {
-        try {
-            await devbox.refreshInfo()
-
-            if (devbox.status === 'Running') {
-                const healthy = await devbox.isHealthy()
-                if (healthy) {
-                    return
-                }
-            }
-        } catch (error) {
-            console.warn('Health check failed, retrying...')
-        }
-        await new Promise(resolve => setTimeout(resolve, 2000))
-    }
-    throw new Error(`Devbox did not become ready within ${timeout}ms`)
-}
-
 describe('Devbox SDK Background Process Execution Tests', () => {
     let sdk: DevboxSDK
     let devboxInstance: DevboxInstance

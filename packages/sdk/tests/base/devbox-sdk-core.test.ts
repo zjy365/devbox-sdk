@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { DevboxSDK } from '../src/core/devbox-sdk'
-import { TEST_CONFIG } from './setup'
-import type { DevboxSDKConfig } from '../src/core/types'
+import { DevboxSDK } from '../../src/core/devbox-sdk'
+import { TEST_CONFIG } from '../setup'
+import type { DevboxSDKConfig } from '../../src/core/types'
 
 describe('DevboxSDK', () => {
   let sdk: DevboxSDK

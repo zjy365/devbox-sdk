@@ -40,7 +40,7 @@ export enum DevboxRuntime {
   NODE_JS = 'node.js',
   ECHO = 'echo',
   RUST = 'rust',
-  TEST_AGENT = 'runtime-node-agent',
+  TEST_AGENT = 'node-expt-agent'
 }
 
 /**

@@ -26,8 +26,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { DevboxSDK } from '../src/core/devbox-sdk'
 import type { DevboxInstance } from '../src/core/devbox-instance'
 import { TEST_CONFIG, getOrCreateSharedDevbox, cleanupTestFiles } from './setup'
-import type { DevboxCreateConfig } from '../src/core/types'
-import { DevboxRuntime } from '../src/api/types'
 
 describe('Devbox SDK Advanced File Operations and Port Monitoring Tests', () => {
   let sdk: DevboxSDK

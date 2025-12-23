@@ -1,5 +1,10 @@
 # Ignore Configuration
 
 devbox-docs: Documentation site, not published to npm
-devbox-shared: Internal private package (private: true), not published, used only within monorepo
+
+# Note on devbox-shared:
+# - devbox-shared is an internal private package (private: true) and will not be published to npm
+# - It cannot be in the ignore list because devbox-sdk depends on it (changesets validation rule)
+# - It is linked with devbox-sdk to share version numbers
+# - The private: true flag ensures it will never be published, even though it's not ignored
 

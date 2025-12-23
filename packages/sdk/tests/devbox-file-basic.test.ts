@@ -15,8 +15,6 @@ describe('Devbox SDK Basic File Operations', () => {
   beforeEach(async () => {
     sdk = new DevboxSDK(TEST_CONFIG)
     devboxInstance = await getOrCreateSharedDevbox(sdk)
-    console.log('devboxInstance', devboxInstance);
-    
     await cleanupTestFiles(devboxInstance, ['.'])
   }, 30000)
 
@@ -27,14 +25,6 @@ describe('Devbox SDK Basic File Operations', () => {
   }, 10000)
 
   it('should write, read, list, and delete files', async () => {
-    // Write files
-    const lsResult = await devboxInstance.execSync({
-      command: 'ls',
-      args: ['.'],
-    })
-
-    console.log('lsResult', lsResult);
-
 
     await devboxInstance.writeFile('./test.txt', 'Hello, Devbox SDK!')
     await devboxInstance.writeFile('./app.js', 'console.log("Hello World")')

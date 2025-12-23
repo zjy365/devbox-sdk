@@ -4,6 +4,7 @@
 
 import type { DevboxCreateConfig, DevboxInfo, MonitorData, TimeRange } from '../core/types'
 import { DevboxSDKError, ERROR_CODES } from '../utils/error'
+import { logger } from '../utils/logger'
 import { parseKubeconfigServerUrl } from '../utils/kubeconfig'
 import { KubeconfigAuthenticator } from './auth'
 import { APIEndpoints } from './endpoints'
@@ -148,7 +149,7 @@ class SealosAPIClient {
           ? await response.json()
           : await response.text()
 
-        // console.log('response.data', url.toString(), data)
+        logger.info('Response data:', url.toString(), data)
 
         return {
           data,

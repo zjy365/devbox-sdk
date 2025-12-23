@@ -73,11 +73,6 @@ function handleRetryCallback(error: unknown, attempt: number, opts: RetryOptions
   if (opts.onRetry) {
     opts.onRetry(error, attempt + 1)
   }
-
-  console.debug(
-    `[Retry] Attempt ${attempt + 1}/${opts.maxRetries} failed: ${errorObj.message}. ` +
-      `Retrying after ${calculateDelay(attempt, opts)}ms...`
-  )
 }
 
 export async function withRetry<T>(

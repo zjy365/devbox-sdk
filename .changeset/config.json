@@ -8,12 +8,16 @@
   ],
   "commit": false,
   "fixed": [],
-  "linked": [],
+  "linked": [
+    [
+      "devbox-sdk",
+      "devbox-shared"
+    ]
+  ],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
-    "devbox-docs",
-    "devbox-shared"
+    "devbox-docs"
   ]
 }

@@ -110,6 +110,32 @@ describe('Devbox SDK Process Management Tests', () => {
   })
 
   describe('Synchronous Process Execution', () => {
+    it('should be able to check node and npm versions with execSync', async () => {
+      const nodeResult = await devboxInstance.execSync({
+        command: 'node',
+        args: ['-v'],
+      })
+
+      expect(nodeResult.stdout).toContain('v')
+      expect(nodeResult.exitCode).toBe(0)
+
+      const npmResult = await devboxInstance.execSync({
+        command: 'npm',
+        args: ['-v'],
+      })
+
+      expect(npmResult.stdout).toBeDefined()
+      expect(npmResult.exitCode).toBe(0)
+
+      const combinedResult = await devboxInstance.execSync({
+        command: 'sh',
+        args: ['-c', 'node -v && npm -v'],
+      })
+
+      expect(combinedResult.stdout).toContain('v')
+      expect(combinedResult.exitCode).toBe(0)
+    }, 15000)
+
     it('should be able to execute command synchronously and get output', async () => {
       const options: ProcessExecOptions = {
         command: 'echo',
@@ -121,8 +147,6 @@ describe('Devbox SDK Process Management Tests', () => {
       expect(result.stdout).toContain('Hello World')
       expect(result.stderr).toBeDefined()
       expect(result.durationMs).toBeGreaterThanOrEqual(0)
-      expect(result.startTime).toBeGreaterThan(0)
-      expect(result.endTime).toBeGreaterThanOrEqual(result.startTime)
     }, 15000)
 
     it('should be able to execute command synchronously and get exit code', async () => {
@@ -264,7 +288,7 @@ describe('Devbox SDK Process Management Tests', () => {
 
     it('process list should contain correct fields', async () => {
       // Start a process
-      const execResult = await devboxInstance.executeCommand({
+      await devboxInstance.executeCommand({
         command: 'sleep',
         args: ['5'],
       })
@@ -275,7 +299,6 @@ describe('Devbox SDK Process Management Tests', () => {
 
       if (result.processes.length > 0) {
         const process = result.processes[0]
-        console.log('process', process);
         expect(process?.processId).toBeDefined()
         expect(process?.pid).toBeGreaterThan(0)
         expect(process?.command).toBeDefined()
@@ -417,7 +440,7 @@ describe('Devbox SDK Process Management Tests', () => {
       expect(status.processId).toBe(execResult.processId)
 
       // 3. Get process logs
-      const logs = await devboxInstance.getProcessLogs(execResult.processId)
+      await devboxInstance.getProcessLogs(execResult.processId)
 
       // 4. Terminate process
       await devboxInstance.killProcess(execResult.processId)

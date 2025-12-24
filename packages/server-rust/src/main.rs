@@ -17,7 +17,7 @@ async fn main() {
     let version = env!("CARGO_PKG_VERSION");
 
     if args.iter().any(|arg| arg == "--version") {
-        println!("devbox-sdk-server {}", version);
+        println!("{}", version);
         process::exit(0);
     }
 

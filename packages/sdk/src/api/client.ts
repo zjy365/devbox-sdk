@@ -160,17 +160,7 @@ class SealosAPIClient {
       } catch (error) {
         lastError = error as Error
 
-        if (error instanceof Error && 'cause' in error && error.cause instanceof Error) {
-          const cause = error.cause
-          if (
-            cause.message.includes('certificate') ||
-            (cause as unknown as Record<string, unknown>).code === 'DEPTH_ZERO_SELF_SIGNED_CERT'
-          ) {
-            console.error(
-              '⚠️  SSL/TLS certificate error detected. Set http.rejectUnauthorized: false in config for development/testing.'
-            )
-          }
-        }
+        // SSL certificate errors are handled via error throwing, no need to log
 
         if (attempt === this.retries || !this.shouldRetry(error as Error)) {
           break

@@ -2,27 +2,33 @@
  * Logger utility for Devbox SDK
  * Controls log output level via LOG_LEVEL environment variable
  * Supports: INFO, WARN, ERROR (DEBUG is not supported)
+ * Default: SILENT (no logs output)
  */
 
 export enum LogLevel {
   INFO = 'INFO',
   WARN = 'WARN',
   ERROR = 'ERROR',
+  SILENT = 'SILENT',
 }
 
 const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
   [LogLevel.INFO]: 1,
   [LogLevel.WARN]: 2,
   [LogLevel.ERROR]: 3,
+  [LogLevel.SILENT]: Number.POSITIVE_INFINITY, // Highest priority, suppresses all logs
 }
 
 /**
  * Parse log level from environment variable
- * Defaults to INFO if not set or invalid
+ * Defaults to SILENT if not set (no logs output)
  */
 function getLogLevelFromEnv(): LogLevel {
   const envLevel = process.env.LOG_LEVEL?.toUpperCase()
   
+  if (envLevel === 'INFO') {
+    return LogLevel.INFO
+  }
   if (envLevel === 'WARN' || envLevel === 'WARNING') {
     return LogLevel.WARN
   }
@@ -30,8 +36,9 @@ function getLogLevelFromEnv(): LogLevel {
     return LogLevel.ERROR
   }
   
-  // Default to INFO for any other value (including undefined)
-  return LogLevel.INFO
+  // Default to SILENT for any other value (including undefined)
+  // This means no logs will be output unless explicitly enabled
+  return LogLevel.SILENT
 }
 
 class Logger {

@@ -50,6 +50,16 @@ export default defineConfig({
   // Target environment (matches package.json engines: node >= 22)
   target: ['es2022', 'node22'],
   platform: 'node',
+  
+  // Remove console statements in production builds
+  // This prevents SDK logs from appearing in user's console
+  // Note: This removes ALL console calls, so LOG_LEVEL env var won't work in production builds
+  // For development/debugging, use dev builds (NODE_ENV !== 'production')
+  esbuildOptions(options) {
+    if (process.env.NODE_ENV === 'production') {
+      options.drop = ['console']
+    }
+  },
 
   // Output file extensions
   outExtension(ctx) {

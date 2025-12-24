@@ -211,7 +211,6 @@ export class DevboxInstance {
       const response = await client.get('/api/v1/files/read', {
         params: { path, ...options },
       })
-      console.log('response,readFile', response)
 
       // HTTP client handles response based on Content-Type:
       // - Binary content types -> Buffer
@@ -880,8 +879,6 @@ export class DevboxInstance {
   async waitForReady(timeout = 300000, checkInterval = 2000): Promise<void> {
     const startTime = Date.now()
 
-    console.log(`[DevboxInstance] Waiting for devbox '${this.name}' to be ready...`)
-
     while (Date.now() - startTime < timeout) {
       try {
         // 1. Check Devbox status via API
@@ -892,18 +889,11 @@ export class DevboxInstance {
           const healthy = await this.isHealthy()
 
           if (healthy) {
-            console.log(`[DevboxInstance] Devbox '${this.name}' is ready and healthy`)
             return
           }
         }
-
-        // Log current status for debugging
-        console.log(`[DevboxInstance] Current status: ${this.status}, waiting...`)
       } catch (error) {
-        // Log error but continue waiting
-        console.warn(
-          `[DevboxInstance] Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-        )
+        // Continue waiting on error
       }
 
       // Wait before next check

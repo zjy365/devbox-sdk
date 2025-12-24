@@ -82,7 +82,6 @@ export class DevboxSDK {
 
   async close(): Promise<void> {
     await this.urlResolver.closeAllConnections()
-    console.log('[DevboxSDK] Closed all connections and cleaned up resources')
   }
 
   getAPIClient(): DevboxAPI {

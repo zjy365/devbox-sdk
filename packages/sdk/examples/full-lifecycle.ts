@@ -134,6 +134,112 @@ const generateDevboxName = (prefix: string) => {
   return `example-${sanitizedPrefix}-${timestamp}-${random}`
 }
 
+// Helper function: wait for server startup with smart detection
+async function waitForServerStartup(
+  devbox: any,
+  processId: string,
+  port = 3000,
+  maxWaitTime = 180000
+): Promise<boolean> {
+  const startTime = Date.now()
+  const checkInterval = 3000 // 每 3 秒检查一次
+
+  // 服务器启动成功的日志关键字
+  const successPatterns = [
+    /Ready in/i,           // Next.js: "✓ Ready in 2.4s"
+    /Local:.*http/i,       // Next.js: "- Local: http://localhost:3000"
+    /started server on/i,  // "started server on ..."
+    /Listening on/i,       // "Listening on http://..."
+  ]
+
+  console.log('')
+  console.log('⏳ Waiting for server to start...')
+  console.log(`   Checking logs, port ${port}, and process status...`)
+  console.log('')
+
+  // 先等待 10 秒让 pnpm install 开始运行
+  await new Promise(resolve => setTimeout(resolve, 10000))
+
+  let lastLogLength = 0
+
+  while (Date.now() - startTime < maxWaitTime) {
+    try {
+      // 1. 检查进程状态
+      const status = await devbox.getProcessStatus(processId)
+
+      if (status.processStatus === 'failed' || status.processStatus === 'completed') {
+        console.log('')
+        console.error(`❌ Process stopped with status: ${status.processStatus}`)
+        const logs = await devbox.getProcessLogs(processId)
+        console.log('📋 Full logs:')
+        console.log(logs.logs.join('\n'))
+        return false
+      }
+
+      // 2. 检查日志
+      const logsResponse = await devbox.getProcessLogs(processId)
+      const allLogs = logsResponse.logs.join('\n')
+
+      // 显示新的日志输出
+      if (allLogs.length > lastLogLength) {
+        const newLogs = allLogs.substring(lastLogLength)
+        const newLines = newLogs.split('\n').filter(line => line.trim())
+        if (newLines.length > 0) {
+          console.log('📋 New logs:')
+          newLines.forEach(line => console.log(`   ${line}`))
+        }
+        lastLogLength = allLogs.length
+      }
+
+      // 检查是否有启动成功的标志
+      const isReady = successPatterns.some(pattern => pattern.test(allLogs))
+
+      if (isReady) {
+        console.log('')
+        console.log('✅ Found server ready signal in logs!')
+
+        // 3. 验证端口是否开放
+        try {
+          const portsResponse = await devbox.getPorts()
+          if (portsResponse.ports.includes(port)) {
+            console.log(`✅ Port ${port} is open`)
+            console.log('')
+            return true
+          } else {
+            console.log(`⏳ Port ${port} not yet open, waiting...`)
+          }
+        } catch (error) {
+          console.log('⏳ Port check failed, retrying...')
+        }
+      }
+
+      // 显示进度
+      const elapsed = Math.floor((Date.now() - startTime) / 1000)
+      process.stdout.write(`\r   Status: ${status.processStatus} | Elapsed: ${elapsed}s`)
+
+      await new Promise(resolve => setTimeout(resolve, checkInterval))
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.log(`\n⚠️  Check failed: ${errorMessage}, retrying...`)
+      await new Promise(resolve => setTimeout(resolve, checkInterval))
+    }
+  }
+
+  console.log('')
+  console.warn(`⚠️  Server did not start within ${maxWaitTime / 1000}s`)
+
+  // 超时后显示最后的日志
+  try {
+    const logs = await devbox.getProcessLogs(processId)
+    console.log('📋 Latest logs:')
+    console.log(logs.logs.join('\n'))
+  } catch (error) {
+    // ignore
+  }
+
+  return false
+}
+
 async function main() {
   const sdk = new DevboxSDK(SDK_CONFIG)
   const name = generateDevboxName('full-lifecycle')
@@ -343,25 +449,11 @@ async function main() {
     console.log(`   Process ID: ${serverProcess.processId}`)
     console.log(`   PID: ${serverProcess.pid}`)
 
-    // 等待服务器启动（pnpm install + pnpm dev 需要时间）
-    console.log('')
-    console.log('⏳ Waiting for dependencies installation and server startup...')
-    console.log('   This may take 1-2 minutes...')
-    await new Promise(resolve => setTimeout(resolve, 60000)) // 等待 60 秒
+    // 智能等待服务器启动（检查日志 + 端口 + 进程状态）
+    const isReady = await waitForServerStartup(currentDevbox, serverProcess.processId, 3000, 180000)
 
-    // 检查进程状态
-    try {
-      const status = await currentDevbox.getProcessStatus(serverProcess.processId)
-      console.log(`📊 Server status: ${status.processStatus}`)
-
-      if (status.processStatus !== 'running') {
-        console.warn('⚠️  Process may have stopped, checking logs...')
-        const logs = await currentDevbox.getProcessLogs(serverProcess.processId)
-        console.log('📋 Process logs:')
-        console.log(logs.logs.join('\n'))
-      }
-    } catch (error) {
-      console.warn('⚠️  Could not check process status')
+    if (!isReady) {
+      throw new Error('Server failed to start within timeout')
     }
 
     // Get preview URL for port 3000

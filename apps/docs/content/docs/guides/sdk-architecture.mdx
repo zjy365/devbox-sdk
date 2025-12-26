@@ -1,0 +1,140 @@
+---
+title: SDK Architecture & Internals
+description: Deep dive into Devbox SDK's architecture, security model, and performance optimizations
+---
+
+# SDK Architecture & Internals
+
+This guide provides a deep technical analysis of the Devbox SDK. It explains how the SDK manages connections, enforces security, and optimizes data transfer performance.
+
+## High-Level Architecture
+
+The Devbox SDK acts as a smart client that orchestrates secure environments on Kubernetes. It bridges your application with isolated "Devboxes" (Kubernetes Pods) running on the Sealos cloud.
+
+```mermaid
+graph TD
+    Client[Devbox SDK Client]
+    
+    subgraph "Control Plane"
+        API[Sealos API]
+    end
+    
+    subgraph "Data Plane (User Namespace)"
+        Pod[Devbox Pod]
+        Agent[Agent Server]
+        Runtime[Runtime (Node/Python)]
+    end
+    
+    Client -- "1. Create/manage" --> API
+    API -- "2. Schedule" --> Pod
+    Client -- "3. Direct Connection (HTTPS)" --> Agent
+    Agent -- "4. Execute" --> Runtime
+```
+
+1.  **Control Plane**: The SDK communicates with the Sealos API (via Kubeconfig) to create and manage the lifecycle of Devboxes (CRDs).
+2.  **Data Plane**: Once a Devbox is ready, the SDK establishes a direct, secure connection to the `Agent Server` running inside the Pod.
+
+## Connection Strategy
+
+The `ContainerUrlResolver` class is responsible for establishing robust connections. It employs a multi-tiered resolution strategy to ensure connectivity:
+
+1.  **Agent URL (Primary)**: Uses the dedicated `agentServer` URL (e.g., `https://devbox-{id}-agent.domain.com`). This provides the most stable connection with SSL termination.
+2.  **Public Address**: If the agent URL is unavailable, it attempts to use the mapped public address/port.
+3.  **Private Address**: Inside the cluster, it falls back to the internal service address.
+4.  **Pod IP**: As a last resort, it connects directly to the Pod IP (requires direct network access).
+
+### Connection Pooling
+
+To minimize latency, the SDK maintains a connection pool. It caches the resolved URL and authentication tokens, refreshing them only when necessary (e.g., after a restart).
+
+## Performance Optimization
+
+A key challenge in remote execution is handling file transfers efficiently. The SDK implements an adaptive strategy to balance overhead and throughput.
+
+### Adaptive File Writes
+
+The `writeFile` method analyzes the payload size and content type to choose the optimal transport mode:
+
+-   **JSON Mode (Small Files < 1MB)**:
+    -   Content is base64-encoded and sent as a JSON payload.
+    -   **Pros**: Simple, works with standard REST parsers.
+    -   **Cons**: ~33% overhead due to base64 encoding; higher memory usage on the server (Standard JSON decoder buffers the entire request).
+
+-   **Binary Mode (Large Files > 1MB)**:
+    -   Content is sent as raw binary data (`application/octet-stream`).
+    -   The target path is passed via query parameters.
+    -   **Pros**: Zero encoding overhead; streams directly to disk on the server.
+    -   **Cons**: Requires a dedicated endpoint that handles raw streams.
+
+This optimization significantly reduces memory pressure on the Agent Server when uploading large datasets or binaries.
+
+```typescript
+// Internal logic simplified
+const LARGE_FILE_THRESHOLD = 1 * 1024 * 1024; // 1MB
+
+if (contentSize > LARGE_FILE_THRESHOLD) {
+  // Use Binary Mode
+  await client.post('/api/v1/files/write', {
+    params: { path },
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: content
+  });
+} else {
+  // Use JSON Mode
+  await client.post('/api/v1/files/write', {
+    body: { path, content: toBase64(content) }
+  });
+}
+```
+
+## Security Internals
+
+Security is enforced at multiple layers, from the client SDK down to the kernel isolation.
+
+### Client-Side Path Validation
+
+Before sending any file operation request, the SDK performs strict path validation to prevent **Directory Traversal Attacks**.
+
+The `validatePath` method checks for:
+-   Empty paths
+-   Paths ending in directory separators
+-   Traversal sequences (`../` or `..\`)
+-   Root-based traversal attempts
+
+```typescript
+private validatePath(path: string): void {
+  const normalized = path.replace(/\\/g, '/');
+  if (normalized.includes('../')) {
+    throw new Error(`Path traversal detected: ${path}`);
+  }
+}
+```
+
+### Execution Isolation
+
+When you call `codeRun`, the code is not just "eval-ed". It goes through a transformation pipeline:
+
+1.  **Language Detection**: The SDK inspects the code to determine if it's Python (checking for `def`, `import`, `print`) or Node.js.
+2.  **Base64 Wrapping**: The code is base64 encoded to avoid shell injection vulnerabilities.
+3.  **Shell Execution**: The command is wrapped in a secure shell invoker:
+    ```bash
+    # Python Example
+    python3 -u -c "exec(__import__('base64').b64decode('<PAYLOAD>').decode())"
+    ```
+4.  **Process Isolation**: The command runs as a non-root user inside the container, restricted by Kubernetes `SecurityContext`.
+
+## Streaming & Real-time Feedback
+
+For long-running tasks, `execSync` is insufficient. The SDK implements `execSyncStream` using **Server-Sent Events (SSE)**.
+
+Unlike standard HTTP requests that buffer the response, the SSE endpoint allows the Agent Server to flush stdout/stderr chunks immediately. The SDK exposes this as a standard Web `ReadableStream`, allowing you to define custom consumers for real-time log processing.
+
+```typescript
+const stream = await sandbox.execSyncStream({ command: 'npm install' });
+const reader = stream.getReader();
+
+while (true) {
+  const { done, value } = await reader.read();
+  // Process chunks in real-time
+}
+```

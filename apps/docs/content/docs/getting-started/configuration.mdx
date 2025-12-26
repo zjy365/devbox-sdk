@@ -161,7 +161,7 @@ import { DevboxSDK } from 'devbox-sdk'
 
 const sdk = new DevboxSDK({
   kubeconfig: process.env.KUBECONFIG,
-  baseUrl: process.env.DEVBOX_API_URL || 'https://api.sealos.io',
+  // Optional: http configuration for advanced use cases
   http: {
     timeout: 60000,  // 60 seconds for longer operations
     retries: 5,      // More retries for production

@@ -37,11 +37,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { DevboxSDK } from '../src/core/devbox-sdk'
 import type { DevboxInstance } from '../src/core/devbox-instance'
 import { TEST_CONFIG, getOrCreateSharedDevbox, cleanupTestFiles } from './setup'
-import type { WriteOptions, DevboxCreateConfig } from '../src/core/types'
-import { DevboxRuntime } from '../src/api/types'
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import type { WriteOptions } from '../src/core/types'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

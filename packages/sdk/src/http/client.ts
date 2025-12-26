@@ -4,6 +4,7 @@ import {
   type ServerResponse,
   parseServerResponse,
 } from '../utils/error'
+import { logger } from '../utils/logger'
 import type { HTTPResponse, RequestOptions } from './types'
 
 export class DevboxContainerClient {
@@ -89,6 +90,7 @@ export class DevboxContainerClient {
         ...fetchOptions,
         signal: options?.signal || controller.signal,
       })
+      logger.info('Request URL:', url.toString())
       clearTimeout(timeoutId)
 
       if (!response.ok) {
@@ -102,8 +104,8 @@ export class DevboxContainerClient {
               timestamp?: number
             }
           }
-        } catch (e) {
-          // error
+        } catch {
+          // Ignore JSON parsing errors
         }
 
         const errorMessage = errorData.error || response.statusText
@@ -139,13 +141,7 @@ export class DevboxContainerClient {
         data = Buffer.from(arrayBuffer) as unknown as T
       }
 
-      console.log('url', url.toString())
-      console.log('response', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        data,
-      })
+
       return {
         data,
         status: response.status,
@@ -153,7 +149,7 @@ export class DevboxContainerClient {
         url: response.url,
       }
     } catch (error) {
-      console.log('error', error)
+      logger.error('Request failed:', error)
       clearTimeout(timeoutId)
 
       if (error instanceof DevboxSDKError) {

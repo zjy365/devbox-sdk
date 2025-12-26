@@ -1,5 +1,6 @@
 import type { DevboxInfo, DevboxSDKConfig } from '../core/types'
 import { DevboxNotReadyError, DevboxSDKError, ERROR_CODES } from '../utils/error'
+import { parseKubeconfigServerUrl } from '../utils/kubeconfig'
 import { DevboxContainerClient } from './client'
 
 interface IDevboxAPIClient {
@@ -16,7 +17,9 @@ export class ContainerUrlResolver {
 
   constructor(config: DevboxSDKConfig) {
     this.mockServerUrl = config.mockServerUrl || process.env.MOCK_SERVER_URL
-    this.baseUrl = config.baseUrl || process.env.DEVBOX_API_URL || 'https://devbox.usw.sealos.io'
+    // Priority: config.baseUrl > kubeconfig server URL > default
+    const kubeconfigUrl = config.kubeconfig ? parseKubeconfigServerUrl(config.kubeconfig) : null
+    this.baseUrl = config.baseUrl || kubeconfigUrl || 'https://devbox.usw.sealos.io'
     this.timeout = config.http?.timeout || 30000
   }
 

@@ -4,6 +4,8 @@
 
 import type { DevboxCreateConfig, DevboxInfo, MonitorData, TimeRange } from '../core/types'
 import { DevboxSDKError, ERROR_CODES } from '../utils/error'
+import { logger } from '../utils/logger'
+import { parseKubeconfigServerUrl } from '../utils/kubeconfig'
 import { KubeconfigAuthenticator } from './auth'
 import { APIEndpoints } from './endpoints'
 import type {
@@ -147,7 +149,7 @@ class SealosAPIClient {
           ? await response.json()
           : await response.text()
 
-        // console.log('response.data', url.toString(), data)
+        logger.info('Response data:', url.toString(), data)
 
         return {
           data,
@@ -158,17 +160,7 @@ class SealosAPIClient {
       } catch (error) {
         lastError = error as Error
 
-        if (error instanceof Error && 'cause' in error && error.cause instanceof Error) {
-          const cause = error.cause
-          if (
-            cause.message.includes('certificate') ||
-            (cause as unknown as Record<string, unknown>).code === 'DEPTH_ZERO_SELF_SIGNED_CERT'
-          ) {
-            console.error(
-              '⚠️  SSL/TLS certificate error detected. Set http.rejectUnauthorized: false in config for development/testing.'
-            )
-          }
-        }
+        // SSL certificate errors are handled via error throwing, no need to log
 
         if (attempt === this.retries || !this.shouldRetry(error as Error)) {
           break
@@ -269,14 +261,17 @@ export class DevboxAPI {
 
   constructor(config: APIClientConfig) {
     this.authenticator = new KubeconfigAuthenticator(config.kubeconfig)
+    // Priority: config.baseUrl > kubeconfig server URL > default
+    const kubeconfigUrl = parseKubeconfigServerUrl(config.kubeconfig)
+    const baseUrl = config.baseUrl || kubeconfigUrl || 'https://devbox.usw.sealos.io'
     this.httpClient = new SealosAPIClient({
-      baseUrl: config.baseUrl,
+      baseUrl,
       timeout: config.timeout,
       retries: config.retries,
       rejectUnauthorized: config.rejectUnauthorized,
       getAuthHeaders: () => this.authenticator.getAuthHeaders(),
     })
-    this.endpoints = new APIEndpoints(config.baseUrl)
+    this.endpoints = new APIEndpoints(baseUrl)
   }
 
   /**

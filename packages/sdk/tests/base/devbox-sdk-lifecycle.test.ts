@@ -4,10 +4,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { DevboxSDK } from '../src/core/devbox-sdk'
-import { TEST_CONFIG } from './setup'
-import type { DevboxInstance } from '../src/core/devbox-instance'
-import { DevboxRuntime } from '../src/api/types'
+import { DevboxSDK } from '../../src/core/devbox-sdk'
+import { TEST_CONFIG } from '../setup'
+import type { DevboxInstance } from '../../src/core/devbox-instance'
+import { DevboxRuntime } from '../../src/api/types'
 
 describe('Devbox Lifecycle Management', () => {
   let sdk: DevboxSDK

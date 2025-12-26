@@ -69,7 +69,7 @@
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.14.10",
+    "@types/node": "^25.0.3",
     "devbox-shared": "workspace:*",
     "tsup": "^8.0.0"
   }

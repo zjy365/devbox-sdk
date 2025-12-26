@@ -58,10 +58,78 @@ export interface DevboxCreateOptions {
   timeout?: number
   /**
    * Interval between health checks (in milliseconds)
-   * @default 2000 (2 seconds)
-   * @description Only used when waitUntilReady is true
+   * @default 500 (0.5 seconds) - uses exponential backoff if not specified
+   * @description Only used when waitUntilReady is true.
+   * If not specified, exponential backoff will be used (starts at 500ms, max 5000ms).
+   * If specified, fixed interval will be used.
    */
   checkInterval?: number
+  /**
+   * Use exponential backoff for health checks
+   * @default true
+   * @description When true, check interval starts small and increases exponentially up to maxCheckInterval.
+   * When false, uses fixed checkInterval.
+   */
+  useExponentialBackoff?: boolean
+  /**
+   * Initial check interval for exponential backoff (in milliseconds)
+   * @default 500 (0.5 seconds)
+   * @description Only used when useExponentialBackoff is true
+   */
+  initialCheckInterval?: number
+  /**
+   * Maximum check interval for exponential backoff (in milliseconds)
+   * @default 5000 (5 seconds)
+   * @description Only used when useExponentialBackoff is true
+   */
+  maxCheckInterval?: number
+  /**
+   * Backoff multiplier for exponential backoff
+   * @default 1.5
+   * @description Only used when useExponentialBackoff is true
+   */
+  backoffMultiplier?: number
+}
+
+/**
+ * Options for waiting for Devbox to be ready
+ */
+export interface WaitForReadyOptions {
+  /**
+   * Maximum time to wait for the Devbox to become ready (in milliseconds)
+   * @default 300000 (5 minutes)
+   */
+  timeout?: number
+  /**
+   * Fixed interval between health checks (in milliseconds)
+   * @description If specified, uses fixed interval. Otherwise uses exponential backoff.
+   */
+  checkInterval?: number
+  /**
+   * Use exponential backoff for health checks
+   * @default true (when checkInterval is not specified)
+   * @description When true, check interval starts small and increases exponentially up to maxCheckInterval.
+   * When false, uses fixed checkInterval.
+   */
+  useExponentialBackoff?: boolean
+  /**
+   * Initial check interval for exponential backoff (in milliseconds)
+   * @default 500 (0.5 seconds)
+   * @description Only used when useExponentialBackoff is true
+   */
+  initialCheckInterval?: number
+  /**
+   * Maximum check interval for exponential backoff (in milliseconds)
+   * @default 5000 (5 seconds)
+   * @description Only used when useExponentialBackoff is true
+   */
+  maxCheckInterval?: number
+  /**
+   * Backoff multiplier for exponential backoff
+   * @default 1.5
+   * @description Only used when useExponentialBackoff is true
+   */
+  backoffMultiplier?: number
 }
 
 export interface ResourceInfo {

@@ -54,13 +54,24 @@ export class DevboxSDK {
     const {
       waitUntilReady = true,
       timeout = 180000, // 3 minutes
-      checkInterval = 2000, // 2 seconds
+      checkInterval,
+      useExponentialBackoff = true,
+      initialCheckInterval = 200, // 0.2 seconds - faster initial checks
+      maxCheckInterval = 5000, // 5 seconds
+      backoffMultiplier = 1.5,
     } = options
 
     const instance = await this.createDevboxAsync(config)
 
     if (waitUntilReady) {
-      await instance.waitForReady(timeout, checkInterval)
+      await instance.waitForReady({
+        timeout,
+        checkInterval,
+        useExponentialBackoff,
+        initialCheckInterval,
+        maxCheckInterval,
+        backoffMultiplier,
+      })
     }
 
     return instance

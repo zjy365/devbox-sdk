@@ -137,7 +137,7 @@ const generateDevboxName = (prefix: string) => {
 async function main() {
   const sdk = new DevboxSDK(SDK_CONFIG)
   const name = generateDevboxName('full-lifecycle')
-  const REPO_URL = 'https://github.com/steven-tey/precedent.git'
+  const REPO_URL = 'https://github.com/zjy365/reddit-ai-assistant-extension'
   const REPO_DIR = '/home/devbox/project/reddit-ai-assistant-extension'
   const ANALYZE_API_URL = 'https://pgitgrfugqfk.usw.sealos.io/analyze'
 

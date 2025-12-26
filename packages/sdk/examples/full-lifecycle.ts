@@ -137,7 +137,7 @@ const generateDevboxName = (prefix: string) => {
 async function main() {
   const sdk = new DevboxSDK(SDK_CONFIG)
   const name = generateDevboxName('full-lifecycle')
-  const REPO_URL = 'https://github.com/pdsuwwz/nextjs-nextra-starter'
+  const REPO_URL = 'https://github.com/steven-tey/precedent.git'
   const REPO_DIR = '/home/devbox/project/reddit-ai-assistant-extension'
   const ANALYZE_API_URL = 'https://pgitgrfugqfk.usw.sealos.io/analyze'
 
@@ -202,43 +202,59 @@ async function main() {
     })
     console.log(lsResult.stdout)
 
-    // Configure npm to use Taobao mirror
-    console.log('')
-    console.log('🔧 Configuring npm to use Taobao mirror...')
-    await currentDevbox.execSync({
-      command: 'npm',
-      args: ['config', 'set', 'registry', 'https://registry.npmmirror.com'],
-    })
-    console.log('✅ npm registry configured')
-    
-    // Verify npm registry configuration
-    const npmRegistryCheck = await currentDevbox.execSync({
-      command: 'npm',
-      args: ['config', 'get', 'registry'],
-    })
-    console.log(`📦 Current npm registry: ${npmRegistryCheck.stdout.trim()}`)
-
-    // 6. Call analyze API using fetch
+    // 6. Call analyze API using fetch with retry logic
     console.log('🔍 Calling analyze API...')
-    const analyzeResponse = await fetch(ANALYZE_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        repo_url: REPO_URL,
-      }),
-    })
 
-    if (!analyzeResponse.ok) {
-      throw new Error(`Analyze API failed: ${analyzeResponse.statusText}`)
+    // Helper function to call analyze API with timeout and retry
+    const callAnalyzeAPI = async (retries = 3, timeout = 60000) => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          // Create abort controller for timeout
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+          const response = await fetch(ANALYZE_API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              repo_url: REPO_URL,
+            }),
+            signal: controller.signal,
+            // Add keep-alive for better connection handling
+            keepalive: true,
+          })
+
+          clearTimeout(timeoutId)
+
+          if (!response.ok) {
+            throw new Error(`Analyze API failed: ${response.statusText}`)
+          }
+
+          return await response.json()
+        } catch (error) {
+          const isLastAttempt = attempt === retries
+          const errorMessage = error instanceof Error ? error.message : String(error)
+
+          if (isLastAttempt) {
+            throw new Error(`Analyze API failed after ${retries} attempts: ${errorMessage}`)
+          }
+
+          console.log(`⚠️  Attempt ${attempt} failed: ${errorMessage}`)
+          console.log(`🔄 Retrying (${attempt + 1}/${retries})...`)
+
+          // Exponential backoff: wait 2s, 4s, 8s...
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
+        }
+      }
     }
 
-    const analyzeData = await analyzeResponse.json()
+    const analyzeData = await callAnalyzeAPI()
     console.log('✅ Analyze API response received')
     console.log(`📝 Entrypoint length: ${analyzeData.entrypoint?.length || 0} characters`)
 
-    // Check Node.js and npm versions before writing entrypoint
+    // 7. Check Node.js and npm versions
     console.log('')
     console.log('🔍 Checking Node.js and npm versions...')
     const nodeVersionResult = await currentDevbox.execSync({
@@ -246,85 +262,107 @@ async function main() {
       args: ['-v'],
     })
     console.log(`📦 Node.js version: ${nodeVersionResult.stdout.trim()}`)
-    
+
     const npmVersionResult = await currentDevbox.execSync({
       command: 'npm',
       args: ['-v'],
     })
     console.log(`📦 npm version: ${npmVersionResult.stdout.trim()}`)
 
-    // 7. Write entrypoint.sh file
+    // 8. Enable pnpm via corepack (if needed)
+    console.log('')
+    console.log('🔧 Checking package manager requirements...')
+
+    const usesPnpm = analyzeData.entrypoint.includes('pnpm')
+
+    if (usesPnpm) {
+      console.log('📦 Detected pnpm usage, enabling via corepack...')
+      try {
+        await currentDevbox.execSync({
+          command: 'corepack',
+          args: ['enable'],
+        })
+        console.log('✅ pnpm enabled via corepack')
+
+        const pnpmVersionResult = await currentDevbox.execSync({
+          command: 'pnpm',
+          args: ['-v'],
+        })
+        console.log(`📦 pnpm version: ${pnpmVersionResult.stdout.trim()}`)
+      } catch (error) {
+        console.warn('⚠️  Failed to enable pnpm via corepack:', error instanceof Error ? error.message : String(error))
+      }
+    }
+
+    // 9. Prepare entrypoint.sh with command fixes
     const entrypointPath = `${REPO_DIR}/entrypoint.sh`
     console.log('')
-    console.log(`💾 Writing entrypoint.sh to ${entrypointPath}...`)
-    
-    // Replace pnpm with npm in entrypoint script
-    const entrypointScript = analyzeData.entrypoint.replace(/pnpm/g, 'npm')
-    
+    console.log(`💾 Preparing entrypoint.sh...`)
+
+    let entrypointScript = analyzeData.entrypoint
+      .replace(/pnpm\s+(dev|start|build)\s+--\s+-/g, 'pnpm $1 -')
+      .replace(/npm\s+(dev|start|build)\s+--\s+-/g, 'npm run $1 -')
+
     await currentDevbox.writeFile(entrypointPath, entrypointScript, {
       mode: 0o755,
     })
-    console.log('✅ entrypoint.sh written successfully (converted pnpm to npm)')
+    console.log('✅ entrypoint.sh written successfully')
 
-    // 8. Verify entrypoint.sh was created with correct content
-    const entrypointContent = await currentDevbox.readFile(entrypointPath)
-    if (entrypointContent.toString() === entrypointScript) {
-      console.log('✅ entrypoint.sh content verified')
-    } else {
-      console.warn('⚠️  entrypoint.sh content mismatch')
-    }
-
-    // Verify file permissions (if supported)
-    const entrypointInfo = await currentDevbox.listFiles(REPO_DIR)
-    const entrypointFile = entrypointInfo.files.find(f => f.name === 'entrypoint.sh')
-    if (entrypointFile) {
-      console.log('✅ entrypoint.sh found in directory listing')
-    }
-
-    // Cat the entrypoint.sh file to view its content
+    // 10. Configure npm registry
     console.log('')
-    console.log('📄 Viewing entrypoint.sh file content:')
-    const catResult = await currentDevbox.execSync({
-      command: 'cat',
-      args: [entrypointPath],
-    })
-    console.log(catResult.stdout)
-    console.log('')
+    console.log('🔧 Configuring npm registry...')
 
-    // Add execute permission to entrypoint.sh
-    console.log('')
-    console.log('🔧 Adding execute permission to entrypoint.sh...')
+    const homeDir = '/home/devbox'
+    const expectedRegistry = 'https://registry.npmmirror.com'
+
     await currentDevbox.execSync({
-      command: 'chmod',
-      args: ['+x', entrypointPath],
+      command: 'npm',
+      args: ['config', 'set', 'registry', expectedRegistry],
+      cwd: REPO_DIR,
+      env: { HOME: homeDir },
     })
-    console.log('✅ Execute permission added')
+    console.log(`✅ npm registry set to: ${expectedRegistry}`)
 
-    // List directory contents again after adding execute permission
+    // 11. 启动 entrypoint.sh（后台异步运行，避免超时）
     console.log('')
-    console.log('📋 Final directory contents after adding execute permission:')
-    const finalLsResult = await currentDevbox.execSync({
-      command: 'ls',
-      args: ['-la', entrypointPath],
-    })
-    console.log(finalLsResult.stdout)
+    console.log('🚀 Starting application via entrypoint.sh...')
 
-    // Execute the entrypoint.sh script
-    console.log('')
-    console.log('🚀 Executing entrypoint.sh script...')
-    console.log(`📂 Changing directory to ${REPO_DIR}`)
-    const execResult = await currentDevbox.execSync({
+    const serverProcess = await currentDevbox.executeCommand({
       command: 'bash',
       args: [entrypointPath, 'development'],
       cwd: REPO_DIR,
+      env: {
+        HOME: homeDir,
+        NPM_CONFIG_USERCONFIG: `${homeDir}/.npmrc`,
+        NPM_CONFIG_CACHE: `${homeDir}/.npm`,
+      },
+      timeout: 600,
     })
-    console.log('📤 Script output:')
-    console.log(execResult.stdout)
-    if (execResult.stderr) {
-      console.log('⚠️  Script errors:')
-      console.log(execResult.stderr)
+
+    console.log(`✅ Application started!`)
+    console.log(`   Process ID: ${serverProcess.processId}`)
+    console.log(`   PID: ${serverProcess.pid}`)
+
+    // 等待服务器启动（pnpm install + pnpm dev 需要时间）
+    console.log('')
+    console.log('⏳ Waiting for dependencies installation and server startup...')
+    console.log('   This may take 1-2 minutes...')
+    await new Promise(resolve => setTimeout(resolve, 60000)) // 等待 60 秒
+
+    // 检查进程状态
+    try {
+      const status = await currentDevbox.getProcessStatus(serverProcess.processId)
+      console.log(`📊 Server status: ${status.processStatus}`)
+
+      if (status.processStatus !== 'running') {
+        console.warn('⚠️  Process may have stopped, checking logs...')
+        const logs = await currentDevbox.getProcessLogs(serverProcess.processId)
+        console.log('📋 Process logs:')
+        console.log(logs.logs.join('\n'))
+      }
+    } catch (error) {
+      console.warn('⚠️  Could not check process status')
     }
-    console.log(`✅ Script executed with exit code: ${execResult.exitCode}`)
 
     // Get preview URL for port 3000
     console.log('')
@@ -341,14 +379,15 @@ async function main() {
 
     console.log('')
     console.log('🎉 Full lifecycle example completed successfully!')
-    console.log(`📦 Devbox name: ${name}`)
-    console.log(`📁 Repository: ${REPO_DIR}`)
-    console.log(`📄 Entrypoint: ${entrypointPath}`)
-
-    // Cleanup option
     console.log('')
-    console.log('💡 Note: Devbox will be cleaned up automatically or you can delete it manually:')
-    console.log(`   await sdk.getDevbox('${name}').delete()`)
+    console.log('📋 Summary:')
+    console.log(`   Devbox: ${name}`)
+    console.log(`   Repository: ${REPO_URL}`)
+    console.log(`   Project Dir: ${REPO_DIR}`)
+    console.log(`   Server: npm run dev`)
+    console.log('')
+    console.log('💡 Cleanup: Delete devbox when done')
+    console.log(`   sdk.getDevbox('${name}').then(d => d.delete())`)
 
   } catch (error) {
     console.error('❌ Error occurred:', error)

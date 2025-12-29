@@ -142,9 +142,9 @@ async function waitForServerStartup(
   maxWaitTime = 180000
 ): Promise<boolean> {
   const startTime = Date.now()
-  const checkInterval = 3000 // 每 3 秒检查一次
+  const checkInterval = 3000 // Check every 3 seconds
 
-  // 服务器启动成功的日志关键字
+  // Server startup success log keywords
   const successPatterns = [
     /Ready in/i,           // Next.js: "✓ Ready in 2.4s"
     /Local:.*http/i,       // Next.js: "- Local: http://localhost:3000"
@@ -157,14 +157,14 @@ async function waitForServerStartup(
   console.log(`   Checking logs, port ${port}, and process status...`)
   console.log('')
 
-  // 先等待 10 秒让 pnpm install 开始运行
+  // Wait 10 seconds first to let pnpm install start running
   await new Promise(resolve => setTimeout(resolve, 10000))
 
   let lastLogLength = 0
 
   while (Date.now() - startTime < maxWaitTime) {
     try {
-      // 1. 检查进程状态
+      // 1. Check process status
       const status = await devbox.getProcessStatus(processId)
 
       if (status.processStatus === 'failed' || status.processStatus === 'completed') {
@@ -176,44 +176,44 @@ async function waitForServerStartup(
         return false
       }
 
-      // 2. 检查日志
+      // 2. Check logs
       const logsResponse = await devbox.getProcessLogs(processId)
       const allLogs = logsResponse.logs.join('\n')
 
-      // 显示新的日志输出
+      // Display new log output
       if (allLogs.length > lastLogLength) {
         const newLogs = allLogs.substring(lastLogLength)
-        const newLines = newLogs.split('\n').filter(line => line.trim())
+        const newLines = newLogs.split('\n').filter((line: string) => line.trim())
         if (newLines.length > 0) {
           console.log('📋 New logs:')
-          newLines.forEach(line => console.log(`   ${line}`))
+          for (const line of newLines) {
+            console.log(`   ${line}`)
+          }
         }
         lastLogLength = allLogs.length
       }
 
-      // 检查是否有启动成功的标志
+      // Check for startup success indicators
       const isReady = successPatterns.some(pattern => pattern.test(allLogs))
 
       if (isReady) {
         console.log('')
         console.log('✅ Found server ready signal in logs!')
 
-        // 3. 验证端口是否开放
+        // 3. Verify if port is open
         try {
           const portsResponse = await devbox.getPorts()
           if (portsResponse.ports.includes(port)) {
             console.log(`✅ Port ${port} is open`)
-            console.log('')
             return true
-          } else {
-            console.log(`⏳ Port ${port} not yet open, waiting...`)
           }
         } catch (error) {
           console.log('⏳ Port check failed, retrying...')
         }
+        console.log(`⏳ Port ${port} not yet open, waiting...`)
       }
 
-      // 显示进度
+      // Display progress
       const elapsed = Math.floor((Date.now() - startTime) / 1000)
       process.stdout.write(`\r   Status: ${status.processStatus} | Elapsed: ${elapsed}s`)
 
@@ -228,7 +228,7 @@ async function waitForServerStartup(
   console.log('')
   console.warn(`⚠️  Server did not start within ${maxWaitTime / 1000}s`)
 
-  // 超时后显示最后的日志
+  // Display latest logs after timeout
   try {
     const logs = await devbox.getProcessLogs(processId)
     console.log('📋 Latest logs:')
@@ -405,7 +405,7 @@ async function main() {
     console.log('')
     console.log(`💾 Preparing entrypoint.sh...`)
 
-    let entrypointScript = analyzeData.entrypoint
+    const entrypointScript = analyzeData.entrypoint
       .replace(/pnpm\s+(dev|start|build)\s+--\s+-/g, 'pnpm $1 -')
       .replace(/npm\s+(dev|start|build)\s+--\s+-/g, 'npm run $1 -')
 
@@ -429,7 +429,7 @@ async function main() {
     })
     console.log(`✅ npm registry set to: ${expectedRegistry}`)
 
-    // 11. 启动 entrypoint.sh（后台异步运行，避免超时）
+    // 11. Start entrypoint.sh (run asynchronously in background to avoid timeout)
     console.log('')
     console.log('🚀 Starting application via entrypoint.sh...')
 
@@ -449,7 +449,7 @@ async function main() {
     console.log(`   Process ID: ${serverProcess.processId}`)
     console.log(`   PID: ${serverProcess.pid}`)
 
-    // 智能等待服务器启动（检查日志 + 端口 + 进程状态）
+    // Intelligently wait for server startup (check logs + port + process status)
     const isReady = await waitForServerStartup(currentDevbox, serverProcess.processId, 3000, 180000)
 
     if (!isReady) {

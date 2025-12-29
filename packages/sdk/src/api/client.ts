@@ -291,40 +291,34 @@ export class DevboxAPI {
         data: request,
       })
       
-      // 检查响应数据是否存在
       if (!response || !response.data) {
         throw new Error(
-          `Invalid API response: response or response.data is undefined. ` +
-          `Response: ${JSON.stringify(response)}`
+          `Invalid API response: response or response.data is undefined. Response: ${JSON.stringify(response)}`
         )
       }
       
-      // 处理两种可能的响应格式：
-      // 1. { data: DevboxCreateResponse } - 标准格式
-      // 2. DevboxCreateResponse - 直接返回数据
+      // Handle two possible response formats:
+      // 1. { data: DevboxCreateResponse } - standard format
+      // 2. DevboxCreateResponse - direct data
       let createResponse: DevboxCreateResponse
       
       if (typeof response.data === 'object' && 'data' in response.data) {
-        // 格式1: { data: DevboxCreateResponse }
+        // Format 1: { data: DevboxCreateResponse }
         const responseData = response.data as { data: DevboxCreateResponse }
         if (!responseData.data) {
           throw new Error(
-            `Invalid API response structure: expected { data: DevboxCreateResponse }, ` +
-            `but data field is undefined. ` +
-            `Full response: ${JSON.stringify(response.data)}`
+            `Invalid API response structure: expected { data: DevboxCreateResponse }, but data field is undefined. Full response: ${JSON.stringify(response.data)}`
           )
         }
         createResponse = responseData.data
       } else {
-        // 格式2: 直接是 DevboxCreateResponse
+        // Format 2: direct DevboxCreateResponse
         createResponse = response.data as DevboxCreateResponse
       }
       
-      // 检查必需的字段
       if (!createResponse || !createResponse.name) {
         throw new Error(
-          `Invalid DevboxCreateResponse: missing 'name' field. ` +
-          `Response data: ${JSON.stringify(createResponse)}`
+          `Invalid DevboxCreateResponse: missing 'name' field. Response data: ${JSON.stringify(createResponse)}`
         )
       }
       

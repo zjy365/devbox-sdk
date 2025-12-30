@@ -11,7 +11,7 @@ echo "Starting server with token: $TOKEN"
 # Build and run server in background
 # Build and run server in background
 make build
-BINARY_PATH="./target/release/server-rust"
+BINARY_PATH="./target/x86_64-unknown-linux-musl/release/devbox-sdk-server"
 
 ADDR="127.0.0.1:$PORT"
 "$BINARY_PATH" --addr="$ADDR" --token="$TOKEN" --workspace-path="." &

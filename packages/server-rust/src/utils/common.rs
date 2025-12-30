@@ -1,6 +1,4 @@
 use rand::Rng;
-use std::borrow::Cow;
-use std::path::Path;
 
 /// NanoID alphabet (38 characters, lowercase alphanumeric + _-)
 /// Compatible with URL paths: _-0123456789abcdefghijklmnopqrstuvwxyz
@@ -43,68 +41,6 @@ pub fn generate_nanoid(length: usize) -> String {
         id.push(NANOID_ALPHABET[idx] as char);
     }
     id
-}
-
-/// Escape a string for use in a shell command.
-/// Replaces `shell-escape` crate.
-pub fn shell_escape(s: &str) -> Cow<'_, str> {
-    if s.is_empty() {
-        return Cow::Borrowed("''");
-    }
-
-    let mut safe = true;
-    for c in s.chars() {
-        if !c.is_ascii_alphanumeric() && !matches!(c, ',' | '.' | '_' | '+' | ':' | '@' | '/' | '-')
-        {
-            safe = false;
-            break;
-        }
-    }
-
-    if safe {
-        return Cow::Borrowed(s);
-    }
-
-    let mut escaped = String::with_capacity(s.len() + 2);
-    escaped.push('\'');
-    for c in s.chars() {
-        if c == '\'' {
-            escaped.push_str("'\\''");
-        } else {
-            escaped.push(c);
-        }
-    }
-    escaped.push('\'');
-    Cow::Owned(escaped)
-}
-
-/// Guess MIME type from file path.
-/// Replaces `mime_guess` crate.
-pub fn mime_guess(path: &Path) -> &str {
-    match path.extension().and_then(|ext| ext.to_str()) {
-        Some(ext) => match ext.to_lowercase().as_str() {
-            "html" | "htm" => "text/html",
-            "css" => "text/css",
-            "js" | "mjs" => "application/javascript",
-            "json" => "application/json",
-            "png" => "image/png",
-            "jpg" | "jpeg" => "image/jpeg",
-            "gif" => "image/gif",
-            "svg" => "image/svg+xml",
-            "ico" => "image/x-icon",
-            "txt" => "text/plain",
-            "xml" => "text/xml",
-            "pdf" => "application/pdf",
-            "zip" => "application/zip",
-            "tar" => "application/x-tar",
-            "gz" => "application/gzip",
-            "mp3" => "audio/mpeg",
-            "mp4" => "video/mp4",
-            "wasm" => "application/wasm",
-            _ => "application/octet-stream",
-        },
-        None => "application/octet-stream",
-    }
 }
 
 /// Simple ISO 8601 UTC formatting (approximate)

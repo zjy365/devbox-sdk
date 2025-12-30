@@ -18,7 +18,7 @@ NC='\033[0m'
 
 SERVER_PORT=${SERVER_PORT:-9757}
 SERVER_ADDR="127.0.0.1:${SERVER_PORT}"
-BINARY_PATH="./target/release/server-rust"
+BINARY_PATH="./target/x86_64-unknown-linux-musl/release/devbox-sdk-server"
 SERVER_PID_FILE="test/server.pid"
 SERVER_LOG_FILE="test/server.log"
 TEST_TOKEN=${TEST_TOKEN:-test-token-123}
@@ -219,7 +219,7 @@ get_status() {
   local body; body=$(extract_body "$resp")
   echo "$body" > "test/status_${pid}.json"
   show_response "status $pid" "$status" "$body"
-  expect_json_field "$body" '.id' "$pid"
+  expect_json_field "$body" '.processId' "$pid"
 }
 
 get_logs() {

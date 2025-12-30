@@ -53,12 +53,6 @@ pub async fn list_files(
         let is_dir = metadata.is_dir();
         let size = metadata.len();
 
-        let mime_type = if !is_dir {
-            Some(crate::utils::common::mime_guess(std::path::Path::new(&name)).to_string())
-        } else {
-            None
-        };
-
         #[cfg(unix)]
         let permissions = {
             use std::os::unix::fs::PermissionsExt;
@@ -66,7 +60,6 @@ pub async fn list_files(
         };
         #[cfg(not(unix))]
         let permissions = None;
-
         let modified = metadata.modified().ok().map(|t| {
             let duration = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
             crate::utils::common::format_time(duration.as_secs())
@@ -77,7 +70,6 @@ pub async fn list_files(
             path: entry.path().to_string_lossy().to_string(),
             size,
             is_dir,
-            mime_type,
             permissions,
             modified,
         });

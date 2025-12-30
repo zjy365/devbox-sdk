@@ -13,7 +13,7 @@ BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 ART_DIR="$BASE_DIR"
 
 # Server runtime
-BINARY_PATH="./target/release/server-rust"
+BINARY_PATH="./target/x86_64-unknown-linux-musl/release/devbox-sdk-server"
 SERVER_PID_FILE="$BASE_DIR/server.pid"
 SERVER_LOG_FILE="$BASE_DIR/server.log"
 mkdir -p "$BASE_DIR"

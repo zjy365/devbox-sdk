@@ -5,7 +5,7 @@ SERVER_PORT=9759
 SERVER_ADDR="127.0.0.1:$SERVER_PORT"
 SERVER_PID_FILE="test/server_kill_repro.pid"
 SERVER_LOG_FILE="test/server_kill_repro.log"
-BINARY_PATH="./target/release/server-rust"
+BINARY_PATH="./target/x86_64-unknown-linux-musl/release/devbox-sdk-server"
 TEST_TOKEN="test-token-kill-repro"
 
 # Colors

@@ -25,7 +25,6 @@ pub struct ExecProcessRequest {
     args: Option<Vec<String>>,
     cwd: Option<String>,
     env: Option<std::collections::HashMap<String, String>>,
-    shell: Option<String>,
     timeout: Option<u64>,
 }
 
@@ -92,32 +91,22 @@ pub async fn exec_process(
     State(state): State<Arc<AppState>>,
     Json(req): Json<ExecProcessRequest>,
 ) -> Result<Json<ApiResponse<ExecProcessResponse>>, AppError> {
-    let mut cmd = if let Some(shell) = &req.shell {
-        let mut c = Command::new(shell);
-        c.arg("-c");
-        let mut cmd_str = req.command.clone();
-        if let Some(args) = &req.args {
-            for arg in args {
-                cmd_str.push(' ');
-                cmd_str.push_str(&crate::utils::common::shell_escape(arg));
-            }
-        }
-        c.arg(cmd_str);
+    let mut cmd = if let Some(args) = &req.args {
+        let mut c = Command::new(&req.command);
+        c.args(args);
         c
     } else {
-        if let Some(args) = &req.args {
-            let mut c = Command::new(&req.command);
-            c.args(args);
-            c
-        } else {
-            let parts: Vec<&str> = req.command.split_whitespace().collect();
-            if parts.len() > 1 {
-                let mut c = Command::new(parts[0]);
-                c.args(&parts[1..]);
-                c
-            } else {
-                Command::new(&req.command)
+        match shell_words::split(&req.command) {
+            Ok(parts) => {
+                if !parts.is_empty() {
+                    let mut c = Command::new(&parts[0]);
+                    c.args(&parts[1..]);
+                    c
+                } else {
+                    Command::new(&req.command)
+                }
             }
+            Err(_) => Command::new(&req.command),
         }
     };
 
@@ -407,7 +396,6 @@ pub struct SyncExecutionRequest {
     args: Option<Vec<String>>,
     cwd: Option<String>,
     env: Option<std::collections::HashMap<String, String>>,
-    shell: Option<String>,
     timeout: Option<u64>,
 }
 
@@ -434,24 +422,23 @@ pub async fn exec_process_sync(
     );
     let start_instant = std::time::Instant::now();
 
-    let mut cmd = if let Some(shell) = &req.shell {
-        let mut c = Command::new(shell);
-        c.arg("-c");
-        let mut cmd_str = req.command.clone();
-        if let Some(args) = &req.args {
-            for arg in args {
-                cmd_str.push(' ');
-                cmd_str.push_str(&crate::utils::common::shell_escape(arg));
-            }
-        }
-        c.arg(cmd_str);
+    let mut cmd = if let Some(args) = &req.args {
+        let mut c = Command::new(&req.command);
+        c.args(args);
         c
     } else {
-        let mut c = Command::new(&req.command);
-        if let Some(args) = &req.args {
-            c.args(args);
+        match shell_words::split(&req.command) {
+            Ok(parts) => {
+                if !parts.is_empty() {
+                    let mut c = Command::new(&parts[0]);
+                    c.args(&parts[1..]);
+                    c
+                } else {
+                    Command::new(&req.command)
+                }
+            }
+            Err(_) => Command::new(&req.command),
         }
-        c
     };
 
     if let Some(cwd) = req.cwd {
@@ -539,7 +526,6 @@ pub struct SyncStreamExecutionRequest {
     args: Option<Vec<String>>,
     cwd: Option<String>,
     env: Option<std::collections::HashMap<String, String>>,
-    shell: Option<String>,
     timeout: Option<u64>,
 }
 
@@ -577,24 +563,23 @@ pub async fn exec_process_sync_stream(
                     )))
                     .await;
 
-                let mut cmd = if let Some(shell) = &req_for_task.shell {
-                    let mut c = Command::new(shell);
-                    c.arg("-c");
-                    let mut cmd_str = req_for_task.command.clone();
-                    if let Some(args) = &req_for_task.args {
-                        for arg in args {
-                            cmd_str.push(' ');
-                            cmd_str.push_str(&crate::utils::common::shell_escape(arg));
-                        }
-                    }
-                    c.arg(cmd_str);
+                let mut cmd = if let Some(args) = &req_for_task.args {
+                    let mut c = Command::new(&req_for_task.command);
+                    c.args(args);
                     c
                 } else {
-                    let mut c = Command::new(&req_for_task.command);
-                    if let Some(args) = &req_for_task.args {
-                        c.args(args);
+                    match shell_words::split(&req_for_task.command) {
+                        Ok(parts) => {
+                            if !parts.is_empty() {
+                                let mut c = Command::new(&parts[0]);
+                                c.args(&parts[1..]);
+                                c
+                            } else {
+                                Command::new(&req_for_task.command)
+                            }
+                        }
+                        Err(_) => Command::new(&req_for_task.command),
                     }
-                    c
                 };
 
                 if let Some(cwd) = &req_for_task.cwd {

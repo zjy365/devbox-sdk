@@ -10,7 +10,7 @@ SERVER_ADDR="127.0.0.1:$SERVER_PORT"
 BASE_URL="http://$SERVER_ADDR"
 TOKEN="${TOKEN:-test-token-files}"
 WORKSPACE="${WORKSPACE:-.}"
-BINARY_PATH="./target/release/server-rust"
+BINARY_PATH="./target/x86_64-unknown-linux-musl/release/devbox-sdk-server"
 SERVER_PID_FILE="test/server_files.pid"
 SERVER_LOG_FILE="test/server_files.log"
 

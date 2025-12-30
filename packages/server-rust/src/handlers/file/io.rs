@@ -220,7 +220,7 @@ pub async fn read_file(
         .unwrap_or_default()
         .to_string_lossy()
         .to_string();
-    let mime_type = crate::utils::common::mime_guess(&valid_path).to_string();
+    let mime_type = "application/octet-stream".to_string();
 
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);

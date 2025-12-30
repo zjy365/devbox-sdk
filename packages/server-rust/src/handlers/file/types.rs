@@ -7,7 +7,6 @@ pub struct FileInfo {
     pub path: String,
     pub size: u64,
     pub is_dir: bool,
-    pub mime_type: Option<String>,
     pub permissions: Option<String>,
     pub modified: Option<String>,
 }

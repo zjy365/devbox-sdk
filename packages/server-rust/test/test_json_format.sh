@@ -10,7 +10,7 @@ NC='\033[0m' # No Color
 
 SERVER_PORT=19999
 TEST_TOKEN="test-token-123"
-BINARY_PATH="./target/release/server-rust"
+BINARY_PATH="./target/x86_64-unknown-linux-musl/release/devbox-sdk-server"
 
 echo -e "${YELLOW}=== JSON Format Test ===${NC}"
 

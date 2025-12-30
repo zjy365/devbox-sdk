@@ -140,7 +140,7 @@ pub async fn batch_download(
                             }
                         }
                     } else {
-                        let mime = crate::utils::common::mime_guess(&path);
+                        let mime = "application/octet-stream";
                         let header = format!(
                             "--{}\r\nContent-Disposition: attachment; filename=\"{}\"\r\nContent-Type: {}\r\n\r\n",
                             boundary_clone,

@@ -15,7 +15,7 @@ SERVER_PORT=9758
 SERVER_ADDR="127.0.0.1:$SERVER_PORT"
 SERVER_PID_FILE="test/server_error_handling.pid"
 SERVER_LOG_FILE="test/server_error_handling.log"
-BINARY_PATH="./target/release/server-rust"
+BINARY_PATH="./target/x86_64-unknown-linux-musl/release/devbox-sdk-server"
 
 # Test token
 TEST_TOKEN="test-token-error-handling"

@@ -657,24 +657,61 @@ export class DevboxInstance {
 
   // Process execution
   /**
+   * Wrap command with shell execution (base64 encoding + sh -c)
+   * Mimics Daytona SDK behavior for consistent shell feature support
+   * @param options Process execution options
+   * @returns Modified options with shell wrapper
+   */
+  private wrapCommandWithShell(options: ProcessExecOptions): {
+    command: string
+    cwd?: string
+    timeout?: number
+  } {
+    // Build full command string
+    let fullCommand = options.command
+    if (options.args && options.args.length > 0) {
+      fullCommand = `${options.command} ${options.args.join(' ')}`
+    }
+
+    // Base64 encode the command
+    const base64UserCmd = Buffer.from(fullCommand).toString('base64')
+    let command = `echo '${base64UserCmd}' | base64 -d | sh`
+
+    // Handle environment variables with base64 encoding
+    if (options.env && Object.keys(options.env).length > 0) {
+      const safeEnvExports = `${Object.entries(options.env)
+        .map(([key, value]) => {
+          const encodedValue = Buffer.from(value).toString('base64')
+          return `export ${key}=$(echo '${encodedValue}' | base64 -d)`
+        })
+        .join(';')};`
+      command = `${safeEnvExports} ${command}`
+    }
+
+    // Wrap with sh -c
+    command = `sh -c "${command}"`
+
+    return {
+      command,
+      cwd: options.cwd,
+      timeout: options.timeout,
+    }
+  }
+
+  /**
    * Execute a process asynchronously
    * @param options Process execution options
    * @returns Process execution response with process_id and pid
    */
   async executeCommand(options: ProcessExecOptions): Promise<ProcessExecResponse> {
     const urlResolver = this.sdk.getUrlResolver()
+    const wrappedOptions = this.wrapCommandWithShell(options)
+
     return await urlResolver.executeWithConnection(this.name, async client => {
       const response = await client.post<ProcessExecResponse>(
         API_ENDPOINTS.CONTAINER.PROCESS.EXEC,
         {
-          body: {
-            command: options.command,
-            args: options.args,
-            cwd: options.cwd,
-            env: options.env,
-            shell: options.shell,
-            timeout: options.timeout,
-          },
+          body: wrappedOptions,
         }
       )
       return response.data
@@ -688,18 +725,13 @@ export class DevboxInstance {
    */
   async execSync(options: ProcessExecOptions): Promise<SyncExecutionResponse> {
     const urlResolver = this.sdk.getUrlResolver()
+    const wrappedOptions = this.wrapCommandWithShell(options)
+
     return await urlResolver.executeWithConnection(this.name, async client => {
       const response = await client.post<SyncExecutionResponse>(
         API_ENDPOINTS.CONTAINER.PROCESS.EXEC_SYNC,
         {
-          body: {
-            command: options.command,
-            args: options.args,
-            cwd: options.cwd,
-            env: options.env,
-            shell: options.shell,
-            timeout: options.timeout,
-          },
+          body: wrappedOptions,
         }
       )
       return response.data
@@ -743,10 +775,11 @@ export class DevboxInstance {
 
   /**
    * Build shell command to execute code
+   * Note: sh -c wrapper is now handled by wrapCommandWithShell
    * @param code Code string to execute
    * @param language Programming language ('node' or 'python')
    * @param argv Command line arguments
-   * @returns Shell command string
+   * @returns Shell command string (without sh -c wrapper)
    */
   private buildCodeCommand(code: string, language: 'node' | 'python', argv?: string[]): string {
     const base64Code = Buffer.from(code).toString('base64')
@@ -754,10 +787,10 @@ export class DevboxInstance {
 
     if (language === 'python') {
       // Python: python3 -u -c "exec(__import__('base64').b64decode('<base64>').decode())"
-      return `sh -c 'python3 -u -c "exec(__import__(\\"base64\\").b64decode(\\"${base64Code}\\").decode())"${argvStr}'`
+      return `python3 -u -c "exec(__import__(\\"base64\\").b64decode(\\"${base64Code}\\").decode())"${argvStr}`
     }
     // Node.js: echo <base64> | base64 --decode | node -e "$(cat)"
-    return `sh -c 'echo ${base64Code} | base64 --decode | node -e "$(cat)"${argvStr}'`
+    return `echo ${base64Code} | base64 --decode | node -e "$(cat)"${argvStr}`
   }
 
   /**

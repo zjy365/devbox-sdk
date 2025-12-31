@@ -657,61 +657,31 @@ export class DevboxInstance {
 
   // Process execution
   /**
-   * Wrap command with shell execution (base64 encoding + sh -c)
-   * Mimics Daytona SDK behavior for consistent shell feature support
-   * @param options Process execution options
-   * @returns Modified options with shell wrapper
-   */
-  private wrapCommandWithShell(options: ProcessExecOptions): {
-    command: string
-    cwd?: string
-    timeout?: number
-  } {
-    // Build full command string
-    let fullCommand = options.command
-    if (options.args && options.args.length > 0) {
-      fullCommand = `${options.command} ${options.args.join(' ')}`
-    }
-
-    // Base64 encode the command
-    const base64UserCmd = Buffer.from(fullCommand).toString('base64')
-    let command = `echo '${base64UserCmd}' | base64 -d | sh`
-
-    // Handle environment variables with base64 encoding
-    if (options.env && Object.keys(options.env).length > 0) {
-      const safeEnvExports = `${Object.entries(options.env)
-        .map(([key, value]) => {
-          const encodedValue = Buffer.from(value).toString('base64')
-          return `export ${key}=$(echo '${encodedValue}' | base64 -d)`
-        })
-        .join(';')};`
-      command = `${safeEnvExports} ${command}`
-    }
-
-    // Wrap with sh -c
-    command = `sh -c "${command}"`
-
-    return {
-      command,
-      cwd: options.cwd,
-      timeout: options.timeout,
-    }
-  }
-
-  /**
    * Execute a process asynchronously
+   * All commands are automatically executed through shell for consistent behavior
    * @param options Process execution options
    * @returns Process execution response with process_id and pid
    */
   async executeCommand(options: ProcessExecOptions): Promise<ProcessExecResponse> {
     const urlResolver = this.sdk.getUrlResolver()
-    const wrappedOptions = this.wrapCommandWithShell(options)
+
+    // Build command string with args
+    let command = options.command
+    if (options.args && options.args.length > 0) {
+      command = `${options.command} ${options.args.join(' ')}`
+    }
 
     return await urlResolver.executeWithConnection(this.name, async client => {
       const response = await client.post<ProcessExecResponse>(
         API_ENDPOINTS.CONTAINER.PROCESS.EXEC,
         {
-          body: wrappedOptions,
+          body: {
+            command,
+            cwd: options.cwd,
+            env: options.env,
+            shell: 'sh', // Always use shell for consistent behavior
+            timeout: options.timeout,
+          },
         }
       )
       return response.data
@@ -720,18 +690,30 @@ export class DevboxInstance {
 
   /**
    * Execute a process synchronously and wait for completion
+   * All commands are automatically executed through shell for consistent behavior
    * @param options Process execution options
    * @returns Synchronous execution response with stdout, stderr, and exit code
    */
   async execSync(options: ProcessExecOptions): Promise<SyncExecutionResponse> {
     const urlResolver = this.sdk.getUrlResolver()
-    const wrappedOptions = this.wrapCommandWithShell(options)
+
+    // Build command string with args
+    let command = options.command
+    if (options.args && options.args.length > 0) {
+      command = `${options.command} ${options.args.join(' ')}`
+    }
 
     return await urlResolver.executeWithConnection(this.name, async client => {
       const response = await client.post<SyncExecutionResponse>(
         API_ENDPOINTS.CONTAINER.PROCESS.EXEC_SYNC,
         {
-          body: wrappedOptions,
+          body: {
+            command,
+            cwd: options.cwd,
+            env: options.env,
+            shell: 'sh', // Always use shell for consistent behavior
+            timeout: options.timeout,
+          },
         }
       )
       return response.data

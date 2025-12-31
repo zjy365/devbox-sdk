@@ -290,9 +290,40 @@ export class DevboxAPI {
       const response = await this.httpClient.post(this.endpoints.devboxCreate(), {
         data: request,
       })
-      const responseData = response.data as { data: DevboxCreateResponse }
+      
+      if (!response || !response.data) {
+        throw new Error(
+          `Invalid API response: response or response.data is undefined. Response: ${JSON.stringify(response)}`
+        )
+      }
+      
+      // Handle two possible response formats:
+      // 1. { data: DevboxCreateResponse } - standard format
+      // 2. DevboxCreateResponse - direct data
+      let createResponse: DevboxCreateResponse
+      
+      if (typeof response.data === 'object' && 'data' in response.data) {
+        // Format 1: { data: DevboxCreateResponse }
+        const responseData = response.data as { data: DevboxCreateResponse }
+        if (!responseData.data) {
+          throw new Error(
+            `Invalid API response structure: expected { data: DevboxCreateResponse }, but data field is undefined. Full response: ${JSON.stringify(response.data)}`
+          )
+        }
+        createResponse = responseData.data
+      } else {
+        // Format 2: direct DevboxCreateResponse
+        createResponse = response.data as DevboxCreateResponse
+      }
+      
+      if (!createResponse || !createResponse.name) {
+        throw new Error(
+          `Invalid DevboxCreateResponse: missing 'name' field. Response data: ${JSON.stringify(createResponse)}`
+        )
+      }
+      
       return this.transformCreateResponseToDevboxInfo(
-        responseData.data,
+        createResponse,
         config.runtime,
         config.resource
       )

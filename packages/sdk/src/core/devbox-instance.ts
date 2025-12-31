@@ -38,6 +38,7 @@ import type {
   SyncExecutionResponse,
   TimeRange,
   TransferResult,
+  WaitForReadyOptions,
   // WatchRequest, // Temporarily disabled - ws module removed
   WriteOptions,
 } from './types'
@@ -657,21 +658,30 @@ export class DevboxInstance {
   // Process execution
   /**
    * Execute a process asynchronously
+   * All commands are automatically executed through shell (sh -c) for consistent behavior
+   * This ensures environment variables, pipes, redirections, etc. work as expected
    * @param options Process execution options
    * @returns Process execution response with process_id and pid
    */
   async executeCommand(options: ProcessExecOptions): Promise<ProcessExecResponse> {
     const urlResolver = this.sdk.getUrlResolver()
+
+    // Build full command string
+    let fullCommand = options.command
+    if (options.args && options.args.length > 0) {
+      fullCommand = `${options.command} ${options.args.join(' ')}`
+    }
+
+    // Wrap with sh -c for shell feature support (env vars, pipes, etc.)
     return await urlResolver.executeWithConnection(this.name, async client => {
       const response = await client.post<ProcessExecResponse>(
         API_ENDPOINTS.CONTAINER.PROCESS.EXEC,
         {
           body: {
-            command: options.command,
-            args: options.args,
+            command: 'sh',
+            args: ['-c', fullCommand],
             cwd: options.cwd,
             env: options.env,
-            shell: options.shell,
             timeout: options.timeout,
           },
         }
@@ -682,21 +692,30 @@ export class DevboxInstance {
 
   /**
    * Execute a process synchronously and wait for completion
+   * All commands are automatically executed through shell (sh -c) for consistent behavior
+   * This ensures environment variables, pipes, redirections, etc. work as expected
    * @param options Process execution options
    * @returns Synchronous execution response with stdout, stderr, and exit code
    */
   async execSync(options: ProcessExecOptions): Promise<SyncExecutionResponse> {
     const urlResolver = this.sdk.getUrlResolver()
+
+    // Build full command string
+    let fullCommand = options.command
+    if (options.args && options.args.length > 0) {
+      fullCommand = `${options.command} ${options.args.join(' ')}`
+    }
+
+    // Wrap with sh -c for shell feature support (env vars, pipes, etc.)
     return await urlResolver.executeWithConnection(this.name, async client => {
       const response = await client.post<SyncExecutionResponse>(
         API_ENDPOINTS.CONTAINER.PROCESS.EXEC_SYNC,
         {
           body: {
-            command: options.command,
-            args: options.args,
+            command: 'sh',
+            args: ['-c', fullCommand],
             cwd: options.cwd,
             env: options.env,
-            shell: options.shell,
             timeout: options.timeout,
           },
         }
@@ -742,10 +761,11 @@ export class DevboxInstance {
 
   /**
    * Build shell command to execute code
+   * Note: sh -c wrapper is now handled by wrapCommandWithShell
    * @param code Code string to execute
    * @param language Programming language ('node' or 'python')
    * @param argv Command line arguments
-   * @returns Shell command string
+   * @returns Shell command string (without sh -c wrapper)
    */
   private buildCodeCommand(code: string, language: 'node' | 'python', argv?: string[]): string {
     const base64Code = Buffer.from(code).toString('base64')
@@ -753,10 +773,10 @@ export class DevboxInstance {
 
     if (language === 'python') {
       // Python: python3 -u -c "exec(__import__('base64').b64decode('<base64>').decode())"
-      return `sh -c 'python3 -u -c "exec(__import__(\\"base64\\").b64decode(\\"${base64Code}\\").decode())"${argvStr}'`
+      return `python3 -u -c "exec(__import__(\\"base64\\").b64decode(\\"${base64Code}\\").decode())"${argvStr}`
     }
     // Node.js: echo <base64> | base64 --decode | node -e "$(cat)"
-    return `sh -c 'echo ${base64Code} | base64 --decode | node -e "$(cat)"${argvStr}'`
+    return `echo ${base64Code} | base64 --decode | node -e "$(cat)"${argvStr}`
   }
 
   /**
@@ -866,24 +886,55 @@ export class DevboxInstance {
     try {
       const urlResolver = this.sdk.getUrlResolver()
       return await urlResolver.checkDevboxHealth(this.name)
-    } catch (error) {
+    } catch {
       return false
     }
   }
 
   /**
    * Wait for the Devbox to be ready and healthy
-   * @param timeout Timeout in milliseconds (default: 300000 = 5 minutes)
-   * @param checkInterval Check interval in milliseconds (default: 2000)
+   * @param timeoutOrOptions Timeout in milliseconds (for backward compatibility) or options object
+   * @param checkInterval Check interval in milliseconds (for backward compatibility, ignored if first param is options)
    */
-  async waitForReady(timeout = 300000, checkInterval = 2000): Promise<void> {
+  async waitForReady(
+    timeoutOrOptions?: number | WaitForReadyOptions,
+    checkInterval = 2000
+  ): Promise<void> {
+    // Handle backward compatibility: if first param is a number, treat as old API
+    // If no params provided, use exponential backoff (new default behavior)
+    const options: WaitForReadyOptions =
+      typeof timeoutOrOptions === 'number'
+        ? {
+            timeout: timeoutOrOptions,
+            checkInterval,
+            // For backward compatibility: if explicitly called with numbers, use fixed interval
+            useExponentialBackoff: false,
+          }
+        : timeoutOrOptions ?? {
+            // Default: use exponential backoff when called without params
+            useExponentialBackoff: true,
+          }
+
+    const {
+      timeout = 300000, // 5 minutes
+      checkInterval: fixedInterval,
+      useExponentialBackoff = fixedInterval === undefined,
+      initialCheckInterval = 200, // 0.2 seconds - faster initial checks
+      maxCheckInterval = 5000, // 5 seconds
+      backoffMultiplier = 1.5,
+    } = options
+
     const startTime = Date.now()
+    let currentInterval = useExponentialBackoff ? initialCheckInterval : (fixedInterval ?? 2000)
+    let checkCount = 0
+    let lastStatus = this.status
 
     while (Date.now() - startTime < timeout) {
       try {
         // 1. Check Devbox status via API
         await this.refreshInfo()
 
+        // If status changed to Running, immediately check health (don't wait for next interval)
         if (this.status === 'Running') {
           // 2. Check health status via Bun server
           const healthy = await this.isHealthy()
@@ -891,13 +942,36 @@ export class DevboxInstance {
           if (healthy) {
             return
           }
+
+          // If status is Running but not healthy yet, use shorter interval for health checks
+          // This helps detect when health becomes available faster
+          if (lastStatus !== 'Running') {
+            // Status just changed to Running, reset interval to check health more frequently
+            currentInterval = Math.min(initialCheckInterval * 2, 1000) // Max 1s for health checks
+            checkCount = 1
+          }
+        } else if (lastStatus !== this.status) {
+          // Status changed but not Running yet, reset interval to check more frequently
+          currentInterval = initialCheckInterval
+          checkCount = 0
         }
-      } catch (error) {
+
+        lastStatus = this.status
+      } catch {
         // Continue waiting on error
       }
 
+      // Calculate next interval for exponential backoff
+      if (useExponentialBackoff) {
+        currentInterval = Math.min(
+          initialCheckInterval * (backoffMultiplier ** checkCount),
+          maxCheckInterval
+        )
+        checkCount++
+      }
+
       // Wait before next check
-      await new Promise(resolve => setTimeout(resolve, checkInterval))
+      await new Promise(resolve => setTimeout(resolve, currentInterval))
     }
 
     throw new Error(`Devbox '${this.name}' did not become ready within ${timeout}ms`)

@@ -658,28 +658,30 @@ export class DevboxInstance {
   // Process execution
   /**
    * Execute a process asynchronously
-   * All commands are automatically executed through shell for consistent behavior
+   * All commands are automatically executed through shell (sh -c) for consistent behavior
+   * This ensures environment variables, pipes, redirections, etc. work as expected
    * @param options Process execution options
    * @returns Process execution response with process_id and pid
    */
   async executeCommand(options: ProcessExecOptions): Promise<ProcessExecResponse> {
     const urlResolver = this.sdk.getUrlResolver()
 
-    // Build command string with args
-    let command = options.command
+    // Build full command string
+    let fullCommand = options.command
     if (options.args && options.args.length > 0) {
-      command = `${options.command} ${options.args.join(' ')}`
+      fullCommand = `${options.command} ${options.args.join(' ')}`
     }
 
+    // Wrap with sh -c for shell feature support (env vars, pipes, etc.)
     return await urlResolver.executeWithConnection(this.name, async client => {
       const response = await client.post<ProcessExecResponse>(
         API_ENDPOINTS.CONTAINER.PROCESS.EXEC,
         {
           body: {
-            command,
+            command: 'sh',
+            args: ['-c', fullCommand],
             cwd: options.cwd,
             env: options.env,
-            shell: 'sh', // Always use shell for consistent behavior
             timeout: options.timeout,
           },
         }
@@ -690,28 +692,30 @@ export class DevboxInstance {
 
   /**
    * Execute a process synchronously and wait for completion
-   * All commands are automatically executed through shell for consistent behavior
+   * All commands are automatically executed through shell (sh -c) for consistent behavior
+   * This ensures environment variables, pipes, redirections, etc. work as expected
    * @param options Process execution options
    * @returns Synchronous execution response with stdout, stderr, and exit code
    */
   async execSync(options: ProcessExecOptions): Promise<SyncExecutionResponse> {
     const urlResolver = this.sdk.getUrlResolver()
 
-    // Build command string with args
-    let command = options.command
+    // Build full command string
+    let fullCommand = options.command
     if (options.args && options.args.length > 0) {
-      command = `${options.command} ${options.args.join(' ')}`
+      fullCommand = `${options.command} ${options.args.join(' ')}`
     }
 
+    // Wrap with sh -c for shell feature support (env vars, pipes, etc.)
     return await urlResolver.executeWithConnection(this.name, async client => {
       const response = await client.post<SyncExecutionResponse>(
         API_ENDPOINTS.CONTAINER.PROCESS.EXEC_SYNC,
         {
           body: {
-            command,
+            command: 'sh',
+            args: ['-c', fullCommand],
             cwd: options.cwd,
             env: options.env,
-            shell: 'sh', // Always use shell for consistent behavior
             timeout: options.timeout,
           },
         }

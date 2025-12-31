@@ -1939,10 +1939,6 @@ components:
           example:
             PATH: "/usr/bin:/bin"
             DEBUG: "true"
-        shell:
-          type: string
-          description: Shell to use for execution
-          example: "/bin/bash"
         timeout:
           type: integer
           description: Timeout in seconds
@@ -1995,10 +1991,6 @@ components:
           description: Environment variables
           example:
             PATH: "/usr/bin:/bin"
-        shell:
-          type: string
-          description: Shell to use for execution
-          example: "/bin/bash"
         timeout:
           type: integer
           description: Timeout in seconds

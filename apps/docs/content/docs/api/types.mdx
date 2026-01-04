@@ -1,0 +1,210 @@
+---
+title: Type Definitions
+description: Complete type definitions for Devbox SDK
+---
+
+# Type Definitions
+
+Complete TypeScript type definitions for Devbox SDK.
+
+## DevboxSDKConfig
+
+Configuration for DevboxSDK.
+
+```typescript
+interface DevboxSDKConfig {
+  kubeconfig: string
+  baseUrl?: string
+  http?: HttpClientConfig
+}
+```
+
+## DevboxCreateConfig
+
+Configuration for creating a sandbox.
+
+```typescript
+interface DevboxCreateConfig {
+  name: string
+  runtime: DevboxRuntime
+  resource: ResourceInfo
+  ports?: PortConfig[]
+  env?: Record<string, string>
+}
+```
+
+## ResourceInfo
+
+Resource allocation information.
+
+```typescript
+interface ResourceInfo {
+  cpu: number      // CPU cores
+  memory: number   // Memory in MB
+}
+```
+
+## ProcessExecOptions
+
+Options for process execution.
+
+```typescript
+interface ProcessExecOptions {
+  command: string
+  args?: string[]
+  cwd?: string
+  env?: Record<string, string>
+  shell?: string
+  timeout?: number
+}
+```
+
+## CodeRunOptions
+
+Options for code execution.
+
+```typescript
+interface CodeRunOptions {
+  language?: 'node' | 'python'
+  cwd?: string
+  env?: Record<string, string>
+  timeout?: number
+  argv?: string[]
+}
+```
+
+## SyncExecutionResponse
+
+Response from synchronous execution.
+
+```typescript
+interface SyncExecutionResponse {
+  stdout: string
+  stderr: string
+  exitCode: number
+  durationMs: number
+  startTime: number
+  endTime: number
+  success: boolean
+}
+```
+
+## ProcessExecResponse
+
+Response from asynchronous execution.
+
+```typescript
+interface ProcessExecResponse {
+  processId: string
+  pid: number
+  processStatus: string
+}
+```
+
+## FileChangeEvent
+
+File change event from file watching.
+
+```typescript
+interface FileChangeEvent {
+  type: 'create' | 'update' | 'delete'
+  path: string
+  timestamp: number
+}
+```
+
+## GitCloneOptions
+
+Options for cloning a Git repository.
+
+```typescript
+interface GitCloneOptions {
+  url: string
+  targetDir: string
+  branch?: string
+  depth?: number
+  auth?: {
+    type: 'https' | 'ssh'
+    username?: string
+    password?: string
+    privateKey?: string
+    passphrase?: string
+  }
+}
+```
+
+## Error Types
+
+### DevboxSDKError
+
+Base error class.
+
+```typescript
+class DevboxSDKError extends Error {
+  code: string
+  statusCode?: number
+}
+```
+
+### AuthenticationError
+
+Authentication failures.
+
+```typescript
+class AuthenticationError extends DevboxSDKError {}
+```
+
+### ConnectionError
+
+Connection failures.
+
+```typescript
+class ConnectionError extends DevboxSDKError {}
+```
+
+### FileOperationError
+
+File operation errors.
+
+```typescript
+class FileOperationError extends DevboxSDKError {}
+```
+
+### DevboxNotFoundError
+
+Sandbox not found.
+
+```typescript
+class DevboxNotFoundError extends DevboxSDKError {}
+```
+
+### ValidationError
+
+Validation errors.
+
+```typescript
+class ValidationError extends DevboxSDKError {}
+```
+
+## Import Types
+
+```typescript
+import type {
+  DevboxSDKConfig,
+  DevboxCreateConfig,
+  DevboxInfo,
+  ResourceInfo,
+  ProcessExecOptions,
+  CodeRunOptions,
+  SyncExecutionResponse,
+  ProcessExecResponse,
+  FileChangeEvent,
+  GitCloneOptions
+} from 'devbox-sdk'
+```
+
+## Next Steps
+
+- Read [DevboxSDK API](/docs/api/devbox-sdk)
+- Read [DevboxInstance API](/docs/api/devbox-instance)
+

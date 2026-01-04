@@ -1,0 +1,129 @@
+name: server-rust release
+
+on:
+  workflow_dispatch:
+
+concurrency: server-rust-release-${{ github.ref }}
+
+jobs:
+  release:
+    name: Build and Release server-rust
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SERVER_RUST_TARGETS: x86_64-unknown-linux-musl aarch64-unknown-linux-musl
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/server-rust/target
+          key: ${{ runner.os }}-server-rust-${{ hashFiles('packages/server-rust/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-server-rust-
+
+      - name: Install nightly toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+
+      - name: Install cargo-cross
+        run: cargo install cargo-cross
+
+      - name: Read crate version
+        id: crate
+        working-directory: packages/server-rust
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "devbox-sdk-server") | .version')
+          if [ -z "$VERSION" ]; then
+            echo "Unable to read version from Cargo metadata" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build release binaries
+        working-directory: packages/server-rust
+        run: |
+          for TARGET in $SERVER_RUST_TARGETS; do
+            make build TARGET=$TARGET
+          done
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p packages/server-rust/dist
+          for TARGET in $SERVER_RUST_TARGETS; do
+            SRC="packages/server-rust/target/$TARGET/release/devbox-sdk-server"
+            case "$TARGET" in
+              x86_64-unknown-linux-musl)
+                DEST_NAME=devbox-sdk-server-linux-x86_64
+                ;;
+              aarch64-unknown-linux-musl)
+                DEST_NAME=devbox-sdk-server-linux-aarch64
+                ;;
+              *)
+                DEST_NAME=devbox-sdk-server-$TARGET
+                ;;
+            esac
+            DEST="packages/server-rust/dist/$DEST_NAME"
+            if [ ! -f "$SRC" ]; then
+              echo "Expected binary not found at $SRC" >&2
+              exit 1
+            fi
+            cp "$SRC" "$DEST"
+            chmod +x "$DEST"
+          done
+
+      - name: Determine previous devbox-sdk-server tag
+        id: prevtag
+        run: |
+          PREV_TAG=$(git tag --list 'devbox-sdk-server-v*' --sort=-version:refname | head -n 1)
+          if [ -z "$PREV_TAG" ]; then
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+          echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          VERSION="${{ steps.crate.outputs.version }}"
+          SHA=$(git rev-parse HEAD)
+          {
+            echo "## devbox-sdk-server v$VERSION"
+            echo ""
+            echo "- Commit: $SHA"
+            echo ""
+            echo "### Targets"
+            for TARGET in $SERVER_RUST_TARGETS; do
+              echo "- $TARGET"
+            done
+            echo ""
+            echo "### Changes"
+            FROM="${{ steps.prevtag.outputs.prev_tag }}" \
+              TO="$SHA" \
+              PATH_FILTER="packages/server-rust" \
+              FORMAT="- %h %s" \
+              bash packages/server-rust/scripts/release-notes.sh
+            echo ""
+          } > release-notes.md
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: devbox-sdk-server-v${{ steps.crate.outputs.version }}
+          name: devbox-sdk-server v${{ steps.crate.outputs.version }}
+          body_path: release-notes.md
+          files: |
+            packages/server-rust/dist/devbox-sdk-server-linux-x86_64
+            packages/server-rust/dist/devbox-sdk-server-linux-aarch64
+          fail_on_unmatched_files: true

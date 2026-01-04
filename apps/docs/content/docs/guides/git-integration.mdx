@@ -1,0 +1,230 @@
+---
+title: Git Integration
+description: Work with Git repositories in sandboxes
+---
+
+# Git Integration
+
+Devbox SDK provides native Git integration for cloning, pulling, pushing, and managing Git repositories securely.
+
+## Clone Repository
+
+### Public Repository
+
+```typescript
+await sandbox.git.clone({
+  url: 'https://github.com/user/repo.git',
+  targetDir: '/workspace/repo'
+})
+```
+
+### Private Repository (HTTPS)
+
+```typescript
+await sandbox.git.clone({
+  url: 'https://github.com/user/private-repo.git',
+  targetDir: '/workspace/repo',
+  auth: {
+    type: 'https',
+    username: 'your-username',
+    password: 'your-token'  // GitHub personal access token
+  }
+})
+```
+
+### Private Repository (SSH)
+
+```typescript
+await sandbox.git.clone({
+  url: 'git@github.com:user/private-repo.git',
+  targetDir: '/workspace/repo',
+  auth: {
+    type: 'ssh',
+    privateKey: process.env.SSH_PRIVATE_KEY,
+    passphrase: process.env.SSH_PASSPHRASE  // Optional
+  }
+})
+```
+
+### Clone Specific Branch
+
+```typescript
+await sandbox.git.clone({
+  url: 'https://github.com/user/repo.git',
+  targetDir: '/workspace/repo',
+  branch: 'develop'
+})
+```
+
+### Shallow Clone
+
+```typescript
+await sandbox.git.clone({
+  url: 'https://github.com/user/repo.git',
+  targetDir: '/workspace/repo',
+  depth: 1  // Clone only latest commit
+})
+```
+
+## Pull Changes
+
+```typescript
+// Pull from current branch
+await sandbox.git.pull({
+  path: '/workspace/repo',
+  auth: {
+    type: 'https',
+    username: 'user',
+    password: 'token'
+  }
+})
+
+// Pull specific branch
+await sandbox.git.pull({
+  path: '/workspace/repo',
+  branch: 'main',
+  auth: { /* ... */ }
+})
+```
+
+## Push Changes
+
+```typescript
+await sandbox.git.push({
+  path: '/workspace/repo',
+  branch: 'main',
+  auth: {
+    type: 'https',
+    username: 'user',
+    password: 'token'
+  }
+})
+```
+
+## Check Status
+
+```typescript
+const status = await sandbox.git.status('/workspace/repo')
+
+console.log(`Current branch: ${status.branch}`)
+console.log(`Is clean: ${status.isClean}`)
+console.log(`Changes:`, status.changes)
+```
+
+## List Branches
+
+```typescript
+const branches = await sandbox.git.branches('/workspace/repo')
+
+branches.forEach(branch => {
+  console.log(`Branch: ${branch.name}`)
+  console.log(`Current: ${branch.isCurrent}`)
+  console.log(`Commit: ${branch.commit}`)
+})
+```
+
+## Complete Workflow
+
+```typescript
+async function deployFromGit(sandbox: DevboxInstance) {
+  // Clone repository
+  await sandbox.git.clone({
+    url: 'https://github.com/user/app.git',
+    targetDir: '/workspace/app',
+    auth: {
+      type: 'https',
+      username: process.env.GITHUB_USER,
+      password: process.env.GITHUB_TOKEN
+    }
+  })
+
+  // Check status
+  const status = await sandbox.git.status('/workspace/app')
+  console.log(`Branch: ${status.branch}`)
+
+  // Install dependencies
+  await sandbox.execSync({
+    command: 'npm',
+    args: ['install'],
+    cwd: '/workspace/app'
+  })
+
+  // Build
+  await sandbox.execSync({
+    command: 'npm',
+    args: ['run', 'build'],
+    cwd: '/workspace/app'
+  })
+
+  // Run tests
+  const testResult = await sandbox.execSync({
+    command: 'npm',
+    args: ['test'],
+    cwd: '/workspace/app'
+  })
+
+  if (testResult.exitCode === 0) {
+    console.log('Tests passed!')
+  } else {
+    throw new Error('Tests failed')
+  }
+}
+```
+
+## Authentication Best Practices
+
+### Use Environment Variables
+
+```typescript
+await sandbox.git.clone({
+  url: repoUrl,
+  targetDir: '/workspace/repo',
+  auth: {
+    type: 'https',
+    username: process.env.GIT_USERNAME,
+    password: process.env.GIT_TOKEN  // Never hardcode!
+  }
+})
+```
+
+### Use SSH Keys Securely
+
+```typescript
+// Read SSH key from secure storage
+const privateKey = await readSecureKey('ssh-key')
+
+await sandbox.git.clone({
+  url: 'git@github.com:user/repo.git',
+  targetDir: '/workspace/repo',
+  auth: {
+    type: 'ssh',
+    privateKey: privateKey,
+    passphrase: process.env.SSH_PASSPHRASE
+  }
+})
+```
+
+## Error Handling
+
+```typescript
+try {
+  await sandbox.git.clone({
+    url: 'https://github.com/user/repo.git',
+    targetDir: '/workspace/repo'
+  })
+} catch (error) {
+  if (error.message.includes('authentication')) {
+    console.error('Authentication failed')
+  } else if (error.message.includes('not found')) {
+    console.error('Repository not found')
+  } else {
+    console.error('Clone failed:', error)
+  }
+}
+```
+
+## Next Steps
+
+- Explore [API Reference](/docs/api/devbox-instance)
+- Check out [Examples](/docs/examples/ai-agent-workflow)
+

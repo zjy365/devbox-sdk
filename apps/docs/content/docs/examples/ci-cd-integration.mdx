@@ -1,0 +1,260 @@
+---
+title: CI/CD Integration
+description: Integrate Devbox SDK into your CI/CD pipeline
+---
+
+# CI/CD Integration
+
+Use Devbox SDK in your CI/CD pipeline to execute build and test tasks in isolated environments.
+
+## GitHub Actions Example
+
+```yaml
+name: Build and Test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Run tests in sandbox
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+        run: |
+          node scripts/ci-test.js
+```
+
+```typescript
+// scripts/ci-test.js
+import { DevboxSDK } from 'devbox-sdk'
+import fs from 'fs'
+
+async function runCITests() {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  const sandbox = await sdk.createDevbox({
+    name: `ci-${process.env.GITHUB_RUN_ID}`,
+    runtime: 'node.js',
+    resource: { cpu: 2, memory: 2048 }
+  })
+
+  try {
+    await sandbox.waitForReady()
+
+    // Clone repository
+    await sandbox.git.clone({
+      url: process.env.GITHUB_REPOSITORY_URL,
+      targetDir: '/workspace/repo',
+      auth: {
+        type: 'https',
+        username: process.env.GITHUB_ACTOR,
+        password: process.env.GITHUB_TOKEN
+      }
+    })
+
+    // Install dependencies
+    const installResult = await sandbox.execSync({
+      command: 'npm',
+      args: ['ci'],
+      cwd: '/workspace/repo',
+      timeout: 300
+    })
+
+    if (installResult.exitCode !== 0) {
+      throw new Error(`Installation failed: ${installResult.stderr}`)
+    }
+
+    // Run tests
+    const testResult = await sandbox.execSync({
+      command: 'npm',
+      args: ['test'],
+      cwd: '/workspace/repo',
+      timeout: 600
+    })
+
+    // Upload test results
+    if (testResult.exitCode === 0) {
+      console.log('✅ Tests passed')
+      process.exit(0)
+    } else {
+      console.error('❌ Tests failed:', testResult.stderr)
+      process.exit(1)
+    }
+
+  } finally {
+    await sandbox.delete()
+    await sdk.close()
+  }
+}
+
+runCITests().catch(error => {
+  console.error('CI test failed:', error)
+  process.exit(1)
+})
+```
+
+## GitLab CI Example
+
+```yaml
+test:
+  script:
+    - npm install
+    - node scripts/ci-test.js
+  variables:
+    KUBECONFIG: $CI_KUBECONFIG
+```
+
+## Jenkins Pipeline Example
+
+```groovy
+pipeline {
+    agent any
+    
+    environment {
+        KUBECONFIG = credentials('kubeconfig')
+    }
+    
+    stages {
+        stage('Test') {
+            steps {
+                sh 'npm install'
+                sh 'node scripts/ci-test.js'
+            }
+        }
+    }
+}
+```
+
+## Docker Build in Sandbox
+
+```typescript
+async function buildDockerImage(dockerfile: string, context: Record<string, string>) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  const sandbox = await sdk.createDevbox({
+    name: `docker-build-${Date.now()}`,
+    runtime: 'node.js',
+    resource: { cpu: 4, memory: 4096 }
+  })
+
+  try {
+    await sandbox.waitForReady()
+
+    // Upload Dockerfile and context
+    const files: Record<string, string> = {
+      'Dockerfile': dockerfile,
+      ...context
+    }
+    await sandbox.batchUpload({ files })
+
+    // Build Docker image
+    const buildResult = await sandbox.execSync({
+      command: 'docker',
+      args: ['build', '-t', 'my-app', '.'],
+      timeout: 600
+    })
+
+    if (buildResult.exitCode !== 0) {
+      throw new Error(`Docker build failed: ${buildResult.stderr}`)
+    }
+
+    // Export image
+    const exportResult = await sandbox.execSync({
+      command: 'docker',
+      args: ['save', 'my-app', '-o', 'image.tar'],
+      timeout: 300
+    })
+
+    // Download image
+    const imageTar = await sandbox.readFile('image.tar')
+
+    return {
+      success: true,
+      image: imageTar
+    }
+
+  } finally {
+    await sandbox.delete()
+    await sdk.close()
+  }
+}
+```
+
+## Parallel Test Execution
+
+```typescript
+async function runParallelTests(testSuites: string[]) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  const results = await Promise.all(
+    testSuites.map(async (suite, index) => {
+      const sandbox = await sdk.createDevbox({
+        name: `test-${index}-${Date.now()}`,
+        runtime: 'node.js',
+        resource: { cpu: 1, memory: 1024 }
+      })
+
+      try {
+        await sandbox.waitForReady()
+
+        // Clone and setup
+        await sandbox.git.clone({
+          url: process.env.REPO_URL,
+          targetDir: '/workspace/repo'
+        })
+
+        await sandbox.execSync({
+          command: 'npm',
+          args: ['ci'],
+          cwd: '/workspace/repo'
+        })
+
+        // Run specific test suite
+        const result = await sandbox.execSync({
+          command: 'npm',
+          args: ['test', '--', suite],
+          cwd: '/workspace/repo',
+          timeout: 300
+        })
+
+        return {
+          suite,
+          success: result.exitCode === 0,
+          output: result.stdout,
+          error: result.stderr
+        }
+
+      } finally {
+        await sandbox.delete()
+      }
+    })
+  )
+
+  await sdk.close()
+
+  return results
+}
+```
+
+## Next Steps
+
+- Read [API Reference](/docs/api/devbox-sdk)
+- Explore [Guides](/docs/guides/secure-code-execution)
+

@@ -1,0 +1,61 @@
+{
+  "name": "devbox-sdk-monorepo",
+  "version": "1.1.0",
+  "description": "Enterprise TypeScript SDK for Sealos Devbox management with HTTP API + Bun runtime architecture",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "build:sdk": "turbo run build --filter=devbox-sdk",
+    "build:docs": "turbo run build --filter=devbox-docs",
+    "dev:docs": "turbo run dev --filter=devbox-docs",
+    "start:docs": "turbo run start --filter=devbox-docs",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "version": "changeset version",
+    "release": "changeset publish"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.8.3",
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.7",
+    "dotenv": "17.2.3",
+    "tsup": "^8.0.0",
+    "tsx": "^4.19.4",
+    "turbo": "^2.5.8",
+    "typescript": "^5.5.3",
+    "vitest": "4.0.8"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "author": {
+    "name": "zjy365",
+    "email": "3161362058@qq.com",
+    "url": "https://github.com/zjy365"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "sealos",
+    "devbox",
+    "sdk",
+    "typescript",
+    "cloud-development",
+    "container",
+    "bun",
+    "http-api",
+    "monorepo"
+  ],
+  "homepage": "https://github.com/zjy365/devbox-sdk",
+  "bugs": {
+    "url": "https://github.com/zjy365/devbox-sdk/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zjy365/devbox-sdk.git"
+  }
+}

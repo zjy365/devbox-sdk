@@ -1,0 +1,274 @@
+---
+title: File Operations
+description: Complete guide to file operations in sandboxes
+---
+
+# File Operations
+
+Devbox SDK provides comprehensive file operations for managing files in isolated sandboxes.
+
+## Writing Files
+
+### Write Text Files
+
+```typescript
+// Write a simple text file
+await sandbox.writeFile('hello.txt', 'Hello, World!')
+
+// Write with encoding
+await sandbox.writeFile('data.txt', 'Hello', {
+  encoding: 'utf8'
+})
+```
+
+### Write Binary Files
+
+```typescript
+// Write binary data
+const imageBuffer = Buffer.from(imageData, 'base64')
+await sandbox.writeFile('image.png', imageBuffer)
+
+// Or with base64 encoding
+await sandbox.writeFile('image.png', imageBuffer, {
+  encoding: 'base64'
+})
+```
+
+### Write Code Files
+
+```typescript
+// Write JavaScript file
+await sandbox.writeFile('app.js', `
+const express = require('express');
+const app = express();
+
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+
+app.listen(3000);
+`)
+
+// Write Python file
+await sandbox.writeFile('app.py', `
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return 'Hello World!'
+
+if __name__ == '__main__':
+    app.run(port=3000)
+`)
+```
+
+## Reading Files
+
+### Read Text Files
+
+```typescript
+// Read file as Buffer
+const buffer = await sandbox.readFile('hello.txt')
+console.log(buffer.toString()) // "Hello, World!"
+
+// Read with options
+const content = await sandbox.readFile('data.txt', {
+  encoding: 'utf8'
+})
+```
+
+### Read Binary Files
+
+```typescript
+// Read binary file
+const imageBuffer = await sandbox.readFile('image.png')
+// imageBuffer is a Buffer
+```
+
+## Listing Files
+
+```typescript
+// List files in directory
+const files = await sandbox.listFiles('/workspace')
+
+console.log('Files:', files.files.map(f => f.name))
+console.log('Directories:', files.directories.map(d => d.name))
+```
+
+## Batch Operations
+
+### Batch Upload
+
+Upload multiple files at once:
+
+```typescript
+await sandbox.batchUpload({
+  files: {
+    'src/index.js': 'console.log("Hello")',
+    'src/utils.js': 'export function helper() {}',
+    'package.json': JSON.stringify({
+      name: 'my-app',
+      version: '1.0.0'
+    })
+  }
+})
+```
+
+### Batch Download
+
+Download multiple files:
+
+```typescript
+// Download as tar.gz (default)
+const archive = await sandbox.downloadFiles([
+  'src/index.js',
+  'src/utils.js',
+  'package.json'
+])
+
+// Download as tar
+const tarArchive = await sandbox.downloadFiles([
+  'src/index.js',
+  'src/utils.js'
+], { format: 'tar' })
+
+// Download as multipart
+const multipart = await sandbox.downloadFiles([
+  'file1.txt',
+  'file2.txt'
+], { format: 'multipart' })
+```
+
+## Moving and Renaming
+
+### Move Files
+
+```typescript
+// Move file
+await sandbox.moveFile('old/path.txt', 'new/path.txt')
+
+// Move directory
+await sandbox.moveFile('old/dir', 'new/dir')
+
+// Move with overwrite
+await sandbox.moveFile('source.txt', 'dest.txt', true)
+```
+
+### Rename Files
+
+```typescript
+// Rename file
+await sandbox.renameFile('old-name.txt', 'new-name.txt')
+
+// Rename directory
+await sandbox.renameFile('old-dir', 'new-dir')
+```
+
+## Deleting Files
+
+```typescript
+// Delete file
+await sandbox.deleteFile('unwanted.txt')
+
+// Delete directory (if supported)
+await sandbox.deleteFile('unwanted-dir')
+```
+
+## Path Validation
+
+All file operations automatically validate paths to prevent directory traversal attacks:
+
+```typescript
+// These will throw errors:
+await sandbox.readFile('../../../etc/passwd')  // ❌ Path traversal
+await sandbox.readFile('')                      // ❌ Empty path
+await sandbox.readFile('/absolute/path')        // ❌ Absolute path (if not allowed)
+```
+
+## Best Practices
+
+### 1. Use Relative Paths
+
+```typescript
+// ✅ Good
+await sandbox.writeFile('src/index.js', code)
+
+// ❌ Avoid
+await sandbox.writeFile('/absolute/path/index.js', code)
+```
+
+### 2. Handle Errors
+
+```typescript
+try {
+  await sandbox.readFile('file.txt')
+} catch (error) {
+  if (error instanceof FileOperationError) {
+    console.error('File not found or access denied')
+  }
+}
+```
+
+### 3. Use Batch Operations
+
+For multiple files, use batch operations:
+
+```typescript
+// ✅ Efficient
+await sandbox.batchUpload({
+  files: {
+    'file1.js': content1,
+    'file2.js': content2,
+    'file3.js': content3
+  }
+})
+
+// ❌ Less efficient
+await sandbox.writeFile('file1.js', content1)
+await sandbox.writeFile('file2.js', content2)
+await sandbox.writeFile('file3.js', content3)
+```
+
+## Complete Example
+
+```typescript
+async function setupProject(sandbox: DevboxInstance) {
+  // Create project structure
+  await sandbox.batchUpload({
+    files: {
+      'package.json': JSON.stringify({
+        name: 'my-project',
+        version: '1.0.0',
+        scripts: {
+          start: 'node index.js'
+        }
+      }),
+      'index.js': `
+        const express = require('express');
+        const app = express();
+        app.get('/', (req, res) => res.send('Hello!'));
+        app.listen(3000);
+      `,
+      '.gitignore': 'node_modules/\n.env'
+    }
+  })
+
+  // Verify files
+  const files = await sandbox.listFiles('.')
+  console.log('Created files:', files.files.map(f => f.name))
+
+  // Watch for changes
+  const ws = await sandbox.watchFiles('.', (event) => {
+    console.log(`File ${event.type}: ${event.path}`)
+  })
+
+  return ws
+}
+```
+
+## Next Steps
+
+- Learn about [Process Management](/docs/guides/process-management)
+- Explore [Git Integration](/docs/guides/git-integration)
+

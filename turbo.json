@@ -1,0 +1,108 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "**/.env.*local",
+    "tsconfig.json",
+    "biome.json"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "out/**",
+        ".source/**",
+        "devbox-server",
+        "devbox-server-*",
+        "*.tsbuildinfo"
+      ],
+      "inputs": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "app/**/*.tsx",
+        "app/**/*.ts",
+        "content/**/*.mdx",
+        "lib/**/*.ts",
+        "lib/**/*.tsx",
+        "source.config.ts",
+        "next.config.mjs",
+        "next.config.js",
+        "tsconfig.json",
+        "tsup.config.ts",
+        "package.json"
+      ]
+    },
+    "test": {
+      "outputs": [
+        "coverage/**"
+      ],
+      "inputs": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "**/__tests__/**/*.test.ts",
+        "**/tests/**/*.test.ts"
+      ],
+      "env": [
+        "NODE_ENV"
+      ]
+    },
+    "test:e2e": {
+      "dependsOn": [
+        "build"
+      ],
+      "cache": false,
+      "outputs": []
+    },
+    "lint": {
+      "cache": true,
+      "outputs": [],
+      "inputs": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "app/**/*.tsx",
+        "app/**/*.ts",
+        "lib/**/*.ts",
+        "lib/**/*.tsx",
+        "biome.json",
+        ".eslintrc.*",
+        "eslint.config.*"
+      ]
+    },
+    "lint:fix": {
+      "cache": false,
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": [
+        "^build"
+      ],
+      "cache": true,
+      "outputs": [
+        "*.tsbuildinfo"
+      ],
+      "inputs": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "app/**/*.tsx",
+        "app/**/*.ts",
+        "lib/**/*.ts",
+        "lib/**/*.tsx",
+        "tsconfig.json"
+      ]
+    },
+    "clean": {
+      "cache": false
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "start": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

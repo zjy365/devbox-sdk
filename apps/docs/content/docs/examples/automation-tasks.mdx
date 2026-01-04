@@ -1,0 +1,253 @@
+---
+title: Automation Tasks
+description: Run automation scripts safely in isolated environments
+---
+
+# Automation Tasks
+
+Execute untrusted automation scripts safely in isolated sandboxes.
+
+## Basic Automation
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+async function runAutomation(script: string) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  const sandbox = await sdk.createDevbox({
+    name: `automation-${Date.now()}`,
+    runtime: 'node.js',
+    resource: { cpu: 1, memory: 512 }
+  })
+
+  try {
+    await sandbox.waitForReady()
+
+    // Write script
+    await sandbox.writeFile('script.js', script)
+
+    // Execute script
+    const result = await sandbox.execSync({
+      command: 'node',
+      args: ['script.js'],
+      timeout: 60
+    })
+
+    return {
+      success: result.exitCode === 0,
+      output: result.stdout,
+      error: result.stderr
+    }
+
+  } finally {
+    await sandbox.delete()
+    await sdk.close()
+  }
+}
+```
+
+## Build and Test Workflow
+
+```typescript
+async function buildAndTest(projectFiles: Record<string, string>) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  const sandbox = await sdk.createDevbox({
+    name: `build-${Date.now()}`,
+    runtime: 'node.js',
+    resource: { cpu: 2, memory: 2048 }
+  })
+
+  try {
+    await sandbox.waitForReady()
+
+    // Upload project files
+    await sandbox.batchUpload({ files: projectFiles })
+
+    // Install dependencies
+    const installResult = await sandbox.execSync({
+      command: 'npm',
+      args: ['install'],
+      timeout: 300
+    })
+
+    if (installResult.exitCode !== 0) {
+      throw new Error(`Installation failed: ${installResult.stderr}`)
+    }
+
+    // Run build
+    const buildResult = await sandbox.execSync({
+      command: 'npm',
+      args: ['run', 'build'],
+      timeout: 600
+    })
+
+    if (buildResult.exitCode !== 0) {
+      throw new Error(`Build failed: ${buildResult.stderr}`)
+    }
+
+    // Run tests
+    const testResult = await sandbox.execSync({
+      command: 'npm',
+      args: ['test'],
+      timeout: 300
+    })
+
+    // Download build artifacts
+    const artifacts = await sandbox.downloadFiles([
+      'dist',
+      'build'
+    ], { format: 'tar.gz' })
+
+    return {
+      success: testResult.exitCode === 0,
+      buildOutput: buildResult.stdout,
+      testOutput: testResult.stdout,
+      artifacts: artifacts
+    }
+
+  } finally {
+    await sandbox.delete()
+    await sdk.close()
+  }
+}
+```
+
+## Scheduled Tasks
+
+```typescript
+async function runScheduledTask(taskConfig: {
+  name: string
+  command: string
+  args?: string[]
+  cwd?: string
+  timeout?: number
+}) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  const sandbox = await sdk.createDevbox({
+    name: `scheduled-${taskConfig.name}-${Date.now()}`,
+    runtime: 'node.js',
+    resource: { cpu: 1, memory: 512 }
+  })
+
+  try {
+    await sandbox.waitForReady()
+
+    // Execute task asynchronously
+    const process = await sandbox.executeCommand({
+      command: taskConfig.command,
+      args: taskConfig.args,
+      cwd: taskConfig.cwd,
+      timeout: taskConfig.timeout
+    })
+
+    // Monitor process
+    const status = await sandbox.getProcessStatus(process.processId)
+    console.log(`Task ${taskConfig.name} started: ${status.processStatus}`)
+
+    // Wait for completion (or timeout)
+    const maxWait = (taskConfig.timeout || 60) * 1000
+    const startTime = Date.now()
+
+    while (Date.now() - startTime < maxWait) {
+      const currentStatus = await sandbox.getProcessStatus(process.processId)
+      
+      if (currentStatus.processStatus === 'completed') {
+        const logs = await sandbox.getProcessLogs(process.processId)
+        return {
+          success: true,
+          output: logs.logs
+        }
+      } else if (currentStatus.processStatus === 'failed') {
+        throw new Error('Task execution failed')
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+
+    // Timeout - kill process
+    await sandbox.killProcess(process.processId)
+    throw new Error('Task execution timeout')
+
+  } finally {
+    await sandbox.delete()
+    await sdk.close()
+  }
+}
+```
+
+## File Processing Pipeline
+
+```typescript
+async function processFiles(
+  files: Record<string, Buffer>,
+  processor: string
+) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  const sandbox = await sdk.createDevbox({
+    name: `processor-${Date.now()}`,
+    runtime: 'python',
+    resource: { cpu: 2, memory: 1024 }
+  })
+
+  try {
+    await sandbox.waitForReady()
+
+    // Upload files
+    const fileMap: Record<string, string | Buffer> = {}
+    for (const [path, content] of Object.entries(files)) {
+      fileMap[`input/${path}`] = content
+    }
+    fileMap['processor.py'] = processor
+
+    await sandbox.batchUpload({ files: fileMap })
+
+    // Run processor
+    const result = await sandbox.execSync({
+      command: 'python3',
+      args: ['processor.py'],
+      timeout: 300
+    })
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Processing failed: ${result.stderr}`)
+    }
+
+    // Download processed files
+    const outputFiles = await sandbox.listFiles('output')
+    const processedFiles: Record<string, Buffer> = {}
+
+    for (const file of outputFiles.files) {
+      const content = await sandbox.readFile(`output/${file.name}`)
+      processedFiles[file.name] = content
+    }
+
+    return {
+      success: true,
+      files: processedFiles,
+      logs: result.stdout
+    }
+
+  } finally {
+    await sandbox.delete()
+    await sdk.close()
+  }
+}
+```
+
+## Next Steps
+
+- Learn about [CI/CD Integration](/docs/examples/ci-cd-integration)
+- Explore [API Reference](/docs/api/devbox-instance)
+

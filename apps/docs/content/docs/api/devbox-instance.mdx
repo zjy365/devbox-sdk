@@ -1,0 +1,449 @@
+---
+title: DevboxInstance API
+description: Complete API reference for DevboxInstance class
+---
+
+# DevboxInstance API
+
+Represents a single sandbox instance with methods for code execution, file operations, Git integration, and more.
+
+## Properties
+
+### name
+
+```typescript
+readonly name: string
+```
+
+The name of the sandbox instance.
+
+### status
+
+```typescript
+readonly status: string
+```
+
+Current status of the sandbox (e.g., 'Running', 'Stopped').
+
+### runtime
+
+```typescript
+readonly runtime: DevboxRuntime
+```
+
+Runtime environment (e.g., 'node.js', 'python').
+
+### resources
+
+```typescript
+readonly resources: ResourceInfo
+```
+
+Resource allocation information.
+
+### git
+
+```typescript
+readonly git: Git
+```
+
+Git operations interface.
+
+## Lifecycle Methods
+
+### start
+
+Starts the sandbox.
+
+```typescript
+start(): Promise<void>
+```
+
+### pause
+
+Pauses the sandbox.
+
+```typescript
+pause(): Promise<void>
+```
+
+### restart
+
+Restarts the sandbox.
+
+```typescript
+restart(): Promise<void>
+```
+
+### shutdown
+
+Shuts down the sandbox.
+
+```typescript
+shutdown(): Promise<void>
+```
+
+### delete
+
+Deletes the sandbox.
+
+```typescript
+delete(): Promise<void>
+```
+
+### refreshInfo
+
+Refreshes the sandbox information from the API.
+
+```typescript
+refreshInfo(): Promise<void>
+```
+
+## File Operations
+
+### writeFile
+
+Writes content to a file.
+
+```typescript
+writeFile(
+  path: string,
+  content: string | Buffer,
+  options?: WriteOptions
+): Promise<void>
+```
+
+#### Parameters
+
+- `path` (string) - File path
+- `content` (string | Buffer) - File content
+- `options` (object, optional)
+  - `options.encoding` (string) - File encoding ('utf8', 'base64')
+  - `options.mode` (number) - File permissions
+  - `options.createDirs` (boolean) - Create parent directories
+
+### readFile
+
+Reads content from a file.
+
+```typescript
+readFile(path: string, options?: ReadOptions): Promise<Buffer>
+```
+
+#### Parameters
+
+- `path` (string) - File path
+- `options` (object, optional)
+  - `options.encoding` (string) - File encoding
+  - `options.offset` (number) - Read offset
+  - `options.length` (number) - Length to read
+
+### listFiles
+
+Lists files in a directory.
+
+```typescript
+listFiles(path: string): Promise<ListFilesResponse>
+```
+
+### batchUpload
+
+Uploads multiple files at once.
+
+```typescript
+batchUpload(options: BatchUploadOptions): Promise<TransferResult>
+```
+
+#### Parameters
+
+- `options.files` (FileMap) - Map of file paths to content
+- `options.concurrency` (number, optional) - Max concurrent uploads
+- `options.chunkSize` (number, optional) - Chunk size for large files
+- `options.onProgress` (function, optional) - Progress callback
+
+### downloadFile
+
+Downloads a single file.
+
+```typescript
+downloadFile(
+  path: string,
+  options?: DownloadFileOptions
+): Promise<Buffer | string>
+```
+
+### downloadFiles
+
+Downloads multiple files.
+
+```typescript
+downloadFiles(
+  paths: string[],
+  options?: { format?: 'tar.gz' | 'tar' | 'multipart' | 'direct' }
+): Promise<Buffer>
+```
+
+### moveFile
+
+Moves a file or directory.
+
+```typescript
+moveFile(
+  from: string,
+  to: string,
+  overwrite?: boolean
+): Promise<MoveFileResponse>
+```
+
+### renameFile
+
+Renames a file or directory.
+
+```typescript
+renameFile(
+  path: string,
+  newName: string
+): Promise<RenameFileResponse>
+```
+
+### deleteFile
+
+Deletes a file.
+
+```typescript
+deleteFile(path: string): Promise<void>
+```
+
+## Process Execution
+
+### codeRun
+
+Executes code directly (Node.js or Python).
+
+```typescript
+codeRun(
+  code: string,
+  options?: CodeRunOptions
+): Promise<SyncExecutionResponse>
+```
+
+#### Parameters
+
+- `code` (string) - Code to execute
+- `options` (object, optional)
+  - `options.language` ('node' | 'python') - Programming language
+  - `options.cwd` (string) - Working directory
+  - `options.env` (object) - Environment variables
+  - `options.timeout` (number) - Timeout in seconds
+  - `options.argv` (string[]) - Command line arguments
+
+### execSync
+
+Executes a command synchronously.
+
+```typescript
+execSync(options: ProcessExecOptions): Promise<SyncExecutionResponse>
+```
+
+#### Parameters
+
+- `options.command` (string) - Command to execute
+- `options.args` (string[], optional) - Command arguments
+- `options.cwd` (string, optional) - Working directory
+- `options.env` (object, optional) - Environment variables
+- `options.shell` (string, optional) - Shell to use
+- `options.timeout` (number, optional) - Timeout in seconds
+
+### executeCommand
+
+Executes a command asynchronously.
+
+```typescript
+executeCommand(options: ProcessExecOptions): Promise<ProcessExecResponse>
+```
+
+Returns immediately with `processId` and `pid`.
+
+### execSyncStream
+
+Executes a command with streaming output (SSE).
+
+```typescript
+execSyncStream(options: ProcessExecOptions): Promise<ReadableStream>
+```
+
+### getProcessStatus
+
+Gets the status of a process.
+
+```typescript
+getProcessStatus(processId: string): Promise<GetProcessStatusResponse>
+```
+
+### getProcessLogs
+
+Gets logs from a process.
+
+```typescript
+getProcessLogs(
+  processId: string,
+  options?: { lines?: number }
+): Promise<GetProcessLogsResponse>
+```
+
+### killProcess
+
+Kills a running process.
+
+```typescript
+killProcess(
+  processId: string,
+  options?: KillProcessOptions
+): Promise<void>
+```
+
+#### Parameters
+
+- `processId` (string) - Process ID
+- `options` (object, optional)
+  - `options.signal` (string) - Signal to send ('SIGTERM', 'SIGKILL')
+
+### listProcesses
+
+Lists all running processes.
+
+```typescript
+listProcesses(): Promise<ListProcessesResponse>
+```
+
+## Git Operations
+
+### git.clone
+
+Clones a Git repository.
+
+```typescript
+git.clone(options: GitCloneOptions): Promise<void>
+```
+
+#### Parameters
+
+- `options.url` (string) - Repository URL
+- `options.targetDir` (string) - Target directory
+- `options.branch` (string, optional) - Branch to clone
+- `options.depth` (number, optional) - Shallow clone depth
+- `options.auth` (object, optional) - Authentication
+  - `auth.type` ('https' | 'ssh') - Auth type
+  - `auth.username` (string) - Username (for HTTPS)
+  - `auth.password` (string) - Password/token (for HTTPS)
+  - `auth.privateKey` (string) - Private key (for SSH)
+  - `auth.passphrase` (string, optional) - Passphrase (for SSH)
+
+### git.pull
+
+Pulls changes from a Git repository.
+
+```typescript
+git.pull(options: GitPullOptions): Promise<void>
+```
+
+### git.push
+
+Pushes changes to a Git repository.
+
+```typescript
+git.push(options: GitPushOptions): Promise<void>
+```
+
+### git.status
+
+Gets the status of a Git repository.
+
+```typescript
+git.status(path: string): Promise<GitStatus>
+```
+
+### git.branches
+
+Lists branches in a Git repository.
+
+```typescript
+git.branches(path: string): Promise<GitBranchInfo[]>
+```
+
+## Utility Methods
+
+### getPorts
+
+Gets listening ports on the system.
+
+```typescript
+getPorts(): Promise<PortsResponse>
+```
+
+### isHealthy
+
+Checks if the sandbox is healthy.
+
+```typescript
+isHealthy(): Promise<boolean>
+```
+
+### waitForReady
+
+Waits for the sandbox to be ready.
+
+```typescript
+waitForReady(
+  timeout?: number,
+  checkInterval?: number
+): Promise<void>
+```
+
+#### Parameters
+
+- `timeout` (number, optional) - Timeout in milliseconds (default: 300000)
+- `checkInterval` (number, optional) - Check interval in milliseconds (default: 2000)
+
+## Complete Example
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+const sdk = new DevboxSDK({
+  kubeconfig: process.env.KUBECONFIG
+})
+
+const sandbox = await sdk.createDevbox({
+  name: 'example',
+  runtime: 'node.js',
+  resource: { cpu: 1, memory: 512 }
+})
+
+// File operations
+await sandbox.writeFile('app.js', 'console.log("Hello")')
+const content = await sandbox.readFile('app.js')
+
+// Process execution
+const result = await sandbox.codeRun('console.log("Hello")')
+const process = await sandbox.executeCommand({
+  command: 'npm',
+  args: ['install']
+})
+
+// Git operations
+await sandbox.git.clone({
+  url: 'https://github.com/user/repo.git',
+  targetDir: '/workspace/repo'
+})
+
+// Clean up
+await sandbox.delete()
+await sdk.close()
+```
+
+## Next Steps
+
+- Read [Type Definitions](/docs/api/types)
+- Explore [Examples](/docs/examples/ai-agent-workflow)
+

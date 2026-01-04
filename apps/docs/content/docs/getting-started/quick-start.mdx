@@ -1,0 +1,178 @@
+---
+title: Quick Start
+description: Get started with Devbox SDK in minutes
+---
+
+# Quick Start
+
+This guide will help you create your first secure sandbox and execute code safely.
+
+## Create Your First Sandbox
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+// Initialize SDK
+const sdk = new DevboxSDK({
+  kubeconfig: process.env.KUBECONFIG
+})
+
+// Create a sandbox
+const sandbox = await sdk.createDevbox({
+  name: 'my-first-sandbox',
+  runtime: 'python',
+  resource: { cpu: 1, memory: 512 }
+})
+
+console.log(`Created sandbox: ${sandbox.name}`)
+```
+
+## Execute Code
+
+Execute code safely in the isolated sandbox:
+
+```typescript
+// Execute Python code
+const result = await sandbox.codeRun(`
+import requests
+response = requests.get('https://api.github.com')
+print(f"Status: {response.status_code}")
+`)
+
+console.log(result.stdout) // "Status: 200"
+console.log(result.exitCode) // 0
+```
+
+## File Operations
+
+Write and read files in the sandbox:
+
+```typescript
+// Write a file
+await sandbox.writeFile('app.py', `
+def hello():
+    print("Hello from sandbox!")
+
+hello()
+`)
+
+// Read the file
+const content = await sandbox.readFile('app.py')
+console.log(content.toString())
+
+// Execute the file
+const result = await sandbox.execSync({
+  command: 'python3',
+  args: ['app.py']
+})
+console.log(result.stdout) // "Hello from sandbox!"
+```
+
+## Process Management
+
+Execute commands synchronously or asynchronously:
+
+```typescript
+// Synchronous execution (waits for completion)
+const result = await sandbox.execSync({
+  command: 'echo',
+  args: ['Hello World'],
+  cwd: '/workspace'
+})
+
+console.log(result.stdout) // "Hello World"
+console.log(result.exitCode) // 0
+
+// Asynchronous execution (returns immediately)
+const process = await sandbox.executeCommand({
+  command: 'sleep',
+  args: ['10']
+})
+
+console.log(`Process ID: ${process.processId}`)
+
+// Check process status
+const status = await sandbox.getProcessStatus(process.processId)
+console.log(`Status: ${status.processStatus}`)
+```
+
+## Git Operations
+
+Clone and work with Git repositories:
+
+```typescript
+// Clone a repository
+await sandbox.git.clone({
+  url: 'https://github.com/user/repo.git',
+  targetDir: '/workspace/repo'
+})
+
+// Check status
+const status = await sandbox.git.status('/workspace/repo')
+console.log(`Current branch: ${status.branch}`)
+```
+
+## Clean Up
+
+Always clean up resources when done:
+
+```typescript
+// Delete the sandbox
+await sandbox.delete()
+
+// Close SDK connections
+await sdk.close()
+```
+
+## Complete Example
+
+Here's a complete example that demonstrates the full workflow:
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+async function main() {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  try {
+    // Create sandbox
+    const sandbox = await sdk.createDevbox({
+      name: 'example-sandbox',
+      runtime: 'node.js',
+      resource: { cpu: 1, memory: 512 }
+    })
+
+    // Write code
+    await sandbox.writeFile('index.js', `
+      const fs = require('fs');
+      const files = fs.readdirSync('.');
+      console.log('Files:', files.join(', '));
+    `)
+
+    // Execute code
+    const result = await sandbox.codeRun(`
+      const fs = require('fs');
+      const files = fs.readdirSync('.');
+      console.log('Files:', files.join(', '));
+    `)
+
+    console.log(result.stdout)
+
+    // Clean up
+    await sandbox.delete()
+  } finally {
+    await sdk.close()
+  }
+}
+
+main().catch(console.error)
+```
+
+## Next Steps
+
+- Learn about [Secure Code Execution](/docs/guides/secure-code-execution)
+- Explore [File Operations](/docs/guides/file-operations)
+- Read the [API Reference](/docs/api/devbox-sdk)
+

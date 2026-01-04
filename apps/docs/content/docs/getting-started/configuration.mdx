@@ -1,0 +1,190 @@
+---
+title: Configuration
+description: Configure Devbox SDK for your needs
+---
+
+# Configuration
+
+## SDK Configuration
+
+When creating a `DevboxSDK` instance, you can configure various options:
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+const sdk = new DevboxSDK({
+  // Required: Kubernetes configuration
+  kubeconfig: process.env.KUBECONFIG,
+  
+  // Optional: API base URL
+  baseUrl: 'https://api.sealos.io',
+  
+  // Optional: HTTP client configuration
+  http: {
+    timeout: 30000,        // Request timeout in milliseconds
+    retries: 3,            // Number of retry attempts
+    rejectUnauthorized: true // SSL certificate verification
+  }
+})
+```
+
+### Configuration Options
+
+#### `kubeconfig` (required)
+
+Kubernetes configuration for accessing the Devbox API. Can be:
+- File path: `'/path/to/kubeconfig'`
+- Environment variable: `process.env.KUBECONFIG`
+- Kubeconfig content: Raw YAML string
+
+#### `baseUrl` (optional)
+
+Base URL for the Devbox API. Defaults to the API endpoint from your kubeconfig.
+
+#### `http` (optional)
+
+HTTP client configuration:
+
+- **`timeout`** (number): Request timeout in milliseconds. Default: `30000` (30 seconds)
+- **`retries`** (number): Number of retry attempts for failed requests. Default: `3`
+- **`rejectUnauthorized`** (boolean): Whether to reject unauthorized SSL certificates. Default: `true`
+
+## Sandbox Configuration
+
+When creating a sandbox, you can configure:
+
+```typescript
+const sandbox = await sdk.createDevbox({
+  // Required: Unique name for the sandbox
+  name: 'my-sandbox',
+  
+  // Required: Runtime environment
+  runtime: 'node.js', // or 'python', 'next.js', 'react', etc.
+  
+  // Required: Resource allocation
+  resource: {
+    cpu: 2,        // CPU cores
+    memory: 4096   // Memory in MB
+  },
+  
+  // Optional: Port mappings
+  ports: [
+    {
+      number: 3000,
+      protocol: 'HTTP'
+    }
+  ],
+  
+  // Optional: Environment variables
+  env: [
+    {
+      name: 'NODE_ENV',
+      value: 'production'
+    }
+  ]
+})
+```
+
+### Runtime Options
+
+Available runtime environments:
+- `node.js` - Node.js runtime
+- `python` - Python runtime
+- `next.js` - Next.js runtime
+- `react` - React runtime
+- And more...
+
+### Resource Limits
+
+Configure CPU and memory limits:
+
+```typescript
+resource: {
+  cpu: 2,        // Number of CPU cores (minimum: 1)
+  memory: 4096   // Memory in MB (minimum: 512)
+}
+```
+
+### Port Mappings
+
+Expose ports from the sandbox:
+
+```typescript
+ports: [
+  {
+    number: 3000,      // Port number (3000-9999)
+    protocol: 'HTTP'    // Protocol: 'HTTP' or 'TCP'
+  }
+]
+```
+
+### Environment Variables
+
+Set environment variables for the sandbox:
+
+```typescript
+env: [
+  {
+    name: 'API_KEY',
+    value: 'your-api-key'
+  },
+  {
+    name: 'DEBUG',
+    value: 'true'
+  }
+]
+```
+
+## Environment Variables
+
+You can also configure the SDK using environment variables:
+
+### `KUBECONFIG`
+
+Path to your Kubernetes configuration file:
+
+```bash
+export KUBECONFIG=/path/to/kubeconfig
+```
+
+## Best Practices
+
+1. **Resource Limits**: Always set appropriate resource limits based on your workload
+2. **Timeout Configuration**: Adjust timeout based on your expected execution time
+3. **Error Handling**: Always handle errors and clean up resources
+4. **Connection Management**: Reuse SDK instances when possible, but always call `close()` when done
+
+## Example: Production Configuration
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+const sdk = new DevboxSDK({
+  kubeconfig: process.env.KUBECONFIG,
+  // Optional: http configuration for advanced use cases
+  http: {
+    timeout: 60000,  // 60 seconds for longer operations
+    retries: 5,      // More retries for production
+    rejectUnauthorized: true
+  }
+})
+
+// Create sandbox with production settings
+const sandbox = await sdk.createDevbox({
+  name: `prod-task-${Date.now()}`,
+  runtime: 'node.js',
+  resource: {
+    cpu: 4,
+    memory: 8192
+  },
+  env: [
+    { name: 'NODE_ENV', value: 'production' }
+  ]
+})
+```
+
+## Next Steps
+
+- Learn about [Secure Code Execution](/docs/guides/secure-code-execution)
+- Explore [File Operations](/docs/guides/file-operations)
+

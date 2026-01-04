@@ -1,0 +1,275 @@
+---
+title: Process Management
+description: Execute and manage processes in sandboxes
+---
+
+# Process Management
+
+Devbox SDK provides comprehensive process execution and management capabilities.
+
+## Execution Methods
+
+### Synchronous Execution
+
+Execute a command and wait for completion:
+
+```typescript
+const result = await sandbox.execSync({
+  command: 'echo',
+  args: ['Hello World'],
+  cwd: '/workspace',
+  timeout: 30
+})
+
+console.log(result.stdout)    // "Hello World"
+console.log(result.stderr)     // ""
+console.log(result.exitCode)   // 0
+console.log(result.durationMs) // Execution time in milliseconds
+```
+
+### Asynchronous Execution
+
+Start a process and get process ID immediately:
+
+```typescript
+const process = await sandbox.executeCommand({
+  command: 'npm',
+  args: ['run', 'build'],
+  cwd: '/workspace'
+})
+
+console.log(`Process ID: ${process.processId}`)
+console.log(`PID: ${process.pid}`)
+```
+
+### Stream Execution
+
+Get real-time output using Server-Sent Events:
+
+```typescript
+const stream = await sandbox.execSyncStream({
+  command: 'npm',
+  args: ['run', 'dev']
+})
+
+const reader = stream.getReader()
+const decoder = new TextDecoder()
+
+while (true) {
+  const { done, value } = await reader.read()
+  if (done) break
+  
+  const text = decoder.decode(value, { stream: true })
+  console.log(text) // Real-time output
+}
+```
+
+### Code Execution
+
+Execute code strings directly:
+
+```typescript
+// Python code
+const result = await sandbox.codeRun(`
+import requests
+response = requests.get('https://api.github.com')
+print(f"Status: {response.status_code}")
+`)
+
+// Node.js code
+const result = await sandbox.codeRun(`
+const fs = require('fs');
+const files = fs.readdirSync('.');
+console.log('Files:', files.join(', '));
+`)
+```
+
+## Process Options
+
+### Working Directory
+
+```typescript
+await sandbox.execSync({
+  command: 'pwd',
+  cwd: '/workspace/project'
+})
+```
+
+### Environment Variables
+
+```typescript
+await sandbox.execSync({
+  command: 'sh',
+  args: ['-c', 'echo $MY_VAR'],
+  env: {
+    MY_VAR: 'my-value',
+    NODE_ENV: 'production'
+  }
+})
+```
+
+### Timeout
+
+```typescript
+await sandbox.execSync({
+  command: 'sleep',
+  args: ['10'],
+  timeout: 5  // Kill after 5 seconds
+})
+```
+
+### Shell
+
+```typescript
+await sandbox.execSync({
+  command: 'echo $HOME',
+  shell: '/bin/bash'
+})
+```
+
+## Process Management
+
+### Get Process Status
+
+```typescript
+const status = await sandbox.getProcessStatus(processId)
+
+console.log(`Status: ${status.processStatus}`)  // 'running', 'completed', 'failed'
+console.log(`PID: ${status.pid}`)
+console.log(`Started: ${status.startedAt}`)
+```
+
+### Get Process Logs
+
+```typescript
+// Get all logs
+const logs = await sandbox.getProcessLogs(processId)
+
+// Get last N lines
+const logs = await sandbox.getProcessLogs(processId, {
+  lines: 100
+})
+
+console.log(logs.logs) // Array of log entries
+```
+
+### Kill Process
+
+```typescript
+// Kill with default signal (SIGTERM)
+await sandbox.killProcess(processId)
+
+// Kill with specific signal
+await sandbox.killProcess(processId, {
+  signal: 'SIGKILL'
+})
+```
+
+### List Processes
+
+```typescript
+const result = await sandbox.listProcesses()
+
+result.processes.forEach(proc => {
+  console.log(`ID: ${proc.id}`)
+  console.log(`PID: ${proc.pid}`)
+  console.log(`Command: ${proc.command}`)
+  console.log(`Status: ${proc.status}`)
+})
+```
+
+## Complete Workflow
+
+```typescript
+async function runBuild(sandbox: DevboxInstance) {
+  // Start build process
+  const process = await sandbox.executeCommand({
+    command: 'npm',
+    args: ['run', 'build'],
+    cwd: '/workspace',
+    timeout: 300
+  })
+
+  // Monitor progress
+  const checkInterval = setInterval(async () => {
+    const status = await sandbox.getProcessStatus(process.processId)
+    
+    if (status.processStatus === 'completed') {
+      clearInterval(checkInterval)
+      
+      // Get final logs
+      const logs = await sandbox.getProcessLogs(process.processId)
+      console.log('Build completed:', logs.logs)
+    } else if (status.processStatus === 'failed') {
+      clearInterval(checkInterval)
+      console.error('Build failed')
+    }
+  }, 2000)
+
+  // Timeout after 5 minutes
+  setTimeout(() => {
+    clearInterval(checkInterval)
+    sandbox.killProcess(process.processId)
+  }, 300000)
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const result = await sandbox.execSync({
+    command: 'nonexistent-command'
+  })
+} catch (error) {
+  if (error instanceof FileOperationError) {
+    console.error('Command not found')
+  } else {
+    console.error('Execution error:', error)
+  }
+}
+```
+
+## Best Practices
+
+### 1. Always Set Timeouts
+
+```typescript
+await sandbox.execSync({
+  command: 'long-running-task',
+  timeout: 60  // Prevent hanging
+})
+```
+
+### 2. Monitor Long-Running Processes
+
+```typescript
+const process = await sandbox.executeCommand({
+  command: 'long-task'
+})
+
+// Check status periodically
+const status = await sandbox.getProcessStatus(process.processId)
+```
+
+### 3. Clean Up Processes
+
+```typescript
+try {
+  const process = await sandbox.executeCommand({...})
+  // ... do work
+} finally {
+  // Kill if still running
+  try {
+    await sandbox.killProcess(process.processId)
+  } catch (error) {
+    // Process may have already completed
+  }
+}
+```
+
+## Next Steps
+
+- Learn about [Git Integration](/docs/guides/git-integration)
+- Explore [API Reference](/docs/api/devbox-instance)
+

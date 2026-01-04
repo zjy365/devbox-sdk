@@ -1,0 +1,274 @@
+---
+title: Secure Code Execution
+description: Execute AI-generated and untrusted code safely
+---
+
+# Secure Code Execution
+
+Devbox SDK provides **container-based isolation** for safe code execution. This guide covers best practices for executing AI-generated code, untrusted scripts, and automation tasks.
+
+## Why Secure Execution?
+
+When executing AI-generated code or untrusted scripts, you need:
+
+- **Isolation** - Prevent code from affecting your infrastructure
+- **Resource Limits** - Prevent resource exhaustion attacks
+- **Path Validation** - Prevent directory traversal attacks
+- **Cleanup** - Ensure resources are released after execution
+
+## Basic Code Execution
+
+### Execute Code Strings
+
+The simplest way to execute code is using `codeRun()`:
+
+```typescript
+const result = await sandbox.codeRun(`
+import requests
+response = requests.get('https://api.github.com')
+print(f"Status: {response.status_code}")
+`)
+
+if (result.exitCode === 0) {
+  console.log('Success:', result.stdout)
+} else {
+  console.error('Error:', result.stderr)
+}
+```
+
+### Language Detection
+
+`codeRun()` automatically detects the language (Python or Node.js) based on code patterns:
+
+```typescript
+// Python code (detected automatically)
+await sandbox.codeRun('print("Hello")')
+
+// Node.js code (detected automatically)
+await sandbox.codeRun('console.log("Hello")')
+
+// Explicitly specify language
+await sandbox.codeRun('print("Hello")', {
+  language: 'python'
+})
+```
+
+## Executing Commands
+
+### Synchronous Execution
+
+For commands that need to complete before continuing:
+
+```typescript
+const result = await sandbox.execSync({
+  command: 'npm',
+  args: ['install'],
+  cwd: '/workspace',
+  timeout: 60000
+})
+
+console.log(result.stdout)
+console.log(result.stderr)
+console.log(result.exitCode)
+```
+
+### Asynchronous Execution
+
+For long-running processes:
+
+```typescript
+// Start process
+const process = await sandbox.executeCommand({
+  command: 'npm',
+  args: ['run', 'build']
+})
+
+// Check status later
+const status = await sandbox.getProcessStatus(process.processId)
+console.log(`Status: ${status.processStatus}`)
+
+// Get logs
+const logs = await sandbox.getProcessLogs(process.processId)
+console.log(logs.logs)
+
+// Kill if needed
+await sandbox.killProcess(process.processId)
+```
+
+### Stream Output
+
+For real-time output:
+
+```typescript
+const stream = await sandbox.execSyncStream({
+  command: 'npm',
+  args: ['run', 'dev']
+})
+
+const reader = stream.getReader()
+const decoder = new TextDecoder()
+
+while (true) {
+  const { done, value } = await reader.read()
+  if (done) break
+  
+  const text = decoder.decode(value, { stream: true })
+  console.log(text)
+}
+```
+
+## Security Best Practices
+
+### 1. Always Set Resource Limits
+
+```typescript
+const sandbox = await sdk.createDevbox({
+  name: 'secure-task',
+  runtime: 'python',
+  resource: {
+    cpu: 1,      // Limit CPU
+    memory: 512  // Limit memory (MB)
+  }
+})
+```
+
+### 2. Use Timeouts
+
+```typescript
+const result = await sandbox.execSync({
+  command: 'python',
+  args: ['script.py'],
+  timeout: 30  // 30 seconds timeout
+})
+```
+
+### 3. Validate Input
+
+```typescript
+function validateCode(code: string): boolean {
+  // Check for dangerous patterns
+  const dangerous = [
+    'rm -rf',
+    'format',
+    'delete',
+    'shutdown'
+  ]
+  
+  return !dangerous.some(pattern => 
+    code.toLowerCase().includes(pattern)
+  )
+}
+
+if (validateCode(userCode)) {
+  await sandbox.codeRun(userCode)
+} else {
+  throw new Error('Code contains dangerous patterns')
+}
+```
+
+### 4. Always Clean Up
+
+```typescript
+try {
+  const sandbox = await sdk.createDevbox({...})
+  
+  // Execute code
+  await sandbox.codeRun(code)
+  
+} finally {
+  // Always clean up
+  await sandbox.delete()
+  await sdk.close()
+}
+```
+
+## Error Handling
+
+Always handle errors properly:
+
+```typescript
+try {
+  const result = await sandbox.codeRun(code)
+  
+  if (result.exitCode !== 0) {
+    console.error('Execution failed:', result.stderr)
+    // Handle error
+  }
+  
+} catch (error) {
+  if (error instanceof FileOperationError) {
+    console.error('File operation failed:', error.message)
+  } else if (error instanceof ValidationError) {
+    console.error('Validation error:', error.message)
+  } else {
+    console.error('Unexpected error:', error)
+  }
+} finally {
+  await sandbox.delete()
+}
+```
+
+## AI Agent Workflow
+
+Complete workflow for executing AI-generated code:
+
+```typescript
+async function executeAICode(aiGeneratedCode: string) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  try {
+    // Create isolated sandbox
+    const sandbox = await sdk.createDevbox({
+      name: `ai-task-${Date.now()}`,
+      runtime: 'python',
+      resource: { cpu: 1, memory: 512 }
+    })
+
+    // Execute AI-generated code
+    const result = await sandbox.codeRun(aiGeneratedCode, {
+      timeout: 30
+    })
+
+    // Check result
+    if (result.exitCode === 0) {
+      return {
+        success: true,
+        output: result.stdout
+      }
+    } else {
+      return {
+        success: false,
+        error: result.stderr
+      }
+    }
+
+  } finally {
+    await sandbox.delete()
+    await sdk.close()
+  }
+}
+```
+
+## Monitoring Execution
+
+Monitor resource usage during execution:
+
+```typescript
+// Get monitor data
+const monitorData = await sdk.getMonitorData(sandbox.name, {
+  start: Date.now() - 60000, // Last minute
+  end: Date.now()
+})
+
+monitorData.forEach(data => {
+  console.log(`CPU: ${data.cpu}%, Memory: ${data.memory}MB`)
+})
+```
+
+## Next Steps
+
+- Learn about [File Operations](/docs/guides/file-operations)
+- Explore [Process Management](/docs/guides/process-management)
+

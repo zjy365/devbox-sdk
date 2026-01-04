@@ -1,0 +1,136 @@
+---
+title: Devbox SDK
+description: Secure Sandbox SDK for Isolated Code Execution
+---
+
+# Devbox SDK
+
+**Secure Sandbox SDK for Isolated Code Execution.** Execute AI-generated code, run automation tasks, and test untrusted code with zero risk to your infrastructure.
+
+## Why Devbox SDK?
+
+Devbox SDK provides **container-based isolation** for safe code execution. Each sandbox runs in an isolated Kubernetes Pod, ensuring:
+
+- **Zero cross-contamination** - Each execution is completely isolated
+- **Resource limits** - CPU and memory constraints prevent resource exhaustion  
+- **Path validation** - Prevents directory traversal attacks
+- **Enterprise security** - Built on Kubernetes with Kubeconfig authentication
+
+## Quick Start
+
+### Installation
+
+```bash
+npm install devbox-sdk
+```
+
+### Your First Sandbox
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+// Initialize SDK
+const sdk = new DevboxSDK({
+  kubeconfig: process.env.KUBECONFIG
+})
+
+// Create a secure sandbox
+const sandbox = await sdk.createDevbox({
+  name: 'my-first-sandbox',
+  runtime: 'python',
+  resource: { cpu: 1, memory: 512 }
+})
+
+// Execute code safely in isolation
+const result = await sandbox.codeRun('print("Hello from secure sandbox!")')
+console.log(result.stdout) // "Hello from secure sandbox!"
+
+// Clean up
+await sandbox.delete()
+await sdk.close()
+```
+
+## Core Features
+
+### 🛡️ Secure Code Execution
+
+Execute AI-generated or untrusted code safely in isolated environments:
+
+```typescript
+// Execute AI-generated code
+const aiCode = await llm.generateCode(prompt)
+const result = await sandbox.codeRun(aiCode)
+```
+
+### ⚡ Process Management
+
+Execute commands synchronously or asynchronously with real-time output:
+
+```typescript
+// Synchronous execution
+const result = await sandbox.execSync({
+  command: 'npm install',
+  cwd: '/workspace',
+  timeout: 60000
+})
+
+// Asynchronous execution
+const process = await sandbox.executeCommand({
+  command: 'npm run dev'
+})
+```
+
+### 📁 File Operations
+
+Full CRUD operations with support for text and binary content:
+
+```typescript
+// Write files
+await sandbox.writeFile('app.js', 'console.log("Hello")')
+
+// Read files
+const content = await sandbox.readFile('app.js')
+
+// Batch upload
+await sandbox.batchUpload({
+  files: {
+    'src/index.js': 'console.log("Hello")',
+    'package.json': JSON.stringify({ name: 'my-app' })
+  }
+})
+```
+
+### 🔐 Git Integration
+
+Clone, pull, push, and manage Git repositories securely:
+
+```typescript
+// Clone repository
+await sandbox.git.clone({
+  url: 'https://github.com/user/repo.git',
+  targetDir: '/workspace/repo'
+})
+
+// Pull changes
+await sandbox.git.pull('/workspace/repo')
+```
+
+## Use Cases
+
+- **AI Agents** - Execute AI-generated code safely
+- **Automation** - Run untrusted automation scripts
+- **CI/CD** - Execute build and test tasks in isolation
+- **Code Evaluation** - Test and evaluate code submissions
+
+## Documentation
+
+- **[Getting Started](/docs/getting-started/installation)** - Installation and setup
+- **[Guides](/docs/guides/secure-code-execution)** - Usage guides and best practices
+- **[API Reference](/docs/api/devbox-sdk)** - Complete API documentation
+- **[Examples](/docs/examples/ai-agent-workflow)** - Real-world examples
+
+## Next Steps
+
+- Read the [Installation Guide](/docs/getting-started/installation)
+- Try the [Quick Start](/docs/getting-started/quick-start)
+- Explore [API Reference](/docs/api/devbox-sdk)

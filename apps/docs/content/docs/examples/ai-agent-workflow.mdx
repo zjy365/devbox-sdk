@@ -1,0 +1,229 @@
+---
+title: AI Agent Workflow
+description: Complete workflow for executing AI-generated code safely
+---
+
+# AI Agent Workflow
+
+This example demonstrates a complete workflow for executing AI-generated code safely in isolated sandboxes.
+
+## Complete Example
+
+```typescript
+import { DevboxSDK } from 'devbox-sdk'
+
+async function executeAIAgent(aiGeneratedCode: string) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  try {
+    // Create isolated sandbox
+    const sandbox = await sdk.createDevbox({
+      name: `ai-agent-${Date.now()}`,
+      runtime: 'python',
+      resource: { cpu: 2, memory: 1024 }
+    })
+
+    // Wait for sandbox to be ready
+    await sandbox.waitForReady()
+
+    // Execute AI-generated code
+    const result = await sandbox.codeRun(aiGeneratedCode, {
+      timeout: 30
+    })
+
+    // Check result
+    if (result.exitCode === 0) {
+      return {
+        success: true,
+        output: result.stdout,
+        error: null
+      }
+    } else {
+      return {
+        success: false,
+        output: result.stdout,
+        error: result.stderr
+      }
+    }
+
+  } catch (error) {
+    console.error('Execution failed:', error)
+    return {
+      success: false,
+      output: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  } finally {
+    // Always clean up
+    try {
+      await sandbox.delete()
+    } catch (error) {
+      console.warn('Cleanup failed:', error)
+    }
+    await sdk.close()
+  }
+}
+```
+
+## With File Operations
+
+```typescript
+async function executeAIWithFiles(aiCode: string, files: Record<string, string>) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  const sandbox = await sdk.createDevbox({
+    name: `ai-task-${Date.now()}`,
+    runtime: 'python',
+    resource: { cpu: 1, memory: 512 }
+  })
+
+  try {
+    await sandbox.waitForReady()
+
+    // Upload required files
+    await sandbox.batchUpload({ files })
+
+    // Execute AI code
+    const result = await sandbox.codeRun(aiCode)
+
+    // Download results if needed
+    const outputFiles = await sandbox.listFiles('/workspace')
+    
+    return {
+      success: result.exitCode === 0,
+      output: result.stdout,
+      files: outputFiles.files.map(f => f.name)
+    }
+
+  } finally {
+    await sandbox.delete()
+    await sdk.close()
+  }
+}
+```
+
+## With Error Handling
+
+```typescript
+import {
+  DevboxSDK,
+  DevboxSDKError,
+  FileOperationError,
+  ValidationError
+} from 'devbox-sdk'
+
+async function safeExecuteAI(code: string) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  let sandbox = null
+
+  try {
+    // Validate code before execution
+    if (!code || code.length === 0) {
+      throw new ValidationError('Code cannot be empty')
+    }
+
+    // Create sandbox
+    sandbox = await sdk.createDevbox({
+      name: `ai-${Date.now()}`,
+      runtime: 'python',
+      resource: { cpu: 1, memory: 512 }
+    })
+
+    await sandbox.waitForReady()
+
+    // Execute with timeout
+    const result = await sandbox.codeRun(code, {
+      timeout: 30
+    })
+
+    return {
+      success: result.exitCode === 0,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode
+    }
+
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      console.error('Validation error:', error.message)
+    } else if (error instanceof FileOperationError) {
+      console.error('File operation failed:', error.message)
+    } else if (error instanceof DevboxSDKError) {
+      console.error('SDK error:', error.message)
+    } else {
+      console.error('Unexpected error:', error)
+    }
+    
+    throw error
+
+  } finally {
+    if (sandbox) {
+      try {
+        await sandbox.delete()
+      } catch (error) {
+        console.warn('Failed to delete sandbox:', error)
+      }
+    }
+    await sdk.close()
+  }
+}
+```
+
+## Batch Processing
+
+Process multiple AI tasks in parallel:
+
+```typescript
+async function processAIBatch(tasks: Array<{ id: string; code: string }>) {
+  const sdk = new DevboxSDK({
+    kubeconfig: process.env.KUBECONFIG
+  })
+
+  const results = await Promise.allSettled(
+    tasks.map(async (task) => {
+      const sandbox = await sdk.createDevbox({
+        name: `ai-task-${task.id}`,
+        runtime: 'python',
+        resource: { cpu: 1, memory: 512 }
+      })
+
+      try {
+        await sandbox.waitForReady()
+        const result = await sandbox.codeRun(task.code, { timeout: 30 })
+        
+        return {
+          id: task.id,
+          success: result.exitCode === 0,
+          output: result.stdout,
+          error: result.stderr
+        }
+      } finally {
+        await sandbox.delete()
+      }
+    })
+  )
+
+  await sdk.close()
+
+  return results.map((result, index) => ({
+    taskId: tasks[index].id,
+    ...(result.status === 'fulfilled' ? result.value : {
+      success: false,
+      error: result.reason?.message || 'Unknown error'
+    })
+  }))
+}
+```
+
+## Next Steps
+
+- Learn about [Automation Tasks](/docs/examples/automation-tasks)
+- Explore [CI/CD Integration](/docs/examples/ci-cd-integration)
+

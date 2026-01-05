@@ -15,19 +15,19 @@ description: Install and configure Devbox SDK
 ## Install the Package
 
 ```bash
-npm install devbox-sdk
+npm install @labring/devbox-sdk
 ```
 
 Or with yarn:
 
 ```bash
-yarn add devbox-sdk
+yarn add @labring/devbox-sdk
 ```
 
 Or with pnpm:
 
 ```bash
-pnpm add devbox-sdk
+pnpm add @labring/devbox-sdk
 ```
 
 ## Kubernetes Configuration
@@ -43,7 +43,7 @@ export KUBECONFIG=/path/to/your/kubeconfig
 ### Option 2: File Path
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 const sdk = new DevboxSDK({
   kubeconfig: '/path/to/your/kubeconfig'
@@ -53,7 +53,7 @@ const sdk = new DevboxSDK({
 ### Option 3: Kubeconfig Content
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 import fs from 'fs'
 
 const kubeconfigContent = fs.readFileSync('/path/to/kubeconfig', 'utf-8')
@@ -68,7 +68,7 @@ const sdk = new DevboxSDK({
 Create a simple test file to verify your installation:
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 const sdk = new DevboxSDK({
   kubeconfig: process.env.KUBECONFIG

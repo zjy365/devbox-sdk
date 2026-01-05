@@ -10,7 +10,7 @@ description: Configure Devbox SDK for your needs
 When creating a `DevboxSDK` instance, you can configure various options:
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 const sdk = new DevboxSDK({
   // Required: Kubernetes configuration
@@ -157,7 +157,7 @@ export KUBECONFIG=/path/to/kubeconfig
 ## Example: Production Configuration
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 const sdk = new DevboxSDK({
   kubeconfig: process.env.KUBECONFIG,

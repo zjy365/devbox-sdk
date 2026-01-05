@@ -10,7 +10,7 @@ This example demonstrates a complete workflow for executing AI-generated code sa
 ## Complete Example
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 async function executeAIAgent(aiGeneratedCode: string) {
   const sdk = new DevboxSDK({
@@ -114,7 +114,7 @@ import {
   DevboxSDKError,
   FileOperationError,
   ValidationError
-} from 'devbox-sdk'
+} from '@labring/devbox-sdk'
 
 async function safeExecuteAI(code: string) {
   const sdk = new DevboxSDK({
@@ -226,4 +226,5 @@ async function processAIBatch(tasks: Array<{ id: string; code: string }>) {
 
 - Learn about [Automation Tasks](/docs/examples/automation-tasks)
 - Explore [CI/CD Integration](/docs/examples/ci-cd-integration)
+- See the [Full Lifecycle Example](/docs/examples/full-lifecycle) for a complete workflow
 

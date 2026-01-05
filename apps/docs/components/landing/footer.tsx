@@ -31,7 +31,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://www.npmjs.com/package/devbox-sdk"
+                  href="https://www.npmjs.com/package/@labring/devbox-sdk"
                   className="hover:text-black transition-colors"
                 >
                   NPM

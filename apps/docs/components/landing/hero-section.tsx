@@ -95,7 +95,7 @@ export function HeroSection() {
                     <span className="text-[#ff79c6]">import</span>{' '}
                     <span className="text-[#f8f8f2]">{'{ DevboxSDK }'}</span>{' '}
                     <span className="text-[#ff79c6]">from</span>{' '}
-                    <span className="text-[#f1fa8c]">'devbox-sdk'</span>
+                    <span className="text-[#f1fa8c]">'@labring/devbox-sdk'</span>
                     {'\n\n'}
                     <span className="text-[#6272a4]">{'// Initialize SDK'}</span>
                     {'\n'}

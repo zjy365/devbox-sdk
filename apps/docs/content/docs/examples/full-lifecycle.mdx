@@ -1,0 +1,254 @@
+---
+title: Full Lifecycle Example
+description: Complete example demonstrating the full devbox lifecycle from creation to cleanup
+---
+
+# Full Lifecycle Example
+
+This example demonstrates a complete workflow for creating, managing, and cleaning up a devbox instance. It covers environment setup, devbox creation, execution of commands, and proper resource cleanup.
+
+## Complete Example
+
+This example shows how to:
+
+- Load environment variables and kubeconfig
+- Create a devbox instance
+- Start the devbox and wait for it to be ready
+- Execute commands in the devbox
+- Handle errors properly
+- Clean up resources
+
+```typescript
+import { config as loadEnv } from 'dotenv'
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { DevboxSDK } from '@labring/devbox-sdk'
+import { DevboxRuntime } from '@labring/devbox-sdk'
+
+// Load environment variables from .env file
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+const envPaths = [
+  resolve(__dirname, '.env'),
+  resolve(__dirname, '../.env'),
+  resolve(__dirname, '../../.env'),
+  resolve(process.cwd(), '.env'),
+]
+
+let envLoaded = false
+for (const envPath of envPaths) {
+  if (existsSync(envPath)) {
+    loadEnv({ path: envPath, override: false })
+    console.log(`✅ Loaded environment variables from ${envPath}`)
+    envLoaded = true
+    break
+  }
+}
+
+if (!envLoaded) {
+  console.warn('⚠️  .env file not found, using system environment variables')
+}
+
+if (!process.env.KUBECONFIG) {
+  console.error('❌ Missing required environment variable: KUBECONFIG')
+  process.exit(1)
+}
+
+let kubeconfigContent = process.env.KUBECONFIG
+
+// Handle kubeconfig as file path or content
+if (!kubeconfigContent.includes('apiVersion') && existsSync(kubeconfigContent)) {
+  kubeconfigContent = readFileSync(kubeconfigContent, 'utf-8')
+} else if (kubeconfigContent.includes('\\n')) {
+  kubeconfigContent = kubeconfigContent.replace(/\\n/g, '\n')
+}
+
+const SDK_CONFIG = {
+  kubeconfig: kubeconfigContent,
+  http: {
+    timeout: 300000, // 5 minutes
+    retries: 3,
+    rejectUnauthorized: false,
+  },
+}
+
+// Generate unique devbox name
+const generateDevboxName = (prefix: string) => {
+  const timestamp = Date.now()
+  const random = Math.floor(Math.random() * 1000)
+  const sanitizedPrefix = prefix.replace(/\./g, '-')
+  return `example-${sanitizedPrefix}-${timestamp}-${random}`
+}
+
+async function main() {
+  const sdk = new DevboxSDK(SDK_CONFIG)
+  const name = generateDevboxName('full-lifecycle')
+
+  try {
+    console.log('🚀 Starting full lifecycle example...')
+    console.log(`📦 Creating devbox: ${name}`)
+
+    // 1. Create devbox
+    const devbox = await sdk.createDevbox({
+      name,
+      runtime: DevboxRuntime.TEST_AGENT,
+      resource: { cpu: 1, memory: 2 },
+    })
+
+    console.log(`✅ Devbox created: ${devbox.name}`)
+    console.log('⏳ Starting devbox...')
+
+    // 2. Start devbox
+    await devbox.start()
+    
+    // 3. Wait for devbox to be ready
+    let currentDevbox = await sdk.getDevbox(name)
+    const startTime = Date.now()
+    const timeout = 30000 // 30 seconds
+
+    while (currentDevbox.status !== 'Running' && Date.now() - startTime < timeout) {
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      currentDevbox = await sdk.getDevbox(name)
+      process.stdout.write('.')
+    }
+
+    console.log('')
+    console.log(`✅ Devbox is ${currentDevbox.status}`)
+
+    if (currentDevbox.status !== 'Running') {
+      throw new Error(`Devbox failed to start. Status: ${currentDevbox.status}`)
+    }
+
+    // 4. Execute commands in the devbox
+    console.log('')
+    console.log('🔍 Testing command execution...')
+
+    // Method 1: Execute command with arguments
+    const homeResult1 = await currentDevbox.execSync({
+      command: 'echo',
+      args: ['$HOME'],
+    })
+    console.log(`📁 HOME: ${homeResult1.stdout.trim()}`)
+
+    // Method 2: Execute command with environment variable expansion
+    const homeResult2 = await currentDevbox.execSync({
+      command: 'echo',
+      args: ['My home is $HOME'],
+    })
+    console.log(`📁 Result: ${homeResult2.stdout.trim()}`)
+
+    // Method 3: Execute shell command with pipes
+    const homeResult3 = await currentDevbox.execSync({
+      command: 'echo $HOME | wc -c',
+    })
+    console.log(`📁 HOME length: ${homeResult3.stdout.trim()} characters`)
+
+    // 5. Additional operations can be added here:
+    // - File operations (writeFile, readFile, listFiles)
+    // - Git operations (clone, pull, push)
+    // - Process management (exec, getProcessStatus)
+    // - File watching (watchFiles)
+
+    console.log('')
+    console.log('🎉 Full lifecycle example completed successfully!')
+
+  } catch (error) {
+    console.error('❌ Error occurred:', error)
+    throw error
+  } finally {
+    // 6. Always clean up resources
+    try {
+      const devboxToDelete = await sdk.getDevbox(name).catch(() => null)
+      if (devboxToDelete) {
+        console.log(`🧹 Cleaning up devbox: ${name}`)
+        await devboxToDelete.delete()
+        console.log('✅ Devbox deleted successfully')
+      }
+    } catch (error) {
+      console.warn('⚠️  Failed to delete devbox:', error)
+    }
+    
+    await sdk.close()
+    console.log('✅ SDK connections closed')
+  }
+}
+
+main().catch((error) => {
+  console.error('Failed to run example:', error)
+  process.exit(1)
+})
+```
+
+## Key Features Demonstrated
+
+### 1. Environment Configuration
+
+The example shows how to:
+- Load environment variables from multiple possible locations
+- Handle kubeconfig as both file path and content string
+- Configure SDK with appropriate timeouts and retry settings
+
+### 2. Devbox Lifecycle Management
+
+- **Creation**: Create a devbox with specified runtime and resources
+- **Starting**: Start the devbox instance
+- **Status Checking**: Poll for devbox status until it's ready
+- **Cleanup**: Properly delete the devbox and close SDK connections
+
+### 3. Command Execution
+
+The example demonstrates three methods of executing commands:
+- Direct command execution with arguments
+- Environment variable expansion in commands
+- Shell features like pipes
+
+### 4. Error Handling
+
+- Try-catch blocks for error handling
+- Proper cleanup in finally block
+- Graceful handling of cleanup errors
+
+## Running the Example
+
+1. **Install dependencies**:
+
+```bash
+npm install @labring/devbox-sdk dotenv
+```
+
+2. **Set up environment variables**:
+
+Create a `.env` file or set the `KUBECONFIG` environment variable:
+
+```bash
+export KUBECONFIG=/path/to/your/kubeconfig
+```
+
+Or in a `.env` file:
+
+```
+KUBECONFIG=/path/to/your/kubeconfig
+```
+
+3. **Run the example**:
+
+```bash
+node full-lifecycle.js
+```
+
+## Best Practices
+
+1. **Always clean up**: Use try-finally blocks to ensure resources are cleaned up even if errors occur
+2. **Generate unique names**: Use timestamps and random numbers to avoid naming conflicts
+3. **Wait for readiness**: Always wait for devbox to be in "Running" status before executing commands
+4. **Handle timeouts**: Set appropriate timeouts for operations that might take time
+5. **Error handling**: Catch and handle errors appropriately, logging useful information
+
+## Next Steps
+
+- Learn about [File Operations](/docs/guides/file-operations)
+- Explore [Git Integration](/docs/guides/git-integration)
+- Read the [API Reference](/docs/api/devbox-sdk)
+

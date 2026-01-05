@@ -9,13 +9,13 @@
 ### Installation
 
 ```bash
-npm install devbox-sdk
+npm install @labring/devbox-sdk
 ```
 
 ### Secure Code Execution
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 // Initialize SDK
 const sdk = new DevboxSDK({
@@ -99,7 +99,7 @@ Each sandbox runs in an isolated Kubernetes Pod, ensuring:
 
 This is a monorepo containing multiple packages:
 
-### devbox-sdk (Main Package)
+### @labring/devbox-sdk (Main Package)
 The primary TypeScript SDK for secure sandbox execution. See [packages/sdk/README.md](./packages/sdk/README.md) for detailed documentation.
 
 ### devbox-shared

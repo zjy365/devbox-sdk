@@ -21,13 +21,13 @@ Devbox SDK provides **container-based isolation** for safe code execution. Each 
 ### Installation
 
 ```bash
-npm install devbox-sdk
+npm install @labring/devbox-sdk
 ```
 
 ### Your First Sandbox
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 // Initialize SDK
 const sdk = new DevboxSDK({
@@ -128,6 +128,7 @@ await sandbox.git.pull('/workspace/repo')
 - **[Guides](/docs/guides/secure-code-execution)** - Usage guides and best practices
 - **[API Reference](/docs/api/devbox-sdk)** - Complete API documentation
 - **[Examples](/docs/examples/ai-agent-workflow)** - Real-world examples
+  - [Full Lifecycle Example](/docs/examples/full-lifecycle) - Complete devbox lifecycle from creation to cleanup
 
 ## Next Steps
 

@@ -10,7 +10,7 @@ This guide will help you create your first secure sandbox and execute code safel
 ## Create Your First Sandbox
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 // Initialize SDK
 const sdk = new DevboxSDK({
@@ -129,7 +129,7 @@ await sdk.close()
 Here's a complete example that demonstrates the full workflow:
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 async function main() {
   const sdk = new DevboxSDK({
@@ -172,6 +172,7 @@ main().catch(console.error)
 
 ## Next Steps
 
+- See the [Full Lifecycle Example](/docs/examples/full-lifecycle) for a complete workflow
 - Learn about [Secure Code Execution](/docs/guides/secure-code-execution)
 - Explore [File Operations](/docs/guides/file-operations)
 - Read the [API Reference](/docs/api/devbox-sdk)

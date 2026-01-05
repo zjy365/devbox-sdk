@@ -1,11 +1,11 @@
-# devbox-sdk
+# @labring/devbox-sdk
 
 **Secure Sandbox SDK for Isolated Code Execution.** Execute AI-generated code, run automation tasks, and test untrusted code with zero risk to your infrastructure.
 
 ## Installation
 
 ```bash
-npm install devbox-sdk
+npm install @labring/devbox-sdk
 ```
 
 ## Requirements
@@ -18,7 +18,7 @@ npm install devbox-sdk
 ### Secure Code Execution
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 // Initialize SDK
 const sdk = new DevboxSDK({
@@ -383,7 +383,7 @@ import {
   FileOperationError,
   DevboxNotFoundError,
   ValidationError
-} from 'devbox-sdk'
+} from '@labring/devbox-sdk'
 
 try {
   await sandbox.writeFile('/invalid/path', 'content')
@@ -410,7 +410,7 @@ try {
 ### Complete AI Agent Workflow
 
 ```typescript
-import { DevboxSDK } from 'devbox-sdk'
+import { DevboxSDK } from '@labring/devbox-sdk'
 
 async function runAIAgent() {
   const sdk = new DevboxSDK({
@@ -457,7 +457,7 @@ import type {
   FileMap,
   ProcessExecOptions,
   GitCloneOptions
-} from 'devbox-sdk'
+} from '@labring/devbox-sdk'
 ```
 
 ## Performance

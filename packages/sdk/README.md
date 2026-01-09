@@ -353,9 +353,6 @@ Represents a single sandbox instance with methods for code execution, file opera
 - `moveFile(options: MoveFileOptions): Promise<MoveFileResponse>`
 - `renameFile(options: RenameFileOptions): Promise<RenameFileResponse>`
 
-**File Watching:**
-- `watchFiles(path: string, callback: (event: FileChangeEvent) => void): Promise<FileWatchWebSocket>`
-
 **Git Operations:**
 - `git.clone(options: GitCloneOptions): Promise<void>`
 - `git.pull(options: GitPullOptions): Promise<void>`

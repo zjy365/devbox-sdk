@@ -111,8 +111,8 @@ docker build --no-cache --platform linux/amd64 -f apps/docs/Dockerfile -t devbox
 
 ## 🎯 Why Build from Root?
 
-This project uses npm workspaces:
-- `package-lock.json` is only in the root directory
+This project uses pnpm workspaces:
+- `pnpm-lock.yaml` and `pnpm-workspace.yaml` are only in the root directory
 - Dependencies are hoisted to root `node_modules`
 - Workspace resolution requires the full monorepo context
 

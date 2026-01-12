@@ -1,8 +1,11 @@
-# Dockerfile for Next.js app in npm workspaces monorepo
+# Dockerfile for Next.js app in pnpm workspaces monorepo
 # MUST be built from the monorepo root directory:
 # docker build --platform linux/amd64 -f apps/docs/Dockerfile -t devbox-docs:latest .
 
 FROM node:22-alpine AS base
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -10,11 +13,11 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy root package files for workspace resolution
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/docs/package.json ./apps/docs/
 
 # Install all dependencies (respects workspaces)
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -25,12 +28,12 @@ COPY --from=deps /app/apps/docs/node_modules ./apps/docs/node_modules
 
 # Copy only the docs app source
 COPY apps/docs ./apps/docs
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Build the docs app
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app/apps/docs
-RUN npm run build
+RUN pnpm run build
 
 # Production image
 FROM base AS runner

@@ -13,8 +13,6 @@ docker build --platform linux/amd64 -f apps/docs/Dockerfile -t devbox-docs:lates
 docker run -p 3000:3000 devbox-docs:latest
 ```
 
-Then visit http://localhost:3000
-
 ---
 
 ## 🔧 Advanced Usage
@@ -111,8 +109,8 @@ docker build --no-cache --platform linux/amd64 -f apps/docs/Dockerfile -t devbox
 
 ## 🎯 Why Build from Root?
 
-This project uses npm workspaces:
-- `package-lock.json` is only in the root directory
+This project uses pnpm workspaces:
+- `pnpm-lock.yaml` and `pnpm-workspace.yaml` are only in the root directory
 - Dependencies are hoisted to root `node_modules`
 - Workspace resolution requires the full monorepo context
 

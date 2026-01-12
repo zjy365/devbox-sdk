@@ -3,6 +3,13 @@ name: release
 on:
   push:
     branches: [main, master]
+    paths:
+      - 'packages/sdk/**'
+      - 'packages/shared/**'
+      - '.changeset/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/release.yml'
   workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}

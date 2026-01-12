@@ -13,8 +13,6 @@ docker build --platform linux/amd64 -f apps/docs/Dockerfile -t devbox-docs:lates
 docker run -p 3000:3000 devbox-docs:latest
 ```
 
-Then visit http://localhost:3000
-
 ---
 
 ## 🔧 Advanced Usage

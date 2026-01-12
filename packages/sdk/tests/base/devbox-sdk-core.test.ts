@@ -39,7 +39,6 @@ describe('DevboxSDK', () => {
     it('should accept valid configuration', () => {
       const validConfig: DevboxSDKConfig = {
         kubeconfig: 'test-kubeconfig',
-        baseUrl: 'http://localhost:3000',
         http: {
           timeout: 10000,
         },
@@ -54,7 +53,6 @@ describe('DevboxSDK', () => {
     it('should use default timeout value', () => {
       const config: DevboxSDKConfig = {
         kubeconfig: 'test',
-        baseUrl: 'http://localhost:3000',
       }
       
       const testSdk = new DevboxSDK(config)
@@ -65,7 +63,6 @@ describe('DevboxSDK', () => {
     it('should use custom timeout value', () => {
       const config: DevboxSDKConfig = {
         kubeconfig: 'test',
-        baseUrl: 'http://localhost:3000',
         http: {
           timeout: 60000,
         },

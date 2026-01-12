@@ -10,7 +10,7 @@
   "fixed": [],
   "linked": [
     [
-      "devbox-sdk",
+      "@labring/devbox-sdk",
       "devbox-shared"
     ]
   ],

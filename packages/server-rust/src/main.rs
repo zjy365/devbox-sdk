@@ -11,7 +11,7 @@ mod utils;
 use std::net::SocketAddr;
 use std::process;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let version = env!("CARGO_PKG_VERSION");
